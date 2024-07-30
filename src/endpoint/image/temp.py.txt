@@ -1,0 +1,9 @@
+      # To save as PNG
+            thumbnail_image_bytes = BytesIO()
+            thumbnail_image.save(thumbnail_image_bytes, format="jpg")
+            """ thumbnail_image.save(f"{self.filename}.thumbnail", format="jpg")
+            with open(f"{self.filename}.thumbnail2", "wb") as f:
+                f.write(thumbnail_image_bytes.getvalue()) """
+            # To save Raw
+            # thumbnail_image_bytes = thumbnail_image.convert("RGB").tobytes()
+            return thumbnail_image_bytes.getvalue()

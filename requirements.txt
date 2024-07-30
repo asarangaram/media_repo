@@ -1,0 +1,16 @@
+Flask
+Flask-SQLAlchemy
+SQLAlchemy
+flask_smorest
+marshmallow
+Pillow
+pillow-heif
+uWSGI
+Werkzeug
+tendo
+python-dateutil
+pytz
+humanize
+python-dotenv
+httpie
+pytest
