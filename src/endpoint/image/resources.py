@@ -3,10 +3,11 @@ from flask import render_template, make_response
 
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
+from werkzeug.exceptions import UnsupportedMediaType
 
 import logging
 
-from .schemas import MultipartFileSchema, ImageSchema
+from .schemas import MultipartFileSchema, ImageSchema,ErrorSchema
 
 from .models import ImageModel
 
@@ -20,22 +21,21 @@ class RepoException(Exception):
 class Upload(MethodView):
     @image_bp.arguments(MultipartFileSchema, location="files")
     @image_bp.response(201, ImageSchema)
+    @image_bp.alt_response(415, ErrorSchema, description="Filed to upload")
     def post(cls, files):
         logging.debug("post called")
-        try:
-            image = files["image"]
-            if image.filename == "":
-                logging.debug("No image name provided")
-                abort(404, message="No image name provided")
-            object, err = ImageModel.create(image=image)
-            if err :
-                abort(404, message=err)
-            if not object :
-                abort(404, message='unexpected error')
-            return object
-        except Exception as e:
-            logging.debug(str(e))
-            abort(404, message=str(e))
+        image = files["image"]
+        if image.filename == "":
+            logging.debug("No image name provided")
+            raise UnsupportedMediaType('Image name is not specified')
+        object, err = ImageModel.create(image=image)
+        if err :
+            raise UnsupportedMediaType(str(err))
+        if not object :
+            raise UnsupportedMediaType('unexpected error')
+            
+        return object
+    
 
 @image_bp.route('/upload/form')
 class TestUpload(MethodView):

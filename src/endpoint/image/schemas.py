@@ -14,4 +14,6 @@ class ImageSchema(Schema):
     datetime = fields.DateTime(required=True)
     sha512hash = fields.Str(required=True)
 
-    
+class ErrorSchema(Schema):
+    err = fields.Str(required=True)
+    description= fields.Str(required=True)
