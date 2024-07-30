@@ -14,3 +14,4 @@ humanize
 python-dotenv
 httpie
 pytest
+flask_migrate

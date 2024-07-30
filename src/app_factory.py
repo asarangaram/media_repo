@@ -7,6 +7,7 @@ from .endpoint.landing.resources import landing_bp
 from .endpoint.image.resources import image_bp
 from .endpoint.urlmap.resources import URL_map_resouce_bp
 from . import lock
+from flask_migrate import Migrate
 
 from .endpoint.urlmap.resources import URLMapResource
 
@@ -21,6 +22,7 @@ def create_app(config_object):
     app.config.from_object(config_object)
 
     db.init_app(app)
+    migrate = Migrate(app, db)
     with app.app_context():
         db.create_all()
 
