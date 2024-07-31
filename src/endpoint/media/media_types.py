@@ -1,6 +1,7 @@
 from enum import StrEnum
 import magic
 import re
+from marshmallow import fields, ValidationError
 
 class MediaType(StrEnum):
   TEXT='text'
@@ -41,3 +42,16 @@ def determine_media_type(bytes_io) -> MediaType:
         return MediaType.FILE
     
 
+class MediaTypeField(fields.Str):
+    def __init__(self, *args, **kwargs):
+        self.enum = kwargs.pop('enum', None)
+        super().__init__(*args, **kwargs)
+
+    def _validate(self, value):
+        if self.enum and value not in self.enum.__members__:
+            raise ValidationError(f"Invalid value. Expected one of: {list(self.enum.__members__)}")
+
+    def _deserialize(self, value, attr, data, **kwargs):
+        value = super()._deserialize(value, attr, data, **kwargs)
+        self._validate(value)
+        return value

@@ -1,7 +1,7 @@
 import unittest
 from io import BytesIO
 
-from src.media_proc.media_types import determine_media_type, MediaType
+from src.endpoint.media.media_types import determine_media_type, MediaType
 
 
 class TestMediaTypeDetection(unittest.TestCase):
