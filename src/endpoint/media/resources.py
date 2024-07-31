@@ -14,7 +14,7 @@ media_bp = Blueprint("media_bp", __name__, url_prefix="/media")
 class TestUpload(MethodView):
     def get(self):
         headers = {"Content-Type": "text/html"}
-        return make_response(render_template("upload.html"), 200, headers)
+        return make_response(render_template("upload_media.html"), 200, headers)
 
 
 @media_bp.route("/upload")
@@ -30,7 +30,7 @@ class Upload(MethodView):
 class MediaDownload(MethodView):
     def get(cls, media_id: int):
         media = MediaModel.get(media_id)
-        return send_file(media.path, mimetype="media/jpeg", download_name=media.name)
+        return send_file(media.absolute_path(), mimetype="image/jpeg", download_name=media.name)
 
 
 @media_bp.route("/<int:media_id>")

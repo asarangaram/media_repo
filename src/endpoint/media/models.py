@@ -1,15 +1,13 @@
 from datetime import datetime
-from enum import Enum
+
 from io import BytesIO
 import os
-import shutil
-from werkzeug.datastructures import FileStorage
 
-from src.exception import (
-    InternalImplementationError,
-    MediaProcessingException,
-    MediaNotFound,
-)
+from werkzeug.datastructures import FileStorage
+from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
+
+
+
 from .hash.image import sha512hash_image
 from .hash.video import sha512hash_video
 from ...db import db
@@ -23,7 +21,7 @@ class MediaModel(db.Model):
     __tablename__ = "media"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.UnicodeText, nullable=False)
-    type = db.Column(Enum(MediaType), nullable=False)
+    type = db.Column(db.UnicodeText, nullable=False)
     path = db.Column(db.UnicodeText, nullable=True)
     created_time = db.Column(db.DateTime, nullable=False)
     sha512hash = db.Column(db.String(128), nullable=False, unique=True)
@@ -39,7 +37,7 @@ class MediaModel(db.Model):
         private_key=None,
     ):
         if private_key != MediaModel.__private_key:
-            raise InternalImplementationError("Use Class Method  receive_file.")
+            raise InternalServerError("Use Class Method  receive_file.")
         self.name = name
         self.type = type
         self.created_time = created_time
@@ -54,6 +52,11 @@ class MediaModel(db.Model):
     def delete_from_db(self):
         db.session.delete(self)
         db.session.commit()
+        
+    def absolute_path(self):
+        if self.path:
+            return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
+        InternalServerError("Media not stored yet")
 
     def save(self, overwrite=True):
         self.save_to_db()
@@ -67,7 +70,7 @@ class MediaModel(db.Model):
             self.__bytes_io = None  # free buffer
             self.save_to_db()
         else:
-            InternalImplementationError("Save to DB Failed!!")
+            InternalServerError("Save to DB Failed!!")
 
     @classmethod
     def find_by_sha512hash(cls, sha512hash):
@@ -85,14 +88,14 @@ class MediaModel(db.Model):
     @classmethod
     def load(cls, mediaCache: FileStorage):
         if mediaCache.filename == "":
-            raise MediaProcessingException("Media name is not specified")
+            raise UnsupportedMediaType("Media name is not specified")
         time_now = datetime.now()
         bytes_io = BytesIO()
         mediaCache.save(bytes_io)
 
         # confirm the file is not empty
         if bytes_io.getbuffer().nbytes == 0:
-            raise MediaProcessingException("Empty File")
+            raise UnsupportedMediaType("Empty File")
 
         type = determine_media_type(bytes_io)
         bytes_io.seek(0)
@@ -107,7 +110,7 @@ class MediaModel(db.Model):
 
             # TODO: add support for  MediaType.AUDIO | MediaType.TEXT
             case _:
-                raise MediaProcessingException(f"Unsupported Media Content")
+                raise UnsupportedMediaType(f"Unsupported Media Content")
 
         return MediaModel(
             name=mediaCache.filename,
@@ -122,7 +125,7 @@ class MediaModel(db.Model):
     @classmethod
     def create(cls, mediaCache: FileStorage):
         entity = cls.load(mediaCache)
-        has_duplicate = cls.find_by_sha512hash(entity.hash)
+        has_duplicate = cls.find_by_sha512hash(entity.sha512hash)
         if has_duplicate:
             return has_duplicate
         entity.save()
@@ -132,7 +135,7 @@ class MediaModel(db.Model):
     def get(cls, _id):
         image = cls.find_by_id(_id)
         if not image:
-            raise MediaNotFound("image not found")
+            raise NotFound("image not found")
         return image
 
     @classmethod

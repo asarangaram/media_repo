@@ -4,7 +4,7 @@ from io import BytesIO, StringIO
 import hashlib
 import time
 
-from ...exception import MediaProcessingException
+from werkzeug.exceptions import UnsupportedMediaType
 
 def validate_csv(csv_output, video_size):
     """Validate that all rows in the CSV data have exactly three columns, 
@@ -51,20 +51,20 @@ def sha512hash_video(video_stream:BytesIO):
     try:
         process = subprocess.run(command, input=video_stream.read(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
     except subprocess.TimeoutExpired:
-        raise MediaProcessingException("ffprobe command timed out.")
+        raise UnsupportedMediaType("ffprobe command timed out.")
     except Exception as e:
-        raise MediaProcessingException(f"An error occurred while running ffprobe: {e}")
+        raise UnsupportedMediaType(f"An error occurred while running ffprobe: {e}")
     if process.returncode != 0:
-        raise MediaProcessingException(f"ffprobe encountered an error: {process.stderr.decode()}")
+        raise UnsupportedMediaType(f"ffprobe encountered an error: {process.stderr.decode()}")
 
     csv_output_data = process.stdout.decode()
     if not csv_output_data.strip():
-        raise MediaProcessingException("No data returned from ffprobe.")
+        raise UnsupportedMediaType("No data returned from ffprobe.")
    
     video_size = len(video_stream.getvalue())
     csv_output = StringIO(csv_output_data, video_stream.s)
     if not validate_csv(csv_output_data, video_size):
-        raise MediaProcessingException("CSV data is invalid.")
+        raise UnsupportedMediaType("CSV data is invalid.")
 
     csv_output.seek(0)
     reader = csv.reader(csv_output)
@@ -74,13 +74,13 @@ def sha512hash_video(video_stream:BytesIO):
     try:
         for index, row in enumerate(reader):
             if len(row) != 3:
-                raise MediaProcessingException(f"Skipping malformed row: {row}")
+                raise UnsupportedMediaType(f"Skipping malformed row: {row}")
             try:
                 offset, size, frame_type = row
                 offset = int(offset)
                 size = int(size)
             except ValueError:
-                raise MediaProcessingException(f"Invalid offset or size values in row: {row}")
+                raise UnsupportedMediaType(f"Invalid offset or size values in row: {row}")
                 continue
 
             if frame_type == 'I':
@@ -89,9 +89,9 @@ def sha512hash_video(video_stream:BytesIO):
                     frame_data = video_stream.read(size)
                     cumulative_hash.update(frame_data)
                 except (IOError, ValueError) as e:
-                    raise MediaProcessingException(f"Error processing frame at offset {offset}: {e}")
+                    raise UnsupportedMediaType(f"Error processing frame at offset {offset}: {e}")
     except csv.Error as e:
-        raise MediaProcessingException(f"Error parsing CSV data: {e}")
+        raise UnsupportedMediaType(f"Error parsing CSV data: {e}")
                 
     final_hash = cumulative_hash.hexdigest()
     end_time = time.time()
