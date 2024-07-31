@@ -23,7 +23,7 @@ class Upload(MethodView):
     @media_bp.response(201, MediaSchema)
     @media_bp.alt_response(415, ErrorSchema, description="Failed to upload")
     def post(cls, files):
-        return MediaModel.create(media=files["media"])
+        return MediaModel.create(files["media"])
 
 
 @media_bp.route("/<int:media_id>/download")
