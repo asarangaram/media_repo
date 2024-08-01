@@ -35,7 +35,7 @@ def validate_csv(csv_output, video_size):
     return True
 
 
-def sha512hash_video(video_stream:BytesIO):
+def sha512hash_video2(video_stream:BytesIO):
     start_time = time.time()
     video_stream.seek(0)
     
@@ -110,3 +110,17 @@ else:
     # Compute hash
     compute_cumulative_iframe_hash(video_stream)
  """
+ 
+def sha512hash_video(video_stream:BytesIO):
+    start_time = time.time()
+    
+    hash_sha512 = hashlib.sha512()
+    chunk_size = 8192
+    while chunk := video_stream.read(chunk_size):
+        hash_sha512.update(chunk)
+    
+    # Return the hexadecimal digest of the hash
+    hash =  hash_sha512.hexdigest()
+    end_time = time.time()
+    process_time = end_time - start_time
+    return hash, process_time
