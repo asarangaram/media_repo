@@ -6,10 +6,13 @@ class CollectionSchema(Schema):
     id = fields.Int(required=True)
     label = fields.Str(required=True)
     description = fields.Str()
+    createdDate = fields.DateTime(dump_only=True)
+    updatedDate = fields.DateTime(dump_only=True)
 
 
 class CollectionCreateSchema(Schema):
-    label = fields.Str(required=True)
+    label = fields.Str(required=True,error_messages={"required": "label is required."})
+    
 
 
 class CollectionUpdateSchema(Schema):
@@ -22,5 +25,5 @@ class CollectionUpdateSchema(Schema):
             raise ValidationError("Either 'label' or 'description' must be provided.")
 
 class ErrorSchema(Schema):
-    err = fields.Str(required=True)
-    description = fields.Str(required=True)
+    status = fields.Int(required=True, description="HTTP status code")
+    message = fields.Str(required=True, description="Error message")
