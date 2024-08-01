@@ -42,8 +42,8 @@ class CollectionModel(db.Model):
         return cls.query.filter_by(label=label).first()
 
     @classmethod
-    def find_by_id(cls, _id):
-        return cls.query.filter_by(id=_id).first()
+    def find_by_id(cls, id):
+        return cls.query.filter_by(id=id).first()
 
     @classmethod
     def find_all(cls):
@@ -71,10 +71,10 @@ class CollectionModel(db.Model):
         return entity
     
     @classmethod
-    def get(cls, _id):
-        entity = cls.find_by_id(_id)
+    def get(cls, id):
+        entity = cls.find_by_id(id)
         if not entity:
-            raise Exception(f"Entity with id {_id} not found")
+            raise Exception(f"Entity with id {id} not found")
         return entity
     
     @classmethod
@@ -82,25 +82,25 @@ class CollectionModel(db.Model):
         return cls.find_all()
     
     @classmethod
-    def update(cls, _id, _label=None, _description=None):
+    def update(cls, id, label=None, description=None):
         time_now = datetime.now()
-        entity:CollectionModel|None = cls.find_by_id(_id=_id)
+        entity:CollectionModel|None = cls.find_by_id(id=id)
         if not entity:
-            raise Exception(f"Entity with id {_id} not found")
-        if _label :
-            entity.label = _label 
-        if _description:
-            entity.description = _description
-        if _label or _description:
+            raise Exception(f"Entity with id {id} not found")
+        if label :
+            entity.label = label 
+        if description:
+            entity.description = description
+        if label or description:
             entity.updatedDate = time_now
             entity.save_to_db()
         return entity
     
     @classmethod
-    def delete(cls, _id):
-        entity:CollectionModel|None = cls.find_by_id(_id=_id)
+    def delete(cls, id):
+        entity:CollectionModel|None = cls.find_by_id(id=id)
         if not entity:
-            raise Exception(f"Entity with id {_id} not found")
+            raise Exception(f"Entity with id {id} not found")
         entity.delete_from_db()
                 
         
