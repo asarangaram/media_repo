@@ -11,18 +11,18 @@ class CollectionSchema(Schema):
 
 
 class CollectionCreateSchema(Schema):
-    label = fields.Str(required=True,error_messages={"required": "label is required."})
-    
+    label = fields.Str(required=True, error_messages={"required": "label is required."})
 
 
 class CollectionUpdateSchema(Schema):
     label = fields.Str()
     description = fields.Str()
-    
+
     @validates_schema
     def validate_at_least_one(self, data, **kwargs):
-        if not data.get('label') and not data.get('description'):
+        if not data.get("label") and not data.get("description"):
             raise ValidationError("Either 'label' or 'description' must be provided.")
+
 
 class ErrorSchema(Schema):
     status = fields.Int(required=True, description="HTTP status code")

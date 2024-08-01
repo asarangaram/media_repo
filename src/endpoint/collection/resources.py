@@ -32,7 +32,7 @@ class Collection(MethodView):
         404, ErrorSchema, description="Failed to delete the items"
     )
     def put(self, store_data, id):
-        return CollectionModel.update(id=id, **store_data)
+        return CollectionModel.update(_id=id, **store_data)
 
     @collection_bp.response(200)
     @collection_bp.alt_response(
@@ -66,42 +66,5 @@ class CollectionList(MethodView):
         return CollectionModel.create(**store_data)
 
 
-@collection_bp.errorhandler(404)
-def not_found_error(error):
-    response = {"message": str(error)}
-    return jsonify(response), 404
 
-""" 
-@collection_bp.errorhandler(422)
-def not_found_error(error):
-    response = {"message": f"{str(error)}\n Did you forget to add data"}
-    return jsonify(response), 404
- """
- 
-""" @collection_bp.errorhandler(ValidationError)
-def handle_validation_error(error):
-    # Customize the error response here
-    response = {
-        "status": 422,
-        "message": "Validation error",
-        "errors": error.messages
-    }
-    return jsonify(response), 422
 
-@collection_bp.before_app_request
-def before_request():
-    # Code to run before each request within the blueprint
-    pass """
-
-""" @collection_bp.after_app_request
-def after_request(response):
-    print(response.content_type)
-    # Modify response after request processing
-    if response.status_code == 422 and response.content_type == 'application/json':
-        # Example of adding custom fields or modifying the response
-        data = response.get_json()
-        if not data:
-            data = {}
-        data['custom_field'] = 'This is a custom field'
-        response.set_data(json.dumps(data))
-    return response """

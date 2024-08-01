@@ -74,7 +74,7 @@ class CollectionModel(db.Model):
     def get(cls, id):
         entity = cls.find_by_id(id)
         if not entity:
-            raise Exception(f"Entity with id {id} not found")
+            raise NotFound(f"Entity with id {id} not found")
         return entity
     
     @classmethod
@@ -86,7 +86,7 @@ class CollectionModel(db.Model):
         time_now = datetime.now()
         entity:CollectionModel|None = cls.find_by_id(id=id)
         if not entity:
-            raise Exception(f"Entity with id {id} not found")
+            raise NotFound(f"Entity with id {id} not found")
         if label :
             entity.label = label 
         if description:
@@ -100,7 +100,7 @@ class CollectionModel(db.Model):
     def delete(cls, id):
         entity:CollectionModel|None = cls.find_by_id(id=id)
         if not entity:
-            raise Exception(f"Entity with id {id} not found")
+            raise NotFound(f"Entity with id {id} not found")
         entity.delete_from_db()
                 
         

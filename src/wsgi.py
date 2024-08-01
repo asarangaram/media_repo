@@ -10,32 +10,46 @@ from .app_factory import create_app
 from .config import ConfigClass
 
 app = create_app(ConfigClass)
+
+
 @app.errorhandler(HTTPException)
 def handle_exception(e):
     """Return JSON instead of HTML for HTTP errors."""
     # Start with the correct headers and status code from the error
     response = e.get_response()
     # Replace the body with JSON
-    response.data = json.dumps({
-        "code": e.code,
-        "name": e.name,
-        "description": e.description,
-    })
+    response.data = json.dumps(
+        {
+            "code": e.code,
+            "name": e.name,
+            "description": e.description,
+        }
+    )
     response.content_type = "application/json"
     return response
 
+""" @app.errorhandler(404)
+def not_found_error(e):
+    response = {"message": str(error)}
+    return jsonify(response), 404 """
 
 @app.errorhandler(UnprocessableEntity)
-def handle_unprocessable_entity(err):
+def handle_unprocessable_entity(e):
     # Get the original ValidationError raised by marshmallow
-    headers = err.data.get("headers", None)
-    messages = err.data.get("messages", ["Invalid request."])
-    json_data = messages.get('json', None)
+    headers = e.data.get("headers", None)
+    messages = e.data.get("messages", ["Invalid request."])
+    json_data = messages.get("json", None)
     print(json_data)
+
     if headers:
-        return jsonify({"errors": json_data}), err.code, headers
+        return (
+            jsonify({"code": e.code, "name": e.name, "description": json_data}),
+            e.code,
+            headers,
+        )
     else:
-        return jsonify({"errors": json_data}), err.code
+        return jsonify({"errors": json_data}), e.code
+
 
 """ @app.errorhandler(Exception)
 def handle_validation_error(error):
@@ -48,6 +62,7 @@ def handle_validation_error(error):
      """
 
 
-
-if __name__ == '__main__':
-    app.run(debug=True,)
+if __name__ == "__main__":
+    app.run(
+        debug=True,
+    )
