@@ -10,11 +10,6 @@ from .models import MediaModel
 media_bp = Blueprint("media_bp", __name__, url_prefix="/media")
 
 
-@media_bp.route("/upload/form")
-class TestUpload(MethodView):
-    def get(self):
-        headers = {"Content-Type": "text/html"}
-        return make_response(render_template("upload_media.html"), 200, headers)
 
 
 @media_bp.route("/upload")
@@ -25,6 +20,9 @@ class Upload(MethodView):
     def post(cls, files):
         return MediaModel.create(files["media"])
 
+    def get(self):
+        headers = {"Content-Type": "text/html"}
+        return make_response(render_template("upload_media.html"), 200, headers)
 
 @media_bp.route("/<int:media_id>/download")
 class MediaDownload(MethodView):
