@@ -4,7 +4,7 @@ from flask import Flask
 
 from .db import db
 from .endpoint.landing.resources import landing_bp
-from .endpoint.image.resources import image_bp
+#from .endpoint.image.resources import image_bp
 from .endpoint.media.resources import media_bp
 from .endpoint.urlmap.resources import URL_map_resouce_bp
 from . import lock
@@ -31,7 +31,7 @@ def create_app(config_object):
 
     # Landing Page
     app.register_blueprint(landing_bp)
-    app.register_blueprint(image_bp)
+    # app.register_blueprint(image_bp)
     app.register_blueprint(media_bp)
     app.register_blueprint(URL_map_resouce_bp)
 
