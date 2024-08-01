@@ -1,4 +1,4 @@
-from flask import request, send_file
+from flask import jsonify, request, send_file
 from flask import render_template, make_response
 from flask.views import MethodView
 from flask_smorest import Blueprint
@@ -50,3 +50,12 @@ class MediaList(MethodView):
 
     def delete(cls):
         return MediaModel.delete_all()
+
+
+@media_bp.errorhandler(404)
+def not_found_error(error):
+    response = {
+       
+        "message": str(error)
+    }
+    return jsonify(response), 404
