@@ -61,7 +61,7 @@ class Media(MethodView):
 
     @media_bp.arguments(MediaFileSchemaPUT, location="files")
     @media_bp.arguments(MediaSchemaPUT, location="form")
-    @media_bp.response(201, MediaSchemaGET)
+    @media_bp.response(200, MediaSchemaGET)
     @media_bp.alt_response(415, ErrorSchema, description="Failed to update")
     def put(cls, files, args,  media_id):
         bytes_io = None

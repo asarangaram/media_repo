@@ -12,7 +12,8 @@ class CollectionModel(db.Model):
     label = db.Column(db.UnicodeText, nullable=False, unique=True)
     description = db.Column(db.UnicodeText, nullable=True)
     createdDate = db.Column(db.DateTime, nullable=False)
-    updatedDate = db.Column(db.DateTime, nullable=False)
+    updatedDate = db.Column(db.DateTime, nullable=False)   
+    media = db.relationship("MediaModel", uselist=True, backref="collection")
 
     def __init__(
         self,

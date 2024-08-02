@@ -7,6 +7,8 @@ from marshmallow import ValidationError
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
 
+from ..collection.model import CollectionModel
+
 
 from .hash.image import sha512hash_image
 from .hash.video import sha512hash_video
@@ -23,13 +25,13 @@ class MediaModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.UnicodeText, nullable=False)
     type = db.Column(db.UnicodeText, nullable=False)
-    collectionLabel = db.Column(db.Integer, nullable=False)
+    collectionLabel = db.Column(db.String,db.ForeignKey('collection.label'),  nullable=False)
     md5String = db.Column(db.String, nullable=False, unique=True)
     createdDate = db.Column(db.DateTime, nullable=False)
     originalDate = db.Column(db.DateTime, nullable=True)
     updatedDate = db.Column(db.DateTime, nullable=False)
     ref = db.Column(db.UnicodeText, nullable=True)
-    isdeleted = db.Column(db.Boolean, default=False, nullable=False)
+    isDeleted = db.Column(db.Boolean, default=False, nullable=False)
 
     path = db.Column(db.UnicodeText, nullable=True)
 
@@ -47,7 +49,8 @@ class MediaModel(db.Model):
         self.originalDate = kwargs.get("originalDate")
         self.updatedDate = kwargs.get("updatedDate", timeNow)
         self.ref = kwargs.get("ref")
-        self.isdeleted = kwargs.get("isdeleted", False)
+        self.isDeleted = kwargs.get("isDeleted", False)
+        CollectionModel.create(self.collectionLabel)
 
     def save_to_db(self):
         db.session.add(self)
@@ -116,6 +119,9 @@ class MediaModel(db.Model):
                  raise ValidationError( {"md5String": ["md5String should be included in the request to update media"],})
              
         validate_md5String(bytes_io, md5String)
+        if md5String == self.md5String:
+            ## Same file is send again
+            return False
         existing_media = self.absolute_path()
         self.__bytes_io = bytes_io
         self.md5String = md5String
@@ -128,6 +134,7 @@ class MediaModel(db.Model):
 
     @classmethod
     def update(cls, _id, **kwargs):
+        timeNow = datetime.now()
         entity = cls.get(_id)
 
         # if md5String is given, the file is changed.
@@ -142,12 +149,13 @@ class MediaModel(db.Model):
 
         for key, value in filtered_kwargs.items():
             if hasattr(entity, key):
-                setattr(entity, key, value)
-                isUpdated = True
+                if not getattr(entity, key) == value:
+                    setattr(entity, key, value)
+                    isUpdated = True
         if isUpdated:
+            entity.updatedDate = timeNow
             entity.save_to_db()
-            return entity
-        raise 
+        return entity
 
     @classmethod
     def get(cls, _id):

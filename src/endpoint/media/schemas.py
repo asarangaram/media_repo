@@ -28,7 +28,7 @@ class MediaSchemaPOST(Schema):
     originalDate = fields.DateTime( error_messages={"invalid": "originalDate: Invalid date format."})
     updatedDate = fields.DateTime( error_messages={"invalid": "updatedDate: Invalid date format."})
     ref = fields.Str()
-    isdeleted = fields.Bool()
+    isDeleted = fields.Bool()
     notes = fields.List(fields.Int())
     
    
@@ -44,7 +44,7 @@ class MediaSchemaPUT(Schema):
     originalDate = fields.DateTime( error_messages={"invalid": "originalDate: Invalid date format."})
     updatedDate = fields.DateTime( error_messages={"invalid": "updatedDate: Invalid date format."})
     ref = fields.Str()
-    isdeleted = fields.Bool()
+    isDeleted = fields.Bool()
     notes = fields.List(fields.Int())
   
 
@@ -60,7 +60,7 @@ class MediaSchemaGET(Schema):
     originalDate = fields.DateTime( error_messages={"invalid": "originalDate: Invalid date format."})
     updatedDate = fields.DateTime(required=True, error_messages={"invalid": "updatedDate: Invalid date format."})
     ref = fields.Str(required=True, )
-    isdeleted = fields.Bool(required=True, error_messages={"required": "md5String is required."} )
+    isDeleted = fields.Bool(required=True, error_messages={"required": "md5String is required."} )
     notes = fields.List(fields.Int())
 
 class ErrorSchema(Schema):
