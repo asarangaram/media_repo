@@ -3,13 +3,14 @@ from datetime import datetime
 from io import BytesIO
 import os
 
+from marshmallow import ValidationError
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
 
 
-
 from .hash.image import sha512hash_image
 from .hash.video import sha512hash_video
+from .hash.md5 import validate_md5String
 from ...db import db
 from ...config import ConfigClass
 from .media_types import MediaType, determine_media_type
@@ -22,28 +23,31 @@ class MediaModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.UnicodeText, nullable=False)
     type = db.Column(db.UnicodeText, nullable=False)
-    path = db.Column(db.UnicodeText, nullable=True)
-    created_time = db.Column(db.DateTime, nullable=False)
-    sha512hash = db.Column(db.String(128), nullable=False, unique=True)
+    collectionLabel = db.Column(db.Integer, nullable=False)
+    md5String = db.Column(db.String, nullable=False, unique=True)
+    createdDate = db.Column(db.DateTime, nullable=False)
+    originalDate = db.Column(db.DateTime, nullable=True)
+    updatedDate = db.Column(db.DateTime, nullable=False)
+    ref = db.Column(db.UnicodeText, nullable=True)
+    isdeleted = db.Column(db.Boolean, default=False, nullable=False)
 
-    def __init__(
-        self,
-        name: str,
-        bytes_io: BytesIO,
-        type: MediaType,
-        created_time: datetime,
-        sha512hash: str,
-        process_time: float,
-        private_key=None,
-    ):
+    path = db.Column(db.UnicodeText, nullable=True)
+
+    def __init__(self, private_key=None, **kwargs):
+        timeNow = datetime.now()
         if private_key != MediaModel.__private_key:
             raise InternalServerError("Use Class Method  receive_file.")
-        self.name = name
-        self.type = type
-        self.created_time = created_time
-        self.sha512hash = sha512hash
-        self.__bytes_io = bytes_io  # This don't go to db
-        self.process_time = process_time
+        self.__bytes_io = kwargs.get("bytes_io")  # This don't go to db
+        self.__filename = kwargs.get("filename")
+        self.name = kwargs.get("name")
+        self.type = kwargs.get("type")
+        self.collectionLabel = kwargs.get("collectionLabel")
+        self.md5String = kwargs.get("md5String")
+        self.createdDate = kwargs.get("createdDate", timeNow)
+        self.originalDate = kwargs.get("originalDate")
+        self.updatedDate = kwargs.get("updatedDate", timeNow)
+        self.ref = kwargs.get("ref")
+        self.isdeleted = kwargs.get("isdeleted", False)
 
     def save_to_db(self):
         db.session.add(self)
@@ -52,29 +56,29 @@ class MediaModel(db.Model):
     def delete_from_db(self):
         db.session.delete(self)
         db.session.commit()
-        
+
     def absolute_path(self):
         if self.path:
             return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
         InternalServerError("Media not stored yet")
 
     def save(self, overwrite=True):
-        self.save_to_db()
+        
         if self.id:
-            self.path = os.path.join(f"image_{str(self.id)}", self.name)
+            self.path = os.path.join(f"media_{str(self.id)}", self.__filename)
             path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             self.__bytes_io.seek(0)
             with open(path, "wb") as file:
                 file.write(self.__bytes_io.getvalue())
-            self.__bytes_io = None  # free buffer
-            self.save_to_db()
+            del self.__bytes_io
+            
         else:
             InternalServerError("Save to DB Failed!!")
 
     @classmethod
-    def find_by_sha512hash(cls, sha512hash):
-        return cls.query.filter_by(sha512hash=sha512hash).first()
+    def find_by_md5String(cls, md5String):
+        return cls.query.filter_by(md5String=md5String).first()
 
     @classmethod
     def find_by_id(cls, _id):
@@ -86,57 +90,71 @@ class MediaModel(db.Model):
         return all
 
     @classmethod
-    def load(cls, mediaCache: FileStorage):
-        if mediaCache.filename == "":
-            raise UnsupportedMediaType("Media name is not specified")
-        time_now = datetime.now()
-        bytes_io = BytesIO()
-        mediaCache.save(bytes_io)
+    def create(cls, **kwargs):
+        md5String = kwargs["md5String"]
+        bytes_io = kwargs["bytes_io"]
+        validate_md5String(bytes_io, md5String)
 
-        # confirm the file is not empty
-        if bytes_io.getbuffer().nbytes == 0:
-            raise UnsupportedMediaType("Empty File")
-
-        type = determine_media_type(bytes_io)
-        bytes_io.seek(0)
-        entity = None
-
-        match (type):
-            case MediaType.IMAGE:
-                hash_hex, process_time = sha512hash_image(image_stream=bytes_io)
-
-            case MediaType.VIDEO:
-                hash_hex, process_time = sha512hash_video(video_stream=bytes_io)
-
-            # TODO: add support for  MediaType.AUDIO | MediaType.TEXT
-            case _:
-                raise UnsupportedMediaType(f"Unsupported Media Content")
-
-        return MediaModel(
-            name=mediaCache.filename,
-            bytes_io=bytes_io,
-            type=type,
-            created_time=time_now,
-            sha512hash=hash_hex,
-            process_time=process_time,
-            private_key=cls.__private_key,
-        )
-
-    @classmethod
-    def create(cls, mediaCache: FileStorage):
-        entity = cls.load(mediaCache)
-        has_duplicate = cls.find_by_sha512hash(entity.sha512hash)
+        has_duplicate = cls.find_by_md5String(md5String)
         if has_duplicate:
             return has_duplicate
+        entity = MediaModel(private_key=cls.__private_key, **kwargs)
+        entity.save_to_db() # So that we get id!
         entity.save()
+        entity.save_to_db()
         return entity
+
+    def replaceMedia(self, filename, bytes_io, md5String):
+        if all(arg is None for arg in [filename, bytes_io, md5String]):
+            return False
+        if any(arg is None for arg in [filename, bytes_io, md5String]):
+            if not filename:
+                 raise ValidationError( {"filename": ["filename is required to update media"],})
+            if not bytes_io:
+                 raise ValidationError( {"media": ["media file is not included in the request"],})
+            if not md5String:
+                 raise ValidationError( {"md5String": ["md5String should be included in the request to update media"],})
+             
+        validate_md5String(bytes_io, md5String)
+        existing_media = self.absolute_path()
+        self.__bytes_io = bytes_io
+        self.md5String = md5String
+        self.__filename = filename
+        self.save()
+        ##  File saved with different name
+        if not existing_media == self.absolute_path():
+            os.remove(existing_media)
+        return True
+
+    @classmethod
+    def update(cls, _id, **kwargs):
+        entity = cls.get(_id)
+
+        # if md5String is given, the file is changed.
+        # Handle it first!
+
+        isUpdated = entity.replaceMedia(
+            bytes_io=kwargs.get("bytes_io"),
+            md5String=kwargs.get("md5String"),
+            filename=kwargs.get("filename"),
+        )
+        filtered_kwargs = {key: value for key, value in kwargs.items() if key not in ["bytes_io","md5String", "filename" ]}
+
+        for key, value in filtered_kwargs.items():
+            if hasattr(entity, key):
+                setattr(entity, key, value)
+                isUpdated = True
+        if isUpdated:
+            entity.save_to_db()
+            return entity
+        raise 
 
     @classmethod
     def get(cls, _id):
-        image = cls.find_by_id(_id)
-        if not image:
-            raise NotFound("image not found")
-        return image
+        media = cls.find_by_id(_id)
+        if not media:
+            raise NotFound("media not found")
+        return media
 
     @classmethod
     def get_all(cls):
@@ -150,5 +168,5 @@ class MediaModel(db.Model):
     @classmethod
     def delete_all(cls):
         all = cls.find_all()
-        for image in all:
-            image.delete_from_db()
+        for media in all:
+            media.delete_from_db()

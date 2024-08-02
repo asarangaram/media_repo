@@ -1,14 +1,18 @@
-<HTML>
-<HEAD>
-<TITLE>File Upload Test</TITLE>
-</HEAD>
-
-<BODY>
-<H1>File Upload Test</H1>
-<FORM ENCTYPE = "multipart/form-data" 
-  ACTION="http://127.0.0.1:5000/media/upload"
-  METHOD="POST">
-Send this file: <INPUT NAME="media" TYPE="file">
-<INPUT TYPE="submit" VALUE="Send File">
-</FORM>
-</BODY>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload Test</title>
+</head>
+<body>
+    <h1>File Upload Test</h1>
+    <form enctype="multipart/form-data" action="http://127.0.0.1:5000/media/upload" method="POST">
+        <label for="media">Send this file:</label>
+        <input name="media" type="file" id="media" required>
+        <input type="hidden" name="collectionId" value="1">
+        <input type="submit" value="Send File">
+    </form>
+</body>
+</html>
