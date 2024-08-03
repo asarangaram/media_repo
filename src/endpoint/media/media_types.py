@@ -1,4 +1,5 @@
 from enum import StrEnum
+from io import BytesIO
 import magic
 import re
 from marshmallow import fields, ValidationError
@@ -17,14 +18,14 @@ def contains_url(text):
     )
     return bool(url_pattern.search(text))
 
-def determine_media_type(bytes_io) -> MediaType:
-    bytes_io.seek(0)         
-    # Create a Magic object
-    mime = magic.Magic(mime=True)
+def determine_media_type(bytes_io:BytesIO,  file_type:str|None) -> MediaType:
+    if not file_type:
+        bytes_io.seek(0)         
+        # Create a Magic object
+        mime = magic.Magic(mime=True)
     
-    # Determine the file type
-    file_type = mime.from_buffer(bytes_io.getvalue())
-    print(file_type)
+        # Determine the file type
+        file_type = mime.from_buffer(bytes_io.getvalue())
     # Check the type
     if file_type.startswith('image'):
         return MediaType.IMAGE

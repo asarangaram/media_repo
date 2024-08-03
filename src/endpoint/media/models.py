@@ -25,7 +25,7 @@ class MediaModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.UnicodeText, nullable=False)
     type = db.Column(db.UnicodeText, nullable=False)
-    collectionLabel = db.Column(db.String,db.ForeignKey('collection.label'),  nullable=False)
+    collectionLabel = db.Column( db.String, db.ForeignKey('collection.label'), nullable=False)
     md5String = db.Column(db.String, nullable=False, unique=True)
     createdDate = db.Column(db.DateTime, nullable=False)
     originalDate = db.Column(db.DateTime, nullable=True)
@@ -93,10 +93,22 @@ class MediaModel(db.Model):
         return all
 
     @classmethod
+    def validate_type(cls, bytes_io, content_type, given_type:MediaType):
+        actual_type:MediaType = determine_media_type(bytes_io, content_type)
+        given_type = given_type
+        if not actual_type == given_type:
+            raise ValidationError(
+                {
+                    "type": [f"uploaded file is not of the type {given_type}"],
+                }
+            )
+
+    @classmethod
     def create(cls, **kwargs):
         md5String = kwargs["md5String"]
         bytes_io = kwargs["bytes_io"]
         validate_md5String(bytes_io, md5String)
+        cls.validate_type(bytes_io, kwargs["content_type"], kwargs["type"])
 
         has_duplicate = cls.find_by_md5String(md5String)
         if has_duplicate:
@@ -107,7 +119,7 @@ class MediaModel(db.Model):
         entity.save_to_db()
         return entity
 
-    def replaceMedia(self, filename, bytes_io, md5String):
+    def replaceMedia(self, filename, bytes_io, md5String, type, content_type):
         if all(arg is None for arg in [filename, bytes_io, md5String]):
             return False
         if any(arg is None for arg in [filename, bytes_io, md5String]):
@@ -119,6 +131,7 @@ class MediaModel(db.Model):
                  raise ValidationError( {"md5String": ["md5String should be included in the request to update media"],})
              
         validate_md5String(bytes_io, md5String)
+        self.validate_type(bytes_io, content_type, type)
         if md5String == self.md5String:
             ## Same file is send again
             return False
@@ -144,6 +157,8 @@ class MediaModel(db.Model):
             bytes_io=kwargs.get("bytes_io"),
             md5String=kwargs.get("md5String"),
             filename=kwargs.get("filename"),
+            type=kwargs.get("type", entity.type),
+            content_type=kwargs.get(kwargs["content_type"]),
         )
         filtered_kwargs = {key: value for key, value in kwargs.items() if key not in ["bytes_io","md5String", "filename" ]}
 

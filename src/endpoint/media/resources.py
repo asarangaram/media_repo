@@ -6,6 +6,8 @@ from flask_smorest import Blueprint
 
 from werkzeug.utils import secure_filename
 
+from .media_types import MediaType
+
 
 from .schemas import (
     MediaFileSchemaPOST,
@@ -31,14 +33,15 @@ class MediaList(MethodView):
     def post(cls, files, kwargs):
         bytes_io = BytesIO()
         files["media"].save(bytes_io)
-        
+        kwargs["type"] = MediaType[kwargs.get("type").upper()]
         argsExtra = {}
         argsExtra["bytes_io"] = bytes_io
         if not kwargs.get("name"):
             argsExtra["name"] = files["media"].filename
         argsExtra["filename"] = secure_filename(files["media"].filename)
+        argsExtra["content_type"] = files["media"].content_type
 
-        return MediaModel.create( **kwargs, **argsExtra )
+        return MediaModel.create(**kwargs, **argsExtra)
 
     @media_bp.response(200, MediaSchemaGET(many=True))
     def get(cls):
@@ -63,18 +66,19 @@ class Media(MethodView):
     @media_bp.arguments(MediaSchemaPUT, location="form")
     @media_bp.response(200, MediaSchemaGET)
     @media_bp.alt_response(415, ErrorSchema, description="Failed to update")
-    def put(cls, files, args,  media_id):
+    def put(cls, files, kwargs, media_id):
         bytes_io = None
         if files.get("media"):
-            bytes_io= BytesIO()
+            bytes_io = BytesIO()
             files["media"].save(bytes_io)
-
-            args["bytes_io"] =bytes_io
-            args["filename"]=secure_filename(files["media"].filename)
-        return MediaModel.update(
-            media_id,
-            **args
-        ) 
+            argsExtra = {}
+            argsExtra["bytes_io"] = bytes_io
+            argsExtra["filename"] = secure_filename(files["media"].filename)
+            argsExtra["content_type"] = files["media"].content_type
+        mediaType = kwargs.get("type")
+        if mediaType:
+            kwargs["type"] = MediaType[kwargs.get("type").upper()]
+        return MediaModel.update(media_id, **kwargs, **argsExtra)
 
 
 @media_bp.route("/upload")

@@ -51,14 +51,14 @@ def handle_unprocessable_entity(e):
         return jsonify({"errors": messages}), e.code
 
 
-""" @app.errorhandler(Exception)
+@app.errorhandler(Exception)
 def handle_validation_error(error):
-    print("reported validation error")
+    
     return {
         "error": "Validation Error",
         "message": "; ".join([f"{field}: {'; '.join(messages)}" for field, messages in error.messages.items()]),
-        "details": error.messages
-    }, 422 """
+        # "details": error.messages
+    }, 422 
 
 
 
