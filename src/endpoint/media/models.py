@@ -158,7 +158,7 @@ class MediaModel(db.Model):
             md5String=kwargs.get("md5String"),
             filename=kwargs.get("filename"),
             type=kwargs.get("type", entity.type),
-            content_type=kwargs.get(kwargs["content_type"]),
+            content_type=kwargs.get("content_type"),
         )
         filtered_kwargs = {key: value for key, value in kwargs.items() if key not in ["bytes_io","md5String", "filename" ]}
 

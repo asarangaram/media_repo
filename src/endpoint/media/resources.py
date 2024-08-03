@@ -68,10 +68,11 @@ class Media(MethodView):
     @media_bp.alt_response(415, ErrorSchema, description="Failed to update")
     def put(cls, files, kwargs, media_id):
         bytes_io = None
+        argsExtra = {}
         if files.get("media"):
             bytes_io = BytesIO()
             files["media"].save(bytes_io)
-            argsExtra = {}
+            
             argsExtra["bytes_io"] = bytes_io
             argsExtra["filename"] = secure_filename(files["media"].filename)
             argsExtra["content_type"] = files["media"].content_type
