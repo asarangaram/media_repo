@@ -23,7 +23,7 @@ def contains_url(text):
     )
     return bool(url_pattern.match(stripped_text))
 
-def determine_mime(bytes_io:BytesIO,  file_type:str|None) -> MediaType:
+def determine_mime(bytes_io:BytesIO,  file_type:str|None=None) -> MediaType:
     if not file_type:
         bytes_io.seek(0)         
         # Create a Magic object
