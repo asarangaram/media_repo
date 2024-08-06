@@ -49,7 +49,17 @@ install_packages_from_requirements() {
     fi
 }
 
-# Call the function
+check_system_software()
+{
+    if brew list --versions libmagic > /dev/null; then
+        echo "libmagic is installed."
+    else
+        echo "libmagic is not found. Install it before starting the server"
+        exit 1
+    fi
+}
+
+check_system_software
 create_venv
 
 os_name=$(uname)
