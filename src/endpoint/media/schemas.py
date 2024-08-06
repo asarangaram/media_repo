@@ -1,9 +1,9 @@
 from flask import request
 from flask_smorest.fields import Upload
 from werkzeug.utils import secure_filename
-from marshmallow import Schema, ValidationError, fields, validates_schema
+from marshmallow import Schema,  fields
 
-from .hash.md5 import validate_md5String
+
 
 from .media_types import MediaTypeField, MediaType
 
@@ -23,7 +23,7 @@ class MediaSchemaPOST(Schema):
     name = fields.Str()
     
     collectionLabel = fields.Str(required=True,  error_messages={"required": "collectionLabel is required."})
-    md5String = fields.Str(required=True,  error_messages={"required": "md5String is required."})
+    
     createdDate = fields.DateTime( error_messages={"invalid": "createdDate: Invalid date format."})
     originalDate = fields.DateTime( error_messages={"invalid": "originalDate: Invalid date format."})
     updatedDate = fields.DateTime( error_messages={"invalid": "updatedDate: Invalid date format."})
@@ -37,9 +37,7 @@ class MediaSchemaPUT(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
     name = fields.Str()
-    
     collectionLabel = fields.Str()
-    md5String = fields.Str()
     createdDate = fields.DateTime( error_messages={"invalid": "createdDate: Invalid date format."})
     originalDate = fields.DateTime( error_messages={"invalid": "originalDate: Invalid date format."})
     updatedDate = fields.DateTime( error_messages={"invalid": "updatedDate: Invalid date format."})
@@ -52,7 +50,7 @@ class MediaSchemaGET(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
     id = fields.Str(dump_only=True)
-    name = fields.Str(required=True, error_messages={"required": "md5String is required."})
+    name = fields.Str(required=True, error_messages={"required": "name is required."})
     type = MediaTypeField(enum=MediaType, dump_only=True, error_messages={"required": "type is required."})
     collectionLabel = fields.Str(required=True,  error_messages={"required": "collectionLabel is required."})
     md5String = fields.Str(required=True,  error_messages={"required": "md5String is required."})
@@ -60,7 +58,7 @@ class MediaSchemaGET(Schema):
     originalDate = fields.DateTime( error_messages={"invalid": "originalDate: Invalid date format."})
     updatedDate = fields.DateTime(required=True, error_messages={"invalid": "updatedDate: Invalid date format."})
     ref = fields.Str(required=True, )
-    isDeleted = fields.Bool(required=True, error_messages={"required": "md5String is required."} )
+    isDeleted = fields.Bool(required=True, error_messages={"required": "isDeleterd is required."} )
     notes = fields.List(fields.Int())
     content_type = fields.Str(required=True, )
 

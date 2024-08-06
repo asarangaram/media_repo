@@ -10,9 +10,8 @@ from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFo
 from ..collection.model import CollectionModel
 
 
-from .hash.image import sha512hash_image
-from .hash.video import sha512hash_video
-from .hash.md5 import validate_md5String
+
+from .hash.md5 import  get_md5_hexdigest
 from ...db import db
 from ...config import ConfigClass
 from .media_types import MediaType, determine_media_type
@@ -97,39 +96,34 @@ class MediaModel(db.Model):
 
     @classmethod
     def create(cls, **kwargs):
-        md5String = kwargs["md5String"]
+       
         bytes_io = kwargs["bytes_io"]
-        validate_md5String(bytes_io, md5String)
+        md5String = get_md5_hexdigest(bytes_io, )
         
 
-        has_duplicate = cls.find_by_md5String(md5String)
+        has_duplicate:MediaModel|None = cls.find_by_md5String(md5String)
         if has_duplicate:
+            if has_duplicate.collectionLabel != kwargs["collectionLabel"]:
+                raise ValidationError( {"collectionLabel": [f"duplicate item found in {has_duplicate.collectionLabel}, with id {has_duplicate.id}"],})
             return has_duplicate
-        entity = MediaModel(private_key=cls.__private_key, **kwargs)
+        entity = MediaModel(private_key=cls.__private_key, md5String = md5String, **kwargs)
         entity.save_to_db() # So that we get id!
         entity.save()
         entity.save_to_db()
         return entity
 
-    def replaceMedia(self, filename, bytes_io, md5String,  content_type):
-        if all(arg is None for arg in [filename, bytes_io, md5String]):
+    def replaceMedia(self, filename, bytes_io):
+        if all(arg is None for arg in [filename, bytes_io]):
             return False
-        if any(arg is None for arg in [filename, bytes_io, md5String]):
+        if any(arg is None for arg in [filename, bytes_io]):
             if not filename:
                  raise ValidationError( {"filename": ["filename is required to update media"],})
             if not bytes_io:
                  raise ValidationError( {"media": ["media file is not included in the request"],})
-            if not md5String:
-                 raise ValidationError( {"md5String": ["md5String should be included in the request to update media"],})
-             
-        validate_md5String(bytes_io, md5String)
         
-        if md5String == self.md5String:
-            ## Same file is send again
-            return False
         existing_media = self.absolute_path()
         self.__bytes_io = bytes_io
-        self.md5String = md5String
+        self.md5String = get_md5_hexdigest(bytes_io, )
         self.__filename = filename
         self.save()
         ##  File saved with different name
@@ -141,18 +135,11 @@ class MediaModel(db.Model):
     def update(cls, _id, **kwargs):
         timeNow = datetime.now()
         entity = cls.get(_id)
-
-        # if md5String is given, the file is changed.
-        # Handle it first!
-
         isUpdated = entity.replaceMedia(
             bytes_io=kwargs.get("bytes_io"),
-            md5String=kwargs.get("md5String"),
             filename=kwargs.get("filename"),
-            
-            content_type=kwargs.get("content_type"),
         )
-        filtered_kwargs = {key: value for key, value in kwargs.items() if key not in ["bytes_io","md5String", "filename" ]}
+        filtered_kwargs = {key: value for key, value in kwargs.items() if key not in ["bytes_io", "filename" ]}
 
         for key, value in filtered_kwargs.items():
             if hasattr(entity, key):
