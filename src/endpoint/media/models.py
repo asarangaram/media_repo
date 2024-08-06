@@ -2,6 +2,7 @@ from datetime import datetime
 
 from io import BytesIO
 import os
+import shutil
 
 from marshmallow import ValidationError
 from werkzeug.datastructures import FileStorage
@@ -14,7 +15,7 @@ from ..collection.model import CollectionModel
 from .hash.md5 import  get_md5_hexdigest
 from ...db import db
 from ...config import ConfigClass
-from .media_types import MediaType, determine_media_type
+from .media_types import MediaType, determine_media_type, determine_mime
 
 
 class MediaModel(db.Model):
@@ -50,7 +51,7 @@ class MediaModel(db.Model):
         self.updatedDate = kwargs.get("updatedDate", timeNow)
         self.ref = kwargs.get("ref")
         self.isDeleted = kwargs.get("isDeleted", False)
-        self.content_type = kwargs.get("content_type")
+        self.content_type = determine_mime(self.__bytes_io, kwargs.get("content_type"))
         self.type = determine_media_type(self.__bytes_io, self.content_type)
         CollectionModel.create(self.collectionLabel)
 
@@ -165,6 +166,11 @@ class MediaModel(db.Model):
     @classmethod
     def delete(cls, _id: int):
         media = cls.get(_id)
+        if not  media.isDeleted:
+            raise ValidationError( {"isDeleted": ["only soft deleted media can be permanently deleted."],})
+        
+        path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, media.path)
+        shutil.rmtree(os.path.dirname(path))
         media.delete_from_db()
 
     @classmethod
