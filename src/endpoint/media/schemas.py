@@ -21,7 +21,7 @@ class MediaSchemaPOST(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
     name = fields.Str()
-    type = MediaTypeField(enum=MediaType, required=True, error_messages={"required": "type is required."})
+    
     collectionLabel = fields.Str(required=True,  error_messages={"required": "collectionLabel is required."})
     md5String = fields.Str(required=True,  error_messages={"required": "md5String is required."})
     createdDate = fields.DateTime( error_messages={"invalid": "createdDate: Invalid date format."})
@@ -37,7 +37,7 @@ class MediaSchemaPUT(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
     name = fields.Str()
-    type = MediaTypeField()
+    
     collectionLabel = fields.Str()
     md5String = fields.Str()
     createdDate = fields.DateTime( error_messages={"invalid": "createdDate: Invalid date format."})
@@ -53,7 +53,7 @@ class MediaSchemaGET(Schema):
         ordered = True  # Enable ordered serialization
     id = fields.Str(dump_only=True)
     name = fields.Str(required=True, error_messages={"required": "md5String is required."})
-    type = MediaTypeField(enum=MediaType, required=True, error_messages={"required": "type is required."})
+    type = MediaTypeField(enum=MediaType, dump_only=True, error_messages={"required": "type is required."})
     collectionLabel = fields.Str(required=True,  error_messages={"required": "collectionLabel is required."})
     md5String = fields.Str(required=True,  error_messages={"required": "md5String is required."})
     createdDate = fields.DateTime(required=True, error_messages={"invalid": "createdDate: Invalid date format."})
@@ -62,6 +62,7 @@ class MediaSchemaGET(Schema):
     ref = fields.Str(required=True, )
     isDeleted = fields.Bool(required=True, error_messages={"required": "md5String is required."} )
     notes = fields.List(fields.Int())
+    content_type = fields.Str(required=True, )
 
 class ErrorSchema(Schema):
     err = fields.Str(required=True, error_messages={"required": "err is required."})
