@@ -13,12 +13,17 @@ class MediaType(StrEnum):
   FILE='file'
 
 def contains_url(text):
-    url_pattern = re.compile(
-        r'^\s*http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+\s*$   '
-    )
-    return bool(url_pattern.search(text))
+    if '\n'  in text or '\r'  in text:
+        return False
 
-def determine_media_type(bytes_io:BytesIO,  file_type:str|None) -> MediaType:
+    stripped_text = text.strip()
+    
+    url_pattern = re.compile(
+        r'^http[s]?:\/\/(?:[a-zA-Z0-9\-._~:/?#[\]@!$&\'()*+,;=]|%[0-9a-fA-F][0-9a-fA-F])+$'
+    )
+    return bool(url_pattern.match(stripped_text))
+
+def determine_mime(bytes_io:BytesIO,  file_type:str|None=None) -> MediaType:
     if not file_type:
         bytes_io.seek(0)         
         # Create a Magic object
@@ -26,7 +31,12 @@ def determine_media_type(bytes_io:BytesIO,  file_type:str|None) -> MediaType:
     
         # Determine the file type
         file_type = mime.from_buffer(bytes_io.getvalue())
-    # Check the type
+        if not file_type :
+            file_type = 'application/octet-stream'
+    return file_type
+
+
+def determine_media_type(bytes_io:BytesIO,  file_type:str) -> MediaType:
     if file_type.startswith('image'):
         return MediaType.IMAGE
     elif file_type.startswith('video'):

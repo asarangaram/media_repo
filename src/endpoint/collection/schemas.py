@@ -29,5 +29,5 @@ class CollectionUpdateSchema(Schema):
 
 
 class ErrorSchema(Schema):
-    status = fields.Int(required=True, description="HTTP status code")
-    message = fields.Str(required=True, description="Error message")
+    status = fields.Int(required=True, metadata={"description":"HTTP status code"})
+    message = fields.Str(required=True, metadata={"description":"Error message"})

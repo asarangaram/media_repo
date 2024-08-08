@@ -62,7 +62,7 @@ def handle_validation_error(error):
 
 
 
-""" if __name__ == "__main__":
+if __name__ == "__main__":
     app.run(
-        debug=True,
-    ) """
+        debug=True,threaded=True
+    ) 

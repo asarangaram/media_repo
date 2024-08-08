@@ -33,7 +33,6 @@ class MediaList(MethodView):
     def post(cls, files, kwargs):
         bytes_io = BytesIO()
         files["media"].save(bytes_io)
-        kwargs["type"] = MediaType[kwargs.get("type").upper()]
         argsExtra = {}
         argsExtra["bytes_io"] = bytes_io
         if not kwargs.get("name"):
