@@ -43,10 +43,10 @@ class Collection(MethodView):
             store = CollectionModel.delete(id)
             return {"message": f"item {id} deleted"}
         except NotFound as e:
-            print(f"NotFound is {e}")
+            #print(f"NotFound is {e}")
             raise e
         except Exception as e:
-            print(f"error is {e}")
+            #print(f"error is {e}")
             raise NotFound(e)
 
 
@@ -55,14 +55,14 @@ class Collection(MethodView):
 class CollectionList(MethodView):
     @collection_bp.response(200, CollectionSchema(many=True))
     def get(self):
-        print("GET /collection")
+        #print("GET /collection")
         return CollectionModel.get_all()
 
     @collection_bp.alt_response(422, ErrorSchema, description="Validation error")
     @collection_bp.arguments(CollectionCreateSchema)
     @collection_bp.response(201, CollectionSchema)
     def post(self, store_data):
-        print("POST /collection")
+        #print("POST /collection")
         return CollectionModel.create(**store_data)
 
 
