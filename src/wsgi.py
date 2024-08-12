@@ -28,18 +28,18 @@ def handle_exception(e):
     response.content_type = "application/json"
     return response
 
+
 """ @app.errorhandler(404)
 def not_found_error(e):
     response = {"message": str(error)}
     return jsonify(response), 404 """
+
 
 @app.errorhandler(UnprocessableEntity)
 def handle_unprocessable_entity(e):
     # Get the original ValidationError raised by marshmallow
     headers = e.data.get("headers", None)
     messages = e.data.get("messages", ["Invalid request."])
-    
-    
 
     if headers:
         return (
@@ -53,16 +53,16 @@ def handle_unprocessable_entity(e):
 
 @app.errorhandler(Exception)
 def handle_validation_error(error):
-    
+
     return {
         "error": "Validation Error",
         "message": "; ".join([f"{field}: {'; '.join(messages)}" for field, messages in error.messages.items()]),
         # "details": error.messages
-    }, 422 
-
+    }, 422
 
 
 if __name__ == "__main__":
     app.run(
-        debug=True,threaded=True
-    ) 
+        host='0.0.0.0', port=5000,
+        debug=True, threaded=True
+    )
