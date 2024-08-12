@@ -7,7 +7,7 @@ create_venv() {
     
     if [ ! -d "$V_ENV" ]; then
         echo "$V_ENV does not exist. Creating"
-        python3 -m venv .venv
+        python3.11 -m venv .venv
         if [ -f "${V_ENV}/bin/activate" ]; then
             source "${V_ENV}/bin/activate"
         else
@@ -59,10 +59,12 @@ check_system_software()
     fi
 }
 
-check_system_software
+os_name=$(uname)
+if [ "$os_name" == "Darwin" ]; then
+    check_system_software
+fi
 create_venv
 
-os_name=$(uname)
 if [ "$os_name" == "Linux" ]; then
     avahi-publish-service -s "CL IMAGE REPO" _image_repo_api._tcp 5000 "CL Image Repo Service" &
 fi
