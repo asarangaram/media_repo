@@ -1,17 +1,25 @@
 from flask_smorest.fields import Upload
-from marshmallow import Schema, fields, validates_schema, ValidationError
+from marshmallow import Schema, fields, post_dump, validates_schema, ValidationError
 
 from ..media.models import MediaModel
 from ..media.schemas import MediaSchemaGET
 
 
 class CollectionSchema(Schema):
+    SKIP_VALUES = set([None])
     id = fields.Int(required=True)
     label = fields.Str(required=True)
     description = fields.Str()
     createdDate = fields.DateTime(dump_only=True)
     updatedDate = fields.DateTime(dump_only=True)
-    media = fields.List(fields.Nested(MediaSchemaGET),  dump_only=True)
+    # media = fields.List(fields.Nested(MediaSchemaGET),  dump_only=True)
+    
+    @post_dump
+    def remove_skip_values(self, data, **kwargs):
+        return {
+            key: value for key, value in data.items()
+            if value not in self.SKIP_VALUES
+        }
 
 
 class CollectionCreateSchema(Schema):
