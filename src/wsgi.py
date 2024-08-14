@@ -53,16 +53,20 @@ def handle_unprocessable_entity(e):
 
 @app.errorhandler(Exception)
 def handle_validation_error(error):
+    try:
+        message = "; ".join([f"{field}: {'; '.join(messages)}" for field, messages in error.messages.items()])
+    except:
+        message = error
 
     return {
         "error": "Validation Error",
-        "message": "; ".join([f"{field}: {'; '.join(messages)}" for field, messages in error.messages.items()]),
+        "message": message,
         # "details": error.messages
     }, 422
 
 
 if __name__ == "__main__":
-    app.run(
+    app.run( 
         host='0.0.0.0', port=5000,
         debug=True, threaded=True
     )
