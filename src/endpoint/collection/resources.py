@@ -32,7 +32,7 @@ class Collection(MethodView):
         404, ErrorSchema, description="Failed to delete the items"
     )
     def put(self, store_data, id):
-        return CollectionModel.update(_id=id, **store_data)
+        return CollectionModel.update(id=id, **store_data)
 
     @collection_bp.response(200)
     @collection_bp.alt_response(
