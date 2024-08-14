@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from io import BytesIO
+import mimetypes
 import os
 import shutil
 
@@ -10,9 +11,7 @@ from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFo
 
 from ..collection.model import CollectionModel
 
-
-
-from .hash.md5 import  get_md5_hexdigest
+from .hash.md5 import get_md5_hexdigest
 from ...db import db
 from ...config import ConfigClass
 from .media_types import MediaType, determine_media_type, determine_mime
@@ -26,7 +25,8 @@ class MediaModel(db.Model):
     name = db.Column(db.UnicodeText, nullable=False)
     type = db.Column(db.UnicodeText, nullable=False)
     content_type = db.Column(db.String, nullable=False)
-    collectionLabel = db.Column( db.String, db.ForeignKey('collection.label'), nullable=False)
+    collectionLabel = db.Column(db.String, db.ForeignKey(
+        'collection.label'), nullable=False)
     md5String = db.Column(db.String, nullable=False, unique=True)
     createdDate = db.Column(db.DateTime, nullable=False)
     originalDate = db.Column(db.DateTime, nullable=True)
@@ -43,7 +43,7 @@ class MediaModel(db.Model):
         self.__bytes_io = kwargs.get("bytes_io")  # This don't go to db
         self.__filename = kwargs.get("filename")
         self.name = kwargs.get("name")
-        
+
         self.collectionLabel = kwargs.get("collectionLabel")
         self.md5String = kwargs.get("md5String")
         self.createdDate = kwargs.get("createdDate", timeNow)
@@ -51,7 +51,8 @@ class MediaModel(db.Model):
         self.updatedDate = kwargs.get("updatedDate", timeNow)
         self.ref = kwargs.get("ref")
         self.isDeleted = kwargs.get("isDeleted", False)
-        self.content_type = determine_mime(self.__bytes_io, kwargs.get("content_type"))
+        self.content_type = determine_mime(
+            self.__bytes_io, kwargs.get("content_type"))
         self.type = determine_media_type(self.__bytes_io, self.content_type)
         CollectionModel.create(self.collectionLabel)
 
@@ -69,16 +70,18 @@ class MediaModel(db.Model):
         InternalServerError("Media not stored yet")
 
     def save(self, overwrite=True):
-        
+
         if self.id:
-            self.path = os.path.join(self.content_type,  f"media_{str(self.id)}", self.__filename)
+            extension = mimetypes.guess_extension(self.content_type)
+            self.path = os.path.join(
+                self.content_type,  f"media_{str(self.id)}.{extension}")
             path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             self.__bytes_io.seek(0)
             with open(path, "wb") as file:
                 file.write(self.__bytes_io.getvalue())
             del self.__bytes_io
-            
+
         else:
             InternalServerError("Save to DB Failed!!")
 
@@ -97,18 +100,19 @@ class MediaModel(db.Model):
 
     @classmethod
     def create(cls, **kwargs):
-       
+
         bytes_io = kwargs["bytes_io"]
         md5String = get_md5_hexdigest(bytes_io, )
-        
 
-        has_duplicate:MediaModel|None = cls.find_by_md5String(md5String)
+        has_duplicate: MediaModel | None = cls.find_by_md5String(md5String)
         if has_duplicate:
             if has_duplicate.collectionLabel != kwargs["collectionLabel"]:
-                raise ValidationError( {"collectionLabel": [f"duplicate item found in {has_duplicate.collectionLabel}, with id {has_duplicate.id}"],})
+                raise ValidationError({"collectionLabel": [
+                                      f"duplicate item found in {has_duplicate.collectionLabel}, with id {has_duplicate.id}"], })
             return has_duplicate
-        entity = MediaModel(private_key=cls.__private_key, md5String = md5String, **kwargs)
-        entity.save_to_db() # So that we get id!
+        entity = MediaModel(private_key=cls.__private_key,
+                            md5String=md5String, **kwargs)
+        entity.save_to_db()  # So that we get id!
         entity.save()
         entity.save_to_db()
         return entity
@@ -118,16 +122,18 @@ class MediaModel(db.Model):
             return False
         if any(arg is None for arg in [filename, bytes_io]):
             if not filename:
-                 raise ValidationError( {"filename": ["filename is required to update media"],})
+                raise ValidationError(
+                    {"filename": ["filename is required to update media"], })
             if not bytes_io:
-                 raise ValidationError( {"media": ["media file is not included in the request"],})
-        
+                raise ValidationError(
+                    {"media": ["media file is not included in the request"], })
+
         existing_media = self.absolute_path()
         self.__bytes_io = bytes_io
         self.md5String = get_md5_hexdigest(bytes_io, )
         self.__filename = filename
         self.save()
-        ##  File saved with different name
+        # File saved with different name
         if not existing_media == self.absolute_path():
             os.remove(existing_media)
         return True
@@ -140,7 +146,8 @@ class MediaModel(db.Model):
             bytes_io=kwargs.get("bytes_io"),
             filename=kwargs.get("filename"),
         )
-        filtered_kwargs = {key: value for key, value in kwargs.items() if key not in ["bytes_io", "filename" ]}
+        filtered_kwargs = {key: value for key, value in kwargs.items() if key not in [
+            "bytes_io", "filename"]}
 
         for key, value in filtered_kwargs.items():
             if hasattr(entity, key):
@@ -166,9 +173,10 @@ class MediaModel(db.Model):
     @classmethod
     def delete(cls, _id: int):
         media = cls.get(_id)
-        if not  media.isDeleted:
-            raise ValidationError( {"isDeleted": ["only soft deleted media can be permanently deleted."],})
-        
+        if not media.isDeleted:
+            raise ValidationError(
+                {"isDeleted": ["only soft deleted media can be permanently deleted."], })
+
         path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, media.path)
         shutil.rmtree(os.path.dirname(path))
         media.delete_from_db()

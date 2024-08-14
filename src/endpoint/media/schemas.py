@@ -29,15 +29,11 @@ class MediaSchemaPOST(Schema):
         required=True, error_messages={"required": "collectionLabel is required."}
     )
 
-    createdDate = fields.DateTime(
-        error_messages={"invalid": "createdDate: Invalid date format."}
-    )
+    
     originalDate = fields.DateTime(
         error_messages={"invalid": "originalDate: Invalid date format."}
     )
-    updatedDate = fields.DateTime(
-        error_messages={"invalid": "updatedDate: Invalid date format."}
-    )
+    
     ref = fields.Str()
     isDeleted = fields.Bool()
     notes = fields.List(fields.Int())
@@ -49,14 +45,9 @@ class MediaSchemaPUT(Schema):
 
     name = fields.Str()
     collectionLabel = fields.Str()
-    createdDate = fields.DateTime(
-        error_messages={"invalid": "createdDate: Invalid date format."}
-    )
+    
     originalDate = fields.DateTime(
         error_messages={"invalid": "originalDate: Invalid date format."}
-    )
-    updatedDate = fields.DateTime(
-        error_messages={"invalid": "updatedDate: Invalid date format."}
     )
     ref = fields.Str()
     isDeleted = fields.Bool()
