@@ -1,7 +1,7 @@
 from flask import request
 from flask_smorest.fields import Upload
 from werkzeug.utils import secure_filename
-from marshmallow import Schema, ValidationError, fields, validates_schema
+from marshmallow import Schema, ValidationError, fields, validates_schema, validate
 
 
 from .media_types import MediaTypeField, MediaType
@@ -18,6 +18,9 @@ class MediaFileSchemaPUT(Schema):
 ## All fields are mandatory when reading
 ## Few are optional for POST, and almost all except id are optional for PUT
 
+class MediaSchemaGETQuery(Schema):
+    type = fields.List(MediaTypeField(), required=True)
+    
 
 class MediaSchemaPOST(Schema):
     class Meta:
@@ -85,7 +88,7 @@ class MediaSchemaGET(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
 
-    id = fields.Str(dump_only=True)
+    id = fields.Int(dump_only=True)
     name = fields.Str(required=True, error_messages={"required": "name is required."})
     type = MediaTypeField(
         enum=MediaType, dump_only=True, error_messages={"required": "type is required."}

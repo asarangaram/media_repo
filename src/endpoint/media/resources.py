@@ -15,6 +15,7 @@ from .schemas import (
     MediaSchemaPOST,
     MediaSchemaPUT,
     MediaSchemaGET,
+    MediaSchemaGETQuery,
     ErrorSchema,
 )
 
@@ -43,7 +44,9 @@ class MediaList(MethodView):
         return MediaModel.create(**kwargs, **argsExtra)
 
     @media_bp.response(200, MediaSchemaGET(many=True))
-    def get(cls):
+    @media_bp.arguments(MediaSchemaGETQuery, location="query") 
+    def get(cls, kargs):
+        print(kargs)
         return list(MediaModel.get_all())
 
     @media_bp.response(200)

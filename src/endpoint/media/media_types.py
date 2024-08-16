@@ -2,7 +2,7 @@ from enum import StrEnum
 from io import BytesIO
 import magic
 import re
-from marshmallow import fields, ValidationError
+from marshmallow import fields, ValidationError, validate
 
 class MediaType(StrEnum):
   TEXT='text'
@@ -55,14 +55,6 @@ def determine_media_type(bytes_io:BytesIO,  file_type:str) -> MediaType:
 
 class MediaTypeField(fields.Str):
     def __init__(self, *args, **kwargs):
-        self.enum = kwargs.pop('enum', None)
+        kwargs['validate'] = validate.OneOf([e.value for e in MediaType])
         super().__init__(*args, **kwargs)
 
-    def _validate(self, value):
-        if self.enum and value not in self.enum.__members__:
-            raise ValidationError(f"Invalid value. Expected one of: {list(self.enum.__members__)}")
-
-    def _deserialize(self, value, attr, data, **kwargs):
-        value = super()._deserialize(value, attr, data, **kwargs)
-        self._validate(value)
-        return value
