@@ -167,8 +167,10 @@ class MediaModel(db.Model):
         return media
 
     @classmethod
-    def get_all(cls):
-        return cls.find_all()
+    def get_all(cls, types=None):
+        if not types:
+            return cls.find_all()
+        return cls.query.filter(MediaModel.type.in_(types)).all()
 
     @classmethod
     def delete(cls, _id: int):

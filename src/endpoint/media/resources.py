@@ -46,8 +46,9 @@ class MediaList(MethodView):
     @media_bp.response(200, MediaSchemaGET(many=True))
     @media_bp.arguments(MediaSchemaGETQuery, location="query") 
     def get(cls, kargs):
-        print(kargs)
-        return list(MediaModel.get_all())
+        print((kargs['type'][0]))
+        print(type(kargs['type'][0]))
+        return list(MediaModel.get_all(types=kargs['type'] ))
 
     @media_bp.response(200)
     def delete(cls):

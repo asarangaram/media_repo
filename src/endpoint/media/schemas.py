@@ -1,7 +1,7 @@
 from flask import request
 from flask_smorest.fields import Upload
 from werkzeug.utils import secure_filename
-from marshmallow import Schema, ValidationError, fields, validates_schema, validate
+from marshmallow import Schema, ValidationError, fields, post_load, validates_schema, validate
 
 
 from .media_types import MediaTypeField, MediaType
@@ -20,6 +20,12 @@ class MediaFileSchemaPUT(Schema):
 
 class MediaSchemaGETQuery(Schema):
     type = fields.List(MediaTypeField(), required=True)
+    
+    @post_load
+    def convert(self, data, **kwargs):
+        # Convert strings to MediaType enum instances
+        data['type'] = [MediaType(t) for t in data['type']]
+        return data
     
 
 class MediaSchemaPOST(Schema):
