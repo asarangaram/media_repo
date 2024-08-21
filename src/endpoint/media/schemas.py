@@ -5,32 +5,9 @@ from werkzeug.utils import secure_filename
 from marshmallow import Schema, ValidationError, fields, post_load, validates_schema, validate
 
 
-from .media_types import MediaTypeField, MediaType
-
-class MillisecondsSinceEpoch(fields.Field):
-    def _serialize(self, value, attr, obj, **kwargs):
-        if value is None:
-            return None
-        return int(value.timestamp() * 1000)
-    
-    def _deserialize(self, value, attr, data, **kwargs):
-        try:
-            return datetime.fromtimestamp(value / 1000.0)
-        except (TypeError, ValueError):
-            raise self.make_error("invalid", input=value)
+from .media_types import IntigerizedBool, MediaTypeField, MediaType, MillisecondsSinceEpoch
 
 
-class IntigerizedBool(fields.Field):
-    def _serialize(self, value, attr, obj, **kwargs):
-        if value is None:
-            return None
-        return 1 if value else 0
-    
-    def _deserialize(self, value, attr, data, **kwargs):
-        try:
-            return False if value is 0 else True
-        except (TypeError, ValueError):
-            raise self.make_error("invalid", input=value)
         
 
 class MediaFileSchemaPOST(Schema):

@@ -1,9 +1,9 @@
 from flask_smorest.fields import Upload
 from marshmallow import Schema, fields, post_dump, validates_schema, ValidationError
 
-from ..media.models import MediaModel
-from ..media.schemas import MediaSchemaGET
 
+
+from ..media.media_types import  MillisecondsSinceEpoch
 
 class CollectionSchema(Schema):
     SKIP_VALUES = set([None])
@@ -11,8 +11,8 @@ class CollectionSchema(Schema):
     
     label = fields.Str(required=True)
     description = fields.Str()
-    createdDate = fields.DateTime(dump_only=True)
-    updatedDate = fields.DateTime(dump_only=True)
+    createdDate = MillisecondsSinceEpoch(dump_only=True)
+    updatedDate = MillisecondsSinceEpoch(dump_only=True)
     # media = fields.List(fields.Nested(MediaSchemaGET),  dump_only=True)
     
     @post_dump

@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import StrEnum
 from io import BytesIO
 import magic
@@ -58,3 +59,27 @@ class MediaTypeField(fields.Str):
         kwargs['validate'] = validate.OneOf([e.value for e in MediaType])
         super().__init__(*args, **kwargs)
 
+class MillisecondsSinceEpoch(fields.Field):
+    def _serialize(self, value, attr, obj, **kwargs):
+        if value is None:
+            return None
+        return int(value.timestamp() * 1000)
+    
+    def _deserialize(self, value, attr, data, **kwargs):
+        try:
+            return datetime.fromtimestamp(value / 1000.0)
+        except (TypeError, ValueError):
+            raise self.make_error("invalid", input=value)
+
+
+class IntigerizedBool(fields.Field):
+    def _serialize(self, value, attr, obj, **kwargs):
+        if value is None:
+            return None
+        return 1 if value else 0
+    
+    def _deserialize(self, value, attr, data, **kwargs):
+        try:
+            return False if value is 0 else True
+        except (TypeError, ValueError):
+            raise self.make_error("invalid", input=value)
