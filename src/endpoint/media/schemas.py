@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask import request
 from flask_smorest.fields import Upload
 from werkzeug.utils import secure_filename
@@ -6,6 +7,31 @@ from marshmallow import Schema, ValidationError, fields, post_load, validates_sc
 
 from .media_types import MediaTypeField, MediaType
 
+class MillisecondsSinceEpoch(fields.Field):
+    def _serialize(self, value, attr, obj, **kwargs):
+        if value is None:
+            return None
+        return int(value.timestamp() * 1000)
+    
+    def _deserialize(self, value, attr, data, **kwargs):
+        try:
+            return datetime.fromtimestamp(value / 1000.0)
+        except (TypeError, ValueError):
+            raise self.make_error("invalid", input=value)
+
+
+class IntigerizedBool(fields.Field):
+    def _serialize(self, value, attr, obj, **kwargs):
+        if value is None:
+            return None
+        return 1 if value else 0
+    
+    def _deserialize(self, value, attr, data, **kwargs):
+        try:
+            return False if value is 0 else True
+        except (TypeError, ValueError):
+            raise self.make_error("invalid", input=value)
+        
 
 class MediaFileSchemaPOST(Schema):
     media = Upload(required=True, error_messages={"required": "media is required."})
@@ -39,12 +65,12 @@ class MediaSchemaPOST(Schema):
     )
 
     
-    originalDate = fields.DateTime(
+    originalDate = MillisecondsSinceEpoch(
         error_messages={"invalid": "originalDate: Invalid date format."}
     )
     
     ref = fields.Str()
-    isDeleted = fields.Bool()
+    isDeleted = IntigerizedBool()
     notes = fields.List(fields.Int())
 
 
@@ -55,11 +81,11 @@ class MediaSchemaPUT(Schema):
     name = fields.Str()
     collectionLabel = fields.Str()
     
-    originalDate = fields.DateTime(
+    originalDate = MillisecondsSinceEpoch(
         error_messages={"invalid": "originalDate: Invalid date format."}
     )
     ref = fields.Str()
-    isDeleted = fields.Bool()
+    isDeleted = IntigerizedBool()
     notes = fields.List(fields.Int())
 
     @validates_schema
@@ -94,7 +120,8 @@ class MediaSchemaGET(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
 
-    id = fields.Int(dump_only=True)
+    
+    server_uid = fields.Int(attribute="id", data_key="serverUID", dump_only=True)
     name = fields.Str(required=True, error_messages={"required": "name is required."})
     type = MediaTypeField(
         enum=MediaType, dump_only=True, error_messages={"required": "type is required."}
@@ -105,19 +132,19 @@ class MediaSchemaGET(Schema):
     md5String = fields.Str(
         required=True, error_messages={"required": "md5String is required."}
     )
-    createdDate = fields.DateTime(
+    createdDate = MillisecondsSinceEpoch(
         required=True, error_messages={"invalid": "createdDate: Invalid date format."}
     )
-    originalDate = fields.DateTime(
+    originalDate = MillisecondsSinceEpoch(
         error_messages={"invalid": "originalDate: Invalid date format."}
     )
-    updatedDate = fields.DateTime(
+    updatedDate = MillisecondsSinceEpoch(
         required=True, error_messages={"invalid": "updatedDate: Invalid date format."}
     )
     ref = fields.Str(
         required=True,
     )
-    isDeleted = fields.Bool(
+    isDeleted = IntigerizedBool(
         required=True, error_messages={"required": "isDeleterd is required."}
     )
     notes = fields.List(fields.Int())

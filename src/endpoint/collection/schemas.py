@@ -7,7 +7,8 @@ from ..media.schemas import MediaSchemaGET
 
 class CollectionSchema(Schema):
     SKIP_VALUES = set([None])
-    id = fields.Int(required=True)
+    server_uid = fields.Int(attribute="id", data_key="serverUID", dump_only=True)
+    
     label = fields.Str(required=True)
     description = fields.Str()
     createdDate = fields.DateTime(dump_only=True)
@@ -29,7 +30,7 @@ class CollectionCreateSchema(Schema):
 class CollectionUpdateSchema(Schema):
     label = fields.Str()
     description = fields.Str()
-
+    server_uid = fields.Int(attribute="id", data_key="serverUID", dump_only=True)
     @validates_schema
     def validate_at_least_one(self, data, **kwargs):
         if not data.get("label") and not data.get("description"):
