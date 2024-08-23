@@ -12,4 +12,4 @@ class LandingPageModel:
     def __init__(self, name='colan_server'):
         self.name = name
         self.info = _info
-        self.id = uuid.getnode()
+        self.id = 100 # TODO: FIND A UNIQUE ID FOR EACH SERVER AND REPLACE 
