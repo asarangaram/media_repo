@@ -74,7 +74,7 @@ class MediaModel(db.Model):
         if self.id:
             extension = mimetypes.guess_extension(self.content_type)
             self.path = os.path.join(
-                self.content_type,  f"media_{str(self.id)}.{extension}")
+                self.content_type,  f"media_{str(self.id)}{extension}")
             path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             self.__bytes_io.seek(0)
