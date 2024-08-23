@@ -97,7 +97,7 @@ class MediaDownload(MethodView):
     def get(cls, media_id: int):
         media = MediaModel.get(media_id)
         return send_file(
-            media.absolute_path(), mimetype="image/jpeg", download_name=media.name
+            media.absolute_path(), mimetype=media.content_type, download_name=media.name
         )
 
 
