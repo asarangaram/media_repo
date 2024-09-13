@@ -63,7 +63,11 @@ class Media(MethodView):
 
     @media_bp.response(200)
     def delete(cls, media_id: int):
-        return MediaModel.delete(media_id)
+        media = MediaModel.get(media_id)
+        if media:
+            MediaModel.delete(media_id)
+            return True
+        return False
 
     @media_bp.arguments(MediaFileSchemaPUT, location="files")
     @media_bp.arguments(MediaSchemaPUT, location="form")
@@ -98,6 +102,14 @@ class MediaDownload(MethodView):
         media = MediaModel.get(media_id)
         return send_file(
             media.absolute_path(), mimetype=media.content_type, download_name=media.name
+        )
+
+@media_bp.route("/<int:media_id>/preview")
+class PreviewDownload(MethodView):
+    def get(cls, media_id: int):
+        media = MediaModel.get(media_id)
+        return send_file(
+            media.preview_path(), mimetype=media.content_type, download_name=media.name
         )
 
 
