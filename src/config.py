@@ -14,6 +14,8 @@ def get_required_env_variable(var_name):
 
 def check_path(path):
     parent_dir = os.path.dirname(path)
+    if not os.path.exists(parent_dir):
+        os.mkdir(parent_dir)
     return os.path.exists(parent_dir)
 
 
