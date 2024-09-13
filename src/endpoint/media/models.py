@@ -4,6 +4,8 @@ from io import BytesIO
 import mimetypes
 import os
 import shutil
+from PIL import Image
+
 
 from marshmallow import ValidationError
 from werkzeug.datastructures import FileStorage
@@ -67,7 +69,37 @@ class MediaModel(db.Model):
     def absolute_path(self):
         if self.path:
             return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
-        InternalServerError("Media not stored yet")
+        raise InternalServerError("Media not stored yet")
+    
+    def preview_path(self):
+        if self.path:
+            preview = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, f'{self.path}.tn.jpg')
+            if not os.path.exists(preview):
+                path = self.absolute_path()
+                self.generatePreview(path, preview)
+            return preview
+        raise InternalServerError("Media not stored yet")
+    
+    from PIL import Image
+
+    def generatePreview(self, filePath, previewPath, size=(300, 300)):
+        try:
+            with Image.open(filePath) as img:
+                img.thumbnail(size)
+                if img.mode in ("RGBA", "LA"):
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    background.paste(img, mask=img.split()[3])  # 3 is the alpha channel
+                    img = background
+                
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                    
+                img.save(previewPath)
+            
+        except Exception as e:
+            raise InternalServerError("failed to generate preview")
+            
+
 
     def save(self, overwrite=True):
 
@@ -83,7 +115,7 @@ class MediaModel(db.Model):
             del self.__bytes_io
 
         else:
-            InternalServerError("Save to DB Failed!!")
+            raise InternalServerError("Save to DB Failed!!")
 
     @classmethod
     def find_by_md5String(cls, md5String):
@@ -180,8 +212,10 @@ class MediaModel(db.Model):
                 {"isDeleted": ["only soft deleted media can be permanently deleted."], })
 
         path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, media.path)
-        shutil.rmtree(os.path.dirname(path))
+        if os.path.exists(path):
+            shutil.rmtree(os.path.dirname(path))
         media.delete_from_db()
+      
 
     @classmethod
     def delete_all(cls):
