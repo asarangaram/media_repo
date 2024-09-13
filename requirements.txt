@@ -9,6 +9,8 @@ uWSGI
 Werkzeug
 tendo
 python-dateutil
+python-magic
+python-dotenv
 pytz
 humanize
 python-dotenv
