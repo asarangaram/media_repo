@@ -4,18 +4,20 @@ from io import BytesIO
 import mimetypes
 import os
 import shutil
-from PIL import Image
 
 
 from marshmallow import ValidationError
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
 
+
 from ..collection.model import CollectionModel
 
 from .hash.md5 import get_md5_hexdigest
 from ...db import db
 from ...config import ConfigClass
+from ...utils.image_thumbnail import create_image_thumbnail
+from ...utils.video_thumbnail import create_video_thumbnail
 from .media_types import MediaType, determine_media_type, determine_mime
 
 
@@ -27,8 +29,9 @@ class MediaModel(db.Model):
     name = db.Column(db.UnicodeText, nullable=False)
     type = db.Column(db.UnicodeText, nullable=False)
     content_type = db.Column(db.String, nullable=False)
-    collectionLabel = db.Column(db.String, db.ForeignKey(
-        'collection.label'), nullable=False)
+    collectionLabel = db.Column(
+        db.String, db.ForeignKey("collection.label"), nullable=False
+    )
     md5String = db.Column(db.String, nullable=False, unique=True)
     createdDate = db.Column(db.DateTime, nullable=False)
     originalDate = db.Column(db.DateTime, nullable=True)
@@ -53,8 +56,7 @@ class MediaModel(db.Model):
         self.updatedDate = kwargs.get("updatedDate", timeNow)
         self.ref = kwargs.get("ref")
         self.isDeleted = kwargs.get("isDeleted", False)
-        self.content_type = determine_mime(
-            self.__bytes_io, kwargs.get("content_type"))
+        self.content_type = determine_mime(self.__bytes_io, kwargs.get("content_type"))
         self.type = determine_media_type(self.__bytes_io, self.content_type)
         CollectionModel.create(self.collectionLabel)
 
@@ -70,52 +72,44 @@ class MediaModel(db.Model):
         if self.path:
             return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
         raise InternalServerError("Media not stored yet")
+
     
+
     def preview_path(self):
         if self.path:
-            preview = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, f'{self.path}.tn.jpg')
+            preview = os.path.join(
+                ConfigClass.FILE_STORAGE_LOCATION, f"{self.path}.tn.jpg"
+            )
+            path = self.absolute_path()
             if not os.path.exists(preview):
-                path = self.absolute_path()
-                self.generatePreview(path, preview)
+                self.generate_preview(path, preview)
             return preview
         raise InternalServerError("Media not stored yet")
-    
-    from PIL import Image
 
-    def generatePreview(self, filePath, previewPath, size=(300, 300)):
+    def generate_preview(self, path, preview):
         try:
-            with Image.open(filePath) as img:
-                img.thumbnail(size)
-                if img.mode in ("RGBA", "LA"):
-                    background = Image.new("RGB", img.size, (255, 255, 255))
-                    background.paste(img, mask=img.split()[3])  # 3 is the alpha channel
-                    img = background
-                
-                if img.mode != "RGB":
-                    img = img.convert("RGB")
-                    
-                img.save(previewPath)
-            
+            if self.type == MediaType.VIDEO:
+                create_video_thumbnail(path, preview)
+            if self.type == MediaType.IMAGE:
+                create_image_thumbnail(path, preview)
+            return
         except Exception as e:
-            raise InternalServerError("failed to generate preview")
-            
-
+            raise InternalServerError(f"failed to generate preview {e}")
 
     def save(self, overwrite=True):
-
         if self.id:
             extension = mimetypes.guess_extension(self.content_type)
             self.path = os.path.join(
-                self.content_type,  f"media_{str(self.id)}{extension}")
+                self.content_type, f"media_{str(self.id)}{extension}"
+            )
             path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             self.__bytes_io.seek(0)
             with open(path, "wb") as file:
                 file.write(self.__bytes_io.getvalue())
             del self.__bytes_io
-
         else:
-            raise InternalServerError("Save to DB Failed!!")
+            raise InternalServerError("Media not in DB")
 
     @classmethod
     def find_by_md5String(cls, md5String):
@@ -134,16 +128,24 @@ class MediaModel(db.Model):
     def create(cls, **kwargs):
 
         bytes_io = kwargs["bytes_io"]
-        md5String = get_md5_hexdigest(bytes_io, )
+        md5String = get_md5_hexdigest(
+            bytes_io,
+        )
 
         has_duplicate: MediaModel | None = cls.find_by_md5String(md5String)
         if has_duplicate:
             if has_duplicate.collectionLabel != kwargs["collectionLabel"]:
-                raise ValidationError({"collectionLabel": [
-                                      f"duplicate item found in {has_duplicate.collectionLabel}, with id {has_duplicate.id}"], })
+                raise ValidationError(
+                    {
+                        "collectionLabel": [
+                            f"duplicate item found in {has_duplicate.collectionLabel}, with id {has_duplicate.id}"
+                        ],
+                    }
+                )
             return has_duplicate
-        entity = MediaModel(private_key=cls.__private_key,
-                            md5String=md5String, **kwargs)
+        entity = MediaModel(
+            private_key=cls.__private_key, md5String=md5String, **kwargs
+        )
         entity.save_to_db()  # So that we get id!
         entity.save()
         entity.save_to_db()
@@ -155,14 +157,22 @@ class MediaModel(db.Model):
         if any(arg is None for arg in [filename, bytes_io]):
             if not filename:
                 raise ValidationError(
-                    {"filename": ["filename is required to update media"], })
+                    {
+                        "filename": ["filename is required to update media"],
+                    }
+                )
             if not bytes_io:
                 raise ValidationError(
-                    {"media": ["media file is not included in the request"], })
+                    {
+                        "media": ["media file is not included in the request"],
+                    }
+                )
 
         existing_media = self.absolute_path()
         self.__bytes_io = bytes_io
-        self.md5String = get_md5_hexdigest(bytes_io, )
+        self.md5String = get_md5_hexdigest(
+            bytes_io,
+        )
         self.__filename = filename
         self.save()
         # File saved with different name
@@ -178,8 +188,11 @@ class MediaModel(db.Model):
             bytes_io=kwargs.get("bytes_io"),
             filename=kwargs.get("filename"),
         )
-        filtered_kwargs = {key: value for key, value in kwargs.items() if key not in [
-            "bytes_io", "filename"]}
+        filtered_kwargs = {
+            key: value
+            for key, value in kwargs.items()
+            if key not in ["bytes_io", "filename"]
+        }
 
         for key, value in filtered_kwargs.items():
             if hasattr(entity, key):
@@ -209,13 +222,17 @@ class MediaModel(db.Model):
         media = cls.get(_id)
         if not media.isDeleted:
             raise ValidationError(
-                {"isDeleted": ["only soft deleted media can be permanently deleted."], })
+                {
+                    "isDeleted": [
+                        "only soft deleted media can be permanently deleted."
+                    ],
+                }
+            )
 
         path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, media.path)
         if os.path.exists(path):
             shutil.rmtree(os.path.dirname(path))
         media.delete_from_db()
-      
 
     @classmethod
     def delete_all(cls):
