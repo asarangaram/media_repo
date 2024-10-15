@@ -1,3 +1,4 @@
+from functools import wraps
 from io import BytesIO
 from flask import jsonify, request, send_file
 from flask import render_template, make_response
@@ -23,10 +24,19 @@ from .models import MediaModel
 
 media_bp = Blueprint("media_bp", __name__, url_prefix="/media")
 
+def log_request_data(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        form_data = request.form.to_dict()
+        print(f"Incoming Request Data: {form_data}")
+        
+        return func(*args, **kwargs)
+    return wrapper
 
 @media_bp.route("/")
 @media_bp.route("")
 class MediaList(MethodView):
+    @log_request_data
     @media_bp.arguments(MediaFileSchemaPOST, location="files")
     @media_bp.arguments(MediaSchemaPOST, location="form")
     @media_bp.response(201, MediaSchemaGET)
@@ -69,6 +79,7 @@ class Media(MethodView):
             return True
         return False
 
+    @log_request_data
     @media_bp.arguments(MediaFileSchemaPUT, location="files")
     @media_bp.arguments(MediaSchemaPUT, location="form")
     @media_bp.response(200, MediaSchemaGET)
