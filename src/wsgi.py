@@ -1,5 +1,6 @@
 # wsgi.py
 
+from sqlite3 import IntegrityError
 from flask import json, jsonify
 from werkzeug.exceptions import HTTPException
 from werkzeug.exceptions import UnprocessableEntity
@@ -11,6 +12,10 @@ from .config import ConfigClass
 
 app = create_app(ConfigClass)
 
+
+@app.errorhandler(IntegrityError)
+def handle_integrity_error(e):
+    return jsonify({"error": "Database integrity error occurred"}), 400
 
 @app.errorhandler(HTTPException)
 def handle_exception(e):
