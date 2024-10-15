@@ -63,10 +63,13 @@ class MillisecondsSinceEpoch(fields.Field):
     def _serialize(self, value, attr, obj, **kwargs):
         if value is None:
             return None
+        
         return int(value.timestamp() * 1000)
     
     def _deserialize(self, value, attr, data, **kwargs):
         try:
+            if isinstance(value, str):
+                value = int(value)
             return datetime.fromtimestamp(value / 1000.0)
         except (TypeError, ValueError):
             raise self.make_error("invalid", input=value)
