@@ -51,12 +51,13 @@ class MediaModel(db.Model):
 
         self.collectionLabel = kwargs.get("collectionLabel")
         self.md5String = kwargs.get("md5String")
-        self.createdDate = kwargs.get("createdDate", timeNow)
+        self.createdDate = kwargs.get("createdDate")
         self.originalDate = kwargs.get("originalDate")
-        self.updatedDate = kwargs.get("updatedDate", timeNow)
+        self.updatedDate = kwargs.get("updatedDate", self.createdDate)
         self.ref = kwargs.get("ref")
         self.isDeleted = kwargs.get("isDeleted", False)
         self.content_type = determine_mime(self.__bytes_io, kwargs.get("content_type"))
+        self.fExt = mimetypes.guess_extension(self.content_type)
         self.type = determine_media_type(self.__bytes_io, self.content_type)
         CollectionModel.create(self.collectionLabel)
 
@@ -98,9 +99,10 @@ class MediaModel(db.Model):
 
     def save(self, overwrite=True):
         if self.id:
-            extension = mimetypes.guess_extension(self.content_type)
+            if not self.fExt:
+                self.fExt = mimetypes.guess_extension(self.content_type)
             self.path = os.path.join(
-                self.content_type, f"media_{str(self.id)}{extension}"
+                self.content_type, f"media_{str(self.id)}{self.fExt}"
             )
             path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
             os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -111,18 +113,6 @@ class MediaModel(db.Model):
         else:
             raise InternalServerError("Media not in DB")
 
-    @classmethod
-    def find_by_md5String(cls, md5String):
-        return cls.query.filter_by(md5String=md5String).first()
-
-    @classmethod
-    def find_by_id(cls, _id):
-        return cls.query.filter_by(id=_id).first()
-
-    @classmethod
-    def find_all(cls):
-        all = cls.query.all()
-        return all
 
     @classmethod
     def create(cls, **kwargs):
@@ -132,7 +122,7 @@ class MediaModel(db.Model):
             bytes_io,
         )
 
-        has_duplicate: MediaModel | None = cls.find_by_md5String(md5String)
+        has_duplicate: MediaModel | None = cls.get_by_md5String(md5String)
         if has_duplicate:
             if has_duplicate.collectionLabel != kwargs["collectionLabel"]:
                 raise ValidationError(
@@ -170,9 +160,15 @@ class MediaModel(db.Model):
 
         existing_media = self.absolute_path()
         self.__bytes_io = bytes_io
-        self.md5String = get_md5_hexdigest(
+        md5String = get_md5_hexdigest(
             bytes_io,
         )
+        # What if the replacement provide is already present 
+        # in the DB with different id?
+        searchResult = self.get_by_md5String(md5String)
+        if searchResult:
+            raise InternalServerError(f"The media you are trying to replace is already present with id {searchResult.id}")
+        self.md5String = md5String
         self.__filename = filename
         self.save()
         # File saved with different name
@@ -182,7 +178,6 @@ class MediaModel(db.Model):
 
     @classmethod
     def update(cls, _id, **kwargs):
-        timeNow = datetime.now()
         entity = cls.get(_id)
         isUpdated = entity.replaceMedia(
             bytes_io=kwargs.get("bytes_io"),
@@ -200,23 +195,34 @@ class MediaModel(db.Model):
                     setattr(entity, key, value)
                     isUpdated = True
         if isUpdated:
-            entity.updatedDate = timeNow
             entity.save_to_db()
         return entity
 
     @classmethod
     def get(cls, _id):
-        media = cls.find_by_id(_id)
+        media = cls.query.filter_by(id=_id).first()
         if not media:
             raise NotFound("media not found")
+        media.fExt = mimetypes.guess_extension(media.content_type)
         return media
 
     @classmethod
     def get_all(cls, types=None):
         if not types:
-            return cls.find_all()
-        return cls.query.filter(MediaModel.type.in_(types)).all()
-
+            items = cls.query.all()
+        else:
+            items = cls.query.filter(MediaModel.type.in_(types)).all()
+        for item in items:
+            item.fExt = mimetypes.guess_extension(item.content_type)
+        return items
+    
+    @classmethod
+    def get_by_md5String(cls, md5String):
+        media =  cls.query.filter_by(md5String=md5String).first()
+        if media:
+            media.fExt = mimetypes.guess_extension(media.content_type)
+        return media
+    
     @classmethod
     def delete(cls, _id: int):
         media = cls.get(_id)
@@ -236,6 +242,6 @@ class MediaModel(db.Model):
 
     @classmethod
     def delete_all(cls):
-        all = cls.find_all()
+        all = cls.query.all()
         for media in all:
             media.delete_from_db()

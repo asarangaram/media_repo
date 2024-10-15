@@ -35,7 +35,7 @@ class MediaSchemaPOST(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
 
-    name = fields.Str()
+    name = fields.Str(required=True)
 
     collectionLabel = fields.Str(
         required=True, error_messages={"required": "collectionLabel is required."}
@@ -45,15 +45,38 @@ class MediaSchemaPOST(Schema):
     originalDate = MillisecondsSinceEpoch(
         error_messages={"invalid": "originalDate: Invalid date format."}
     )
+    createdDate = MillisecondsSinceEpoch(required=True, 
+        error_messages={"invalid": "createdDate: Invalid date format."}
+    )
     
     ref = fields.Str()
     isDeleted = IntigerizedBool()
     notes = fields.List(fields.Int())
 
+    @validates_schema
+    def validate_at_least_one(self, data, **kwargs):
+        print(data)
+        print(kwargs)
+        values =    [data.get(variable)
+            for variable in [
+                "name",
+                "collectionLabel",
+                "originalDate",
+                "ref",
+                "isDeleted",
+                "notes",
+                'createdDate',
+                'updatedDate',
+            ]] 
+        print (values)
+
 
 class MediaSchemaPUT(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
+    updatedDate = MillisecondsSinceEpoch(required=True, 
+        error_messages={"invalid": "updatedDate: Invalid date format."}
+    )
 
     name = fields.Str()
     collectionLabel = fields.Str()
@@ -73,13 +96,13 @@ class MediaSchemaPUT(Schema):
                     "empty": ["Nothing to update!"],
                 }
             )
-        flags =    [data.get(variable) is not None
+        ## This is not the appropriate place to update
+        ## as the file may be sent in PUT call without any form data.
+        """ flags =    [data.get(variable) is not None
             for variable in [
                 "name",
                 "collectionLabel",
-                "createdDate",
                 "originalDate",
-                "updatedDate",
                 "ref",
                 "isDeleted",
                 "notes",
@@ -90,7 +113,21 @@ class MediaSchemaPUT(Schema):
                 {
                     "empty": ["Nothing to update!"],
                 }
-            )
+            ) """
+        print(data)
+        print(kwargs)
+        values =    [data.get(variable)
+            for variable in [
+                "name",
+                "collectionLabel",
+                "originalDate",
+                "ref",
+                "isDeleted",
+                "notes",
+                'createdDate',
+                'updatedDate',
+            ]] 
+        print (f'PUT/Incoming: {values}')
 
 
 class MediaSchemaGET(Schema):
@@ -126,6 +163,9 @@ class MediaSchemaGET(Schema):
     )
     notes = fields.List(fields.Int())
     content_type = fields.Str(
+        required=True,
+    )
+    fExt = fields.Str(
         required=True,
     )
 
