@@ -83,6 +83,8 @@ class IntigerizedBool(fields.Field):
     
     def _deserialize(self, value, attr, data, **kwargs):
         try:
+            if isinstance(value, str):
+                return False if value is '0' else True
             return False if value is 0 else True
         except (TypeError, ValueError):
             raise self.make_error("invalid", input=value)
