@@ -35,7 +35,7 @@ class MediaSchemaPOST(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
 
-    name = fields.Str(required=True)
+    name = fields.Str()
 
     collectionLabel = fields.Str(
         required=True, error_messages={"required": "collectionLabel is required."}
@@ -45,7 +45,7 @@ class MediaSchemaPOST(Schema):
     originalDate = MillisecondsSinceEpoch(
         error_messages={"invalid": "originalDate: Invalid date format."}
     )
-    createdDate = MillisecondsSinceEpoch(required=True, 
+    createdDate = MillisecondsSinceEpoch( 
         error_messages={"invalid": "createdDate: Invalid date format."}
     )
     
@@ -74,7 +74,7 @@ class MediaSchemaPOST(Schema):
 class MediaSchemaPUT(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
-    updatedDate = MillisecondsSinceEpoch(required=True, 
+    updatedDate = MillisecondsSinceEpoch(
         error_messages={"invalid": "updatedDate: Invalid date format."}
     )
 

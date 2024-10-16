@@ -47,11 +47,11 @@ class MediaModel(db.Model):
             raise InternalServerError("Use Class Method  receive_file.")
         self.__bytes_io = kwargs.get("bytes_io")  # This don't go to db
         self.__filename = kwargs.get("filename")
-        self.name = kwargs.get("name")
+        self.name = kwargs.get("name", self.__filename) 
 
         self.collectionLabel = kwargs.get("collectionLabel")
         self.md5String = kwargs.get("md5String")
-        self.createdDate = kwargs.get("createdDate")
+        self.createdDate = kwargs.get("createdDate", timeNow)
         self.originalDate = kwargs.get("originalDate")
         self.updatedDate = kwargs.get("updatedDate", self.createdDate)
         self.ref = kwargs.get("ref")
@@ -195,6 +195,8 @@ class MediaModel(db.Model):
                     setattr(entity, key, value)
                     isUpdated = True
         if isUpdated:
+            if not filtered_kwargs.get('updatedDate'):
+                entity.updatedDate  = datetime.now()
             entity.save_to_db()
         return entity
 
