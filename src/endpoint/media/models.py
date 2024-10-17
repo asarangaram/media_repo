@@ -239,7 +239,7 @@ class MediaModel(db.Model):
 
         path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, media.path)
         if os.path.exists(path):
-            shutil.rmtree(os.path.dirname(path))
+            os.remove(path)
         media.delete_from_db()
 
     @classmethod
