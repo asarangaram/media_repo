@@ -24,11 +24,14 @@ from .models import MediaModel
 
 media_bp = Blueprint("media_bp", __name__, url_prefix="/media")
 
+enableLogging = False
+
 def log_request_data(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        form_data = request.form.to_dict()
-        print(f"Incoming Request Data: {form_data}")
+        if enableLogging:
+            form_data = request.form.to_dict()
+            print(f"Incoming Request Data: {form_data}")
         
         return func(*args, **kwargs)
     return wrapper
@@ -56,8 +59,8 @@ class MediaList(MethodView):
     @media_bp.response(200, MediaSchemaGET(many=True))
     @media_bp.arguments(MediaSchemaGETQuery, location="query") 
     def get(cls, kargs):
-        print((kargs['type'][0]))
-        print(type(kargs['type'][0]))
+        # print((kargs['type'][0]))
+        # print(type(kargs['type'][0]))
         return list(MediaModel.get_all(types=kargs['type'] ))
 
     @media_bp.response(200)
