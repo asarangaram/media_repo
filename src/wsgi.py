@@ -3,7 +3,7 @@
 from sqlite3 import IntegrityError
 from flask import json, jsonify
 from werkzeug.exceptions import HTTPException
-from werkzeug.exceptions import UnprocessableEntity
+from werkzeug.exceptions import UnprocessableEntity, InternalServerError
 from flask_smorest import Api
 from marshmallow import ValidationError
 
@@ -54,6 +54,15 @@ def handle_unprocessable_entity(e):
         )
     else:
         return jsonify({"errors": messages}), e.code
+
+@app.errorhandler(InternalServerError)
+def internalservererror(e):
+    return jsonify({"error": e.description}), e.code
+
+@app.errorhandler(TypeError)
+def typerror(e):
+    return jsonify({"error": e}), 500
+
 
 
 @app.errorhandler(Exception)

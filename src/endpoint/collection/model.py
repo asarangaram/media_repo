@@ -102,6 +102,8 @@ class CollectionModel(db.Model):
         entity:CollectionModel|None = cls.find_by_id(id=id)
         if not entity:
             raise NotFound(f"Entity with id {id} not found")
+        if entity.media:
+            raise InternalServerError(f"Can't delete actively used collection. Remove media before deleting the collection")
         entity.delete_from_db()
                 
         
