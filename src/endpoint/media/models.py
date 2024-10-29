@@ -59,7 +59,7 @@ class MediaModel(db.Model):
         self.content_type = determine_mime(self.__bytes_io, kwargs.get("content_type"))
         self.fExt = mimetypes.guess_extension(self.content_type)
         self.type = determine_media_type(self.__bytes_io, self.content_type)
-        CollectionModel.create(self.collectionLabel)
+        CollectionModel.create(label=self.collectionLabel)
 
     def save_to_db(self):
         db.session.add(self)

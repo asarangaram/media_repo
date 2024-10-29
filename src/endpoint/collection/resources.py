@@ -4,6 +4,8 @@ from flask_smorest import Blueprint
 from marshmallow import ValidationError
 from werkzeug.exceptions import  NotFound, InternalServerError
 import logging
+
+from src.endpoint.media.resources import mask_errors
 from ...db import db
 
 logging.basicConfig(level=logging.DEBUG)
@@ -26,6 +28,7 @@ class Collection(MethodView):
     def get(self, id):
         return CollectionModel.get(id)
 
+    @mask_errors
     @collection_bp.arguments(CollectionUpdateSchema, location="form")
     @collection_bp.response(201, CollectionSchema)
     @collection_bp.alt_response(

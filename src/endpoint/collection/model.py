@@ -13,22 +13,18 @@ class CollectionModel(db.Model):
     description = db.Column(db.UnicodeText, nullable=True)
     createdDate = db.Column(db.DateTime, nullable=False)
     updatedDate = db.Column(db.DateTime, nullable=False)   
+    isDeleted = db.Column(db.Boolean, default=False, nullable=False)
     media = db.relationship("MediaModel", uselist=True, backref="collection")
 
-    def __init__(
-        self,
-        label: str,
-        description: str,
-        createdDate: datetime,
-        updatedDate: datetime,
-        private_key=None,
-    ):
+    def __init__( self, private_key=None, **kwargs ):
         if private_key != CollectionModel.__private_key:
             raise InternalServerError("Use Class Method  create / update.")
-        self.label = label
-        self.description = description
-        self.createdDate = createdDate
-        self.updatedDate = updatedDate
+        timeNow = datetime.now()
+        self.label = kwargs.get("label")
+        self.description = kwargs.get("description")
+        self.createdDate = kwargs.get("createdDate", timeNow)
+        self.updatedDate = kwargs.get("updatedDate", self.createdDate)
+        self.isDeleted = kwargs.get("isDeleted", False)
 
     def save_to_db(self):
         db.session.add(self)
@@ -52,22 +48,17 @@ class CollectionModel(db.Model):
         return all
 
     @classmethod
-    def create( cls, label: str):
+    def create( cls,   **kwargs):
         """ 
         If the label is present, we return the existing one, else
         create one. Note, we can't provide description here.
         """
         time_now = datetime.now()
-        entity = cls.find_by_label(label=label)
+        entity = cls.find_by_label(label=kwargs.get("label"))
         if entity:
+            # update values? debate
             return entity 
-        entity = CollectionModel(
-            label=label,
-            description=None,
-            createdDate= time_now ,
-            updatedDate=time_now,
-            private_key=cls.__private_key,
-        )
+        entity = CollectionModel(private_key=cls.__private_key,**kwargs )
         entity.save_to_db()
         return entity
     
@@ -83,18 +74,17 @@ class CollectionModel(db.Model):
         return cls.find_all()
     
     @classmethod
-    def update(cls, id, label=None, description=None):
+    def update(cls, id, **kwargs):
         time_now = datetime.now()
         entity:CollectionModel|None = cls.find_by_id(id=id)
         if not entity:
             raise NotFound(f"Entity with id {id} not found")
-        if label :
-            entity.label = label 
-        if description:
-            entity.description = description
-        if label or description:
-            entity.updatedDate = time_now
-            entity.save_to_db()
+        entity.label = kwargs.get("label",  entity.label)
+        entity.description = kwargs.get("description", entity.description)
+        entity.createdDate = kwargs.get("createdDate", entity.createdDate)
+        entity.updatedDate = kwargs.get("updatedDate", entity.updatedDate)
+        entity.isDeleted = kwargs.get("isDeleted", time_now )
+        entity.save_to_db()
         return entity
     
     @classmethod

@@ -6,7 +6,7 @@ from flask.views import MethodView
 from flask_smorest import Blueprint
 
 from werkzeug.utils import secure_filename
-
+from werkzeug.exceptions import  InternalServerError
 from .media_types import MediaType
 
 
@@ -26,20 +26,22 @@ media_bp = Blueprint("media_bp", __name__, url_prefix="/media")
 
 enableLogging = False
 
-def log_request_data(func):
+def mask_errors(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if enableLogging:
             form_data = request.form.to_dict()
             print(f"Incoming Request Data: {form_data}")
-        
-        return func(*args, **kwargs)
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            raise InternalServerError(f"{e}")
     return wrapper
 
 @media_bp.route("/")
 @media_bp.route("")
 class MediaList(MethodView):
-    @log_request_data
+    @mask_errors
     @media_bp.arguments(MediaFileSchemaPOST, location="files")
     @media_bp.arguments(MediaSchemaPOST, location="form")
     @media_bp.response(201, MediaSchemaGET)
@@ -82,7 +84,7 @@ class Media(MethodView):
             return True
         return False
 
-    @log_request_data
+    @mask_errors
     @media_bp.arguments(MediaFileSchemaPUT, location="files")
     @media_bp.arguments(MediaSchemaPUT, location="form")
     @media_bp.response(200, MediaSchemaGET)
