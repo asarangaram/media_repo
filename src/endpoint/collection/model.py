@@ -83,7 +83,7 @@ class CollectionModel(db.Model):
         entity.description = kwargs.get("description", entity.description)
         entity.createdDate = kwargs.get("createdDate", entity.createdDate)
         entity.updatedDate = kwargs.get("updatedDate", entity.updatedDate)
-        entity.isDeleted = kwargs.get("isDeleted", time_now )
+        entity.isDeleted = kwargs.get("isDeleted", entity.isDeleted )
         entity.save_to_db()
         return entity
     
