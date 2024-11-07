@@ -1,5 +1,8 @@
 
 import uuid
+from ...db import db
+from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
+from datetime import datetime
 
 _info = """
 This API service offers microservices through a RESTful interface. \
@@ -13,3 +16,51 @@ class LandingPageModel:
         self.name = name
         self.info = _info
         self.id = 100 # TODO: FIND A UNIQUE ID FOR EACH SERVER AND REPLACE 
+        
+        
+
+class ServerStatusModel(db.Model):
+    __private_key = object()
+
+    __tablename__ = "server_status"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.UnicodeText, nullable=False, unique=True)
+    updatedDate = db.Column(db.DateTime, nullable=False)
+
+    def __init__(self,tableName, private_key=None, ):
+        if private_key != ServerStatusModel.__private_key:
+            raise InternalServerError("Use Class Method  create / update.")
+        self.name = tableName
+        
+    def save_to_db(self):
+        db.session.add(self)
+        db.session.commit()
+    
+    def delete_from_db(self):
+        db.session.delete(self)
+        db.session.commit()
+
+    def to_json(self):
+        return {self.name: int(self.updatedDate.timestamp() * 1000)}
+
+    @classmethod
+    def find_by_name(cls, name):
+        return cls.query.filter_by(name=name).first()
+
+    @classmethod
+    def find_by_id(cls, id):
+        return cls.query.filter_by(id=id).first()
+
+    @classmethod
+    def find_all(cls):
+        all = cls.query.all()
+        return all
+
+    @classmethod
+    def update_time_stamp(cls,tableName ):
+        entity = cls.find_by_name(tableName)  
+        if not entity:
+            entity = ServerStatusModel(tableName, private_key=cls.__private_key,)
+        entity.updatedDate =  datetime.now()
+        entity.save_to_db()
+    

@@ -1,6 +1,8 @@
 from datetime import datetime
 from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
 
+from src.endpoint.landing.models import ServerStatusModel
+
 from ...db import db
 
 
@@ -29,10 +31,12 @@ class CollectionModel(db.Model):
     def save_to_db(self):
         db.session.add(self)
         db.session.commit()
+        ServerStatusModel.update_time_stamp(self.__tablename__)
 
     def delete_from_db(self):
         db.session.delete(self)
         db.session.commit()
+        ServerStatusModel.update_time_stamp(self.__tablename__)
 
     @classmethod
     def find_by_label(cls, label):

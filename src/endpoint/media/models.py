@@ -10,6 +10,8 @@ from marshmallow import ValidationError
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
 
+from src.endpoint.landing.models import ServerStatusModel
+
 
 from ..collection.model import CollectionModel
 
@@ -42,9 +44,9 @@ class MediaModel(db.Model):
     path = db.Column(db.UnicodeText, nullable=True)
 
     def __init__(self, private_key=None, **kwargs):
-        timeNow = datetime.now()
         if private_key != MediaModel.__private_key:
             raise InternalServerError("Use Class Method  receive_file.")
+        timeNow = datetime.now()
         self.__bytes_io = kwargs.get("bytes_io")  # This don't go to db
         self.__filename = kwargs.get("filename")
         self.name = kwargs.get("name", self.__filename) 
@@ -65,11 +67,14 @@ class MediaModel(db.Model):
     def save_to_db(self):
         db.session.add(self)
         db.session.commit()
+        ServerStatusModel.update_time_stamp(self.__tablename__)
 
     def delete_from_db(self):
         db.session.delete(self)
+        
         db.session.commit()
-
+        ServerStatusModel.update_time_stamp(self.__tablename__)
+    
     def absolute_path(self):
         if self.path:
             return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
@@ -192,8 +197,9 @@ class MediaModel(db.Model):
             if key not in ["bytes_io", "filename"]
         }
         print(f'before: entity.collectionId = {entity.collectionId}')
-        collection = CollectionModel.create(label=kwargs.get("collectionLabel"))
-        entity.collectionId = collection.id
+        if "collectionLabel" in kwargs:
+            collection = CollectionModel.create(label=kwargs.get("collectionLabel"))
+            entity.collectionId = collection.id
         print(f'after: entity.collectionId = {entity.collectionId}')
 
         for key, value in filtered_kwargs.items():
