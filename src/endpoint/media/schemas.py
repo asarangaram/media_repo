@@ -3,6 +3,8 @@ from flask import request
 from flask_smorest.fields import Upload
 from werkzeug.utils import secure_filename
 from marshmallow import Schema, ValidationError, fields, post_load, validates_schema, validate
+from werkzeug.exceptions import  InternalServerError
+from src.endpoint.collection.model import CollectionModel
 
 
 from .media_types import IntigerizedBool, MediaTypeField, MediaType, MillisecondsSinceEpoch
@@ -140,9 +142,6 @@ class MediaSchemaGET(Schema):
     type = MediaTypeField(
         enum=MediaType, dump_only=True, error_messages={"required": "type is required."}
     )
-    collectionLabel = fields.Str(
-        required=True, error_messages={"required": "collectionLabel is required."}
-    )
     md5String = fields.Str(
         required=True, error_messages={"required": "md5String is required."}
     )
@@ -168,6 +167,16 @@ class MediaSchemaGET(Schema):
     fExt = fields.Str(
         required=True,
     )
+
+     
+    collectionLabel = fields.Method("get_collection_label", dump_only=True)
+
+    def get_collection_label(self, obj):
+        if hasattr(obj, 'collectionId'):
+            collection = CollectionModel.find_by_id(obj.collectionId)
+            return collection.label
+        else:
+            raise  InternalServerError('couldnot get collection label')
 
 
 class ErrorSchema(Schema):

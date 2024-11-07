@@ -29,8 +29,8 @@ class MediaModel(db.Model):
     name = db.Column(db.UnicodeText, nullable=False)
     type = db.Column(db.UnicodeText, nullable=False)
     content_type = db.Column(db.String, nullable=False)
-    collectionLabel = db.Column(
-        db.String, db.ForeignKey("collection.label"), nullable=False
+    collectionId = db.Column(
+        db.Integer, db.ForeignKey("collection.id"), nullable=False
     )
     md5String = db.Column(db.String, nullable=False, unique=True)
     createdDate = db.Column(db.DateTime, nullable=False)
@@ -48,8 +48,9 @@ class MediaModel(db.Model):
         self.__bytes_io = kwargs.get("bytes_io")  # This don't go to db
         self.__filename = kwargs.get("filename")
         self.name = kwargs.get("name", self.__filename) 
-
-        self.collectionLabel = kwargs.get("collectionLabel")
+        
+        collection = CollectionModel.create(label=kwargs.get("collectionLabel"))
+        self.collectionId = collection.id
         self.md5String = kwargs.get("md5String")
         self.createdDate = kwargs.get("createdDate", timeNow)
         self.originalDate = kwargs.get("originalDate")
@@ -59,7 +60,7 @@ class MediaModel(db.Model):
         self.content_type = determine_mime(self.__bytes_io, kwargs.get("content_type"))
         self.fExt = mimetypes.guess_extension(self.content_type)
         self.type = determine_media_type(self.__bytes_io, self.content_type)
-        CollectionModel.create(label=self.collectionLabel)
+        
 
     def save_to_db(self):
         db.session.add(self)
@@ -124,11 +125,13 @@ class MediaModel(db.Model):
 
         has_duplicate: MediaModel | None = cls.get_by_md5String(md5String)
         if has_duplicate:
-            if has_duplicate.collectionLabel != kwargs["collectionLabel"]:
+            targetCollection = CollectionModel.find_by_label(kwargs.get("collectionLabel"))
+            currentCollection = CollectionModel.find_by_id(has_duplicate.collectionId)
+            if currentCollection.id != targetCollection.id:
                 raise ValidationError(
                     {
                         "collectionLabel": [
-                            f"duplicate item found in {has_duplicate.collectionLabel}, with id {has_duplicate.id}"
+                            f"duplicate item found in {currentCollection.label}, with id {has_duplicate.id}"
                         ],
                     }
                 )
@@ -188,6 +191,10 @@ class MediaModel(db.Model):
             for key, value in kwargs.items()
             if key not in ["bytes_io", "filename"]
         }
+        print(f'before: entity.collectionId = {entity.collectionId}')
+        collection = CollectionModel.create(label=kwargs.get("collectionLabel"))
+        entity.collectionId = collection.id
+        print(f'after: entity.collectionId = {entity.collectionId}')
 
         for key, value in filtered_kwargs.items():
             if hasattr(entity, key):
