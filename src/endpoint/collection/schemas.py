@@ -40,6 +40,15 @@ class CollectionCreateSchema(Schema):
     createdDate = MillisecondsSinceEpoch()
     updatedDate = MillisecondsSinceEpoch()
     isDeleted = IntigerizedBool()
+    
+    @validates_schema
+    def validate_at_least_one(self, data, **kwargs):
+        label = data.get("label")
+        
+        if not label.strip():
+            raise ValidationError("label can't be blank")
+
+
 
 
 class CollectionUpdateSchema(Schema):
