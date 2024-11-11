@@ -1,12 +1,12 @@
 from functools import wraps
 from io import BytesIO
-from flask import jsonify, request, send_file
+from flask import jsonify, request, send_file, send_from_directory
 from flask import render_template, make_response
 from flask.views import MethodView
 from flask_smorest import Blueprint
 
 from werkzeug.utils import secure_filename
-from werkzeug.exceptions import  InternalServerError
+from werkzeug.exceptions import  InternalServerError, NotFound
 from .media_types import MediaType
 
 
@@ -128,7 +128,33 @@ class PreviewDownload(MethodView):
             media.preview_path(), mimetype=media.content_type, download_name=media.name
         )
 
+STREAM_FOLDER = "/disks/data/git/github/asarangaram/dash_experiment"
+M3U8_FILE = "adaptive.m3u8"
 
+@media_bp.route("/<int:media_id>/stream/m3u8")
+class get_m3u8(MethodView):
+    def get(cls, media_id: int):
+        try:
+            return send_from_directory(STREAM_FOLDER, M3U8_FILE, as_attachment=False)
+        except FileNotFoundError:
+            raise NotFound( description="M3U8 file not found")
+
+@media_bp.route("/<int:media_id>/stream/<string:filename>")
+class get_segment(MethodView):
+    def get(cls, media_id: int, filename: str):
+        if filename.endswith(".ts"):
+            try:
+                return send_from_directory(STREAM_FOLDER, filename, as_attachment=False)
+            except FileNotFoundError:
+                raise NotFound( description="Segment file not found")
+        if filename.endswith(".m3u8"):
+            try:
+                return send_from_directory(STREAM_FOLDER, filename, as_attachment=False)
+            except FileNotFoundError:
+                raise NotFound( description="Segment file not found")
+        else:
+            raise NotFound( description="Invalid file type requested")
+    
 @media_bp.errorhandler(404)
 def not_found_error(error):
     response = {"message": str(error)}
