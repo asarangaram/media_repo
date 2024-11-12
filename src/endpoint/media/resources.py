@@ -1,9 +1,13 @@
+from datetime import datetime
 from functools import wraps
 from io import BytesIO
-from flask import jsonify, request, send_file, send_from_directory
+import os
+import subprocess
+from flask import Response, jsonify, request, send_file, send_from_directory
 from flask import render_template, make_response
 from flask.views import MethodView
 from flask_smorest import Blueprint
+from flask_rangerequest import RangeRequest
 
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import  InternalServerError, NotFound
@@ -128,8 +132,44 @@ class PreviewDownload(MethodView):
             media.preview_path(), mimetype=media.content_type, download_name=media.name
         )
 
-STREAM_FOLDER = "/disks/data/git/github/asarangaram/dash_experiment"
+STREAM_FOLDER = "/disks/data/git/github/asarangaram/dash_experiment/VID_20240206_095544"
 M3U8_FILE = "adaptive.m3u8"
+MP4_FILE = "VID_20240206_095544.mp4"
+
+@media_bp.route("/<int:media_id>/stream/mp4")
+class get_mp4(MethodView):
+    def get(cls, media_id: int):
+        try:
+            file = os.path.join(STREAM_FOLDER, "random_seekable.mp4")
+            if not os.path.exists(file):
+                command = [
+                    'ffmpeg', '-y',
+                    '-i', os.path.join(STREAM_FOLDER, MP4_FILE), 
+                    '-movflags', '+faststart', 
+                    '-vf', 'scale=-1:720',
+                    '-c:a', 'copy',
+                    file
+                ]
+                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                print(process.stderr.read())
+            if not os.path.exists(file):
+                raise NotFound( description="failed to get file for rendering")
+                
+            
+            size = os.path.getsize(file)
+            with open(file, 'rb') as f:
+                etag = RangeRequest.make_etag(f)
+            last_modified = datetime.now()
+            response = RangeRequest(open(file, 'rb'),
+                        etag=etag,
+                        last_modified=last_modified,
+                        size=size).make_response()
+            response.content_type = "video/mp4"
+            return response
+        except FileNotFoundError:
+            raise NotFound( description="MP4 file not found")
+        except Exception as e:
+            raise InternalServerError(f"{e}\nprocess.stderr.read()\ncommand")
 
 @media_bp.route("/<int:media_id>/stream/m3u8")
 class get_m3u8(MethodView):
