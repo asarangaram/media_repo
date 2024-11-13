@@ -14,20 +14,22 @@ import shutil
 
 
 class HLSVariant:
-    def __init__(self, resolution: int, bitrate: int):
-        if isinstance(bitrate, str):
-            bitrate = int(bitrate)
-        if not isinstance(bitrate, int):
-            raise ValueError("bitrate must be int or int convertable string")
-        if isinstance(resolution, str):
-            resolution = int(resolution)
-        if not isinstance(resolution, int):
-            raise ValueError("resolution must be int or int convertable string")
+    def __init__(self, resolution: int = None, bitrate: int = None):
+        if bitrate is not None:
+            if isinstance(bitrate, str):
+                bitrate = int(bitrate)
+            if not isinstance(bitrate, int):
+                raise ValueError("bitrate must be int or int convertable string")
+        if resolution is not None:
+            if isinstance(resolution, str):
+                resolution = int(resolution)
+            if not isinstance(resolution, int):
+                raise ValueError("resolution must be int or int convertable string")
         self.resolution = resolution
         self.bitrate = bitrate
         self.resolution_str = f"{resolution}" if resolution is not None else "orig"
         self.scale_str = f"scale=-2:{resolution}" if resolution is not None else "copy"
-        self.bitrate_str = f"{bitrate}k"
+        self.bitrate_str = f"{bitrate}k" if resolution is not None else None
         self.dir = dir
         pass
 
@@ -38,6 +40,8 @@ class HLSVariant:
         return False
 
     def uri(self):
+        if self.resolution is None:
+            return f"adaptive-orig.m3u8"
         return f"adaptive-{self.resolution}p-{self.bitrate}.m3u8"
 
     def check(self, dir: str):
@@ -133,17 +137,19 @@ class HLSStreamGenerator:
         return self.variants
 
     def create(self, requested_variants: List[HLSVariant]):
-        self.get_ffmpeg_command(
+        command = self.get_ffmpeg_command(
             requested_variants=requested_variants, master_pl_name="adaptive.m3u8"
         )
+        self.run_command(command)
 
     def update(self, requested_variants: List[HLSVariant]):
         temp_master_pl_name = (
             f"{''.join(random.choices(string.ascii_letters, k=10))}.m3u8"
         )
-        self.get_ffmpeg_command(
+        command = self.get_ffmpeg_command(
             requested_variants=requested_variants, master_pl_name=temp_master_pl_name
         )
+        self.run_command(command)
         # merge master playlist
         path = os.path.join(self.output_dir, temp_master_pl_name)
         try:
@@ -242,7 +248,9 @@ class HLSStreamGenerator:
             *master_pl_option,
             f"{self.output_dir}/adaptive-%v.m3u8",
         ]
+        return command
 
+    def run_command(self, command):
         try:
             process = subprocess.Popen(
                 command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
@@ -257,13 +265,16 @@ class HLSStreamGenerator:
         except Exception as e:
             raise InternalServerError(str(e))
 
-        return command
+        return command       
 
     def addVariants(self, requested_variants: List[HLSVariant]):
         print("addVariants")
         print(
             f"\tRequest to add {len(requested_variants)} variants. { ','.join([item.uri() for item in requested_variants])}"
         )
+        if HLSVariant() in requested_variants:
+            raise InternalServerError("orignal should be generated using addOriginal")
+        
         if len(self.variants) == 0:
             if len(requested_variants) > 0:
                 print(
@@ -308,6 +319,42 @@ class HLSStreamGenerator:
 
         return len(missing_variants) == 0
 
+    def createOriginal(self):
+        command = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            self.input_file,
+            "-c", "copy", "-f", "hls",
+            "-hls_time",
+            "2",
+            "-hls_segment_filename",
+            f"{self.output_dir}/adaptive-orig-%03d.ts",
+            f"{self.output_dir}/adaptive-orig.m3u8",
+        ]
+        print(' '.join(command))
+        self.run_command(command)
+        
+        pass
+    
+    
+
+    def addOriginal(self):
+        print("addOriginal")
+        print("\tReqest to convert the original stream to hls format without reencoding")
+        # check if original is present
+        variant = HLSVariant()
+        valid = variant.check(dir=self.output_dir)
+        if not valid:
+            self.createOriginal()
+            valid = variant.check(dir=self.output_dir) 
+            if not valid:
+                raise InternalServerError(
+                    f"the stream generated {variant.uri()} is either invalid or partial or corrupted"
+                )
+            return True
+        print( f"\toriginal stream in hls format is already present. {variant.uri()}" )
+        return True
 
 if __name__ == "__main__":
     generator = HLSStreamGenerator(
@@ -323,6 +370,10 @@ if __name__ == "__main__":
         print("failed")
 
     res = generator.addVariants([HLSVariant(resolution=240, bitrate=200)])
+    if not res:
+        print("failed")
+    
+    res = generator.addOriginal()
     if not res:
         print("failed")
 
