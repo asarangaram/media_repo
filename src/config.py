@@ -67,3 +67,4 @@ class ConfigClass(object):
 
     # File Save
     FILE_STORAGE_LOCATION = get_required_env_variable('FILE_STORAGE_LOCATION')
+    STREAM_STORAGE_LOCATION = f'{FILE_STORAGE_LOCATION}/streams'

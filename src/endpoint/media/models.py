@@ -1,16 +1,14 @@
 from datetime import datetime
 
-from io import BytesIO
 import mimetypes
 import os
-import shutil
 
 
 from marshmallow import ValidationError
-from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
+from werkzeug.exceptions import  InternalServerError, NotFound
 
 from src.endpoint.landing.models import ServerStatusModel
+from src.image_proc.hls_stream_generator import HLSStreamGenerator, HLSVariant
 
 
 from ..collection.model import CollectionModel
@@ -77,7 +75,10 @@ class MediaModel(db.Model):
     
     def absolute_path(self):
         if self.path:
-            return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
+            abs_path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
+            if not os.path.exists(abs_path):
+                raise InternalServerError("Media file not found")
+            return abs_path
         raise InternalServerError("Media not stored yet")
 
     
@@ -260,3 +261,27 @@ class MediaModel(db.Model):
         all = cls.query.all()
         for media in all:
             media.delete_from_db()
+
+    def get_stream_folder(self):
+        if self.type != 'video': # why MediaType.VIDEO is not working?
+            print(f"can't stream {self.id}. not a video")
+            raise InternalServerError(f"can't stream {self.id}. not a video")
+        input_file = self.absolute_path()
+        stream_path = os.path.join( self.content_type, f"media_{str(self.id)}")
+        
+        output_dir = os.path.join(ConfigClass.STREAM_STORAGE_LOCATION, stream_path)
+        os.makedirs(os.path.dirname(output_dir), exist_ok=True)
+        master_pl = os.path.join(output_dir, 'adaptive.m3u8')
+        if os.path.exists(master_pl):
+            return output_dir
+        generator = HLSStreamGenerator(
+            input_file=input_file,
+            output_dir=output_dir,
+        )
+        valid = generator.addVariants([HLSVariant(resolution=720, bitrate=900),
+                                       HLSVariant(resolution=480, bitrate=400),
+                                       HLSVariant(resolution=240, bitrate=200)])
+        if not valid:
+            InternalServerError(f"failed to get stream for {self.id}")
+        return output_dir
+                
