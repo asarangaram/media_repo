@@ -1,0 +1,6 @@
+./upload_single.sh "/disks/backup/nalini_anand/oldPhone/Camera Roll/VID_20240120_100204.mp4"
+./upload_single.sh "/disks/backup/nalini_anand/oldPhone/Camera Roll/VID_20240120_122519.mp4"
+./upload_single.sh "/disks/backup/nalini_anand/oldPhone/Camera Roll/VID_20240120_122326.mp4"
+./upload_single.sh "/disks/backup/nalini_anand/oldPhone/Camera Roll/VID_20240206_095544.mp4"
+./upload_single.sh "/disks/backup/nalini_anand/oldPhone/Camera Roll/VID_20240214_104009.mp4"
+./upload_single.sh "/disks/backup/nalini_anand/oldPhone/Camera Roll/VID_20240216_095109.mp4"
