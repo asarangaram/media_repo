@@ -15,5 +15,5 @@ class LandingPageResultSchema(Schema):
         status = {}
         for d in items:
             status.update(d)
-        print(f"status {status}")
+        #print(f"status {status}")
         return status
