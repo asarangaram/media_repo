@@ -1,5 +1,6 @@
 import subprocess
 import math
+import time
 
 def get_video_properties(input_file):
     """Use FFprobe to get video properties."""
@@ -63,7 +64,12 @@ def create_video_thumbnail(input_file, output_file, dimension=256):
 
 if __name__ == "__main__":
     # Example usage:
-    video_file = 'path_to_video.mp4'
+    video_file = '/disks/backup/nalini_anand/oldPhone/Camera Roll/VID_20240216_095109.mp4'
     output_thumbnail = 'thumbnail_grid.jpg'
 
+    
+    start_time = time.time()
     create_video_thumbnail(video_file, output_thumbnail)
+    end_time = time.time()
+    process_time = end_time - start_time
+    print(f"process_time {process_time}")
