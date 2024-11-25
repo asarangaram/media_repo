@@ -20,7 +20,7 @@ from .hash.md5 import get_md5_hexdigest
 from ...db import db
 from ...config import ConfigClass
 from ...utils.image_thumbnail import create_image_thumbnail
-from ...utils.video_thumbnail import create_video_thumbnail
+from ...utils.video_thumbnail import create_video_thumbnail4x4
 from .media_types import MediaType, determine_media_type, determine_mime
 
 
@@ -100,7 +100,7 @@ class MediaModel(db.Model):
     def generate_preview(self, path, preview):
         try:
             if self.type == MediaType.VIDEO:
-                create_video_thumbnail(path, preview)
+                create_video_thumbnail4x4(path, preview)
             if self.type == MediaType.IMAGE:
                 create_image_thumbnail(path, preview)
             return
