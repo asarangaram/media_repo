@@ -7,10 +7,13 @@ from werkzeug.exceptions import UnprocessableEntity, InternalServerError
 from flask_smorest import Api
 from marshmallow import ValidationError
 
+from src.celery import CeleryTasks
+
 from .app_factory import create_app
 from .config import ConfigClass
 
-app = create_app(ConfigClass)
+app= create_app(ConfigClass)
+CeleryTasks.init_celery(app)
 
 
 @app.errorhandler(IntegrityError)

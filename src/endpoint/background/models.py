@@ -5,15 +5,14 @@ from werkzeug.exceptions import InternalServerError, NotFound
 from sqlalchemy.schema import UniqueConstraint
 from celery.result import AsyncResult
 
+from src.celery import CeleryTasks
 from src.endpoint.media.media_types import MediaType
 
 
 from ...db import db
 
 
-celery = Celery(
-    "tasks", broker="redis://localhost:6379/0", backend="redis://localhost:6379/0"
-)
+
 
 
 class BackgroundTaskModel(db.Model):
@@ -43,24 +42,11 @@ class BackgroundTaskModel(db.Model):
         db.session.delete(self)
         db.session.commit()
 
-    @celery.task(bind=True)
-    def exec_generate_preview(cls, media_id, media_path, preview_path, type):
-        from ...utils.image_thumbnail import create_image_thumbnail
-        from ...utils.video_thumbnail import create_video_thumbnail4x4
-        if type == MediaType.VIDEO:
-            create_video_thumbnail4x4(media_path, preview_path)
-            return f"preview generated for {media_id}, {type}"
-        if type == MediaType.IMAGE:
-            create_image_thumbnail(media_path, preview_path)
-            return f"preview generated for {media_id}, {type}"
-        return f"unsupported media type for {media_id}, {type}"
-      
-
     def task_generate_preview(self):
         from ...endpoint.media.models import MediaModel
         media = MediaModel.get(self.media_id)
         if media:
-            result = self.exec_generate_preview.apply_async(
+            result = CeleryTasks.exec_generate_preview.apply_async(
                 args=[
                     media.id,
                     media.absolute_path(),
@@ -78,7 +64,7 @@ class BackgroundTaskModel(db.Model):
     def update_status(self):
         task_id = self.task_id
         try:
-            task_result = self.exec_generate_preview.AsyncResult(task_id)
+            task_result = CeleryTasks.exec_generate_preview.AsyncResult(task_id)
             print(f"state is {task_result.state}")
             if task_result.state == "PENDING":
                 self.task_status = "pending"

@@ -3,6 +3,8 @@ import os
 from celery import Celery
 from flask import Flask
 
+from src.celery import CeleryTasks
+
 from .db import db
 from .endpoint.landing.resources import landing_bp
 #from .endpoint.image.resources import image_bp
@@ -14,7 +16,8 @@ from flask_migrate import Migrate
 
 from .endpoint.urlmap.resources import URLMapResource
 from .endpoint.background.resources import background_task_bp
-from .endpoint.background.models  import celery 
+from .celery import celery 
+
 
 
 def create_app(config_object):
@@ -25,7 +28,7 @@ def create_app(config_object):
     app = Flask(config_object.APP_NAME,
                 template_folder=os.path.abspath('./src/html'))
     app.config.from_object(config_object)
-    celery.conf.update(app.config)
+    
 
     db.init_app(app)
     migrate = Migrate(app, db)
