@@ -64,6 +64,7 @@ class BackgroundTaskModel(db.Model):
             private_key=BackgroundTaskModel.__private_key,
         )
         obj.save_to_db()
+        obj.update_status()
 
         return obj
 
@@ -73,18 +74,7 @@ class BackgroundTaskModel(db.Model):
         self.task_name = 'default';
         self.task_id=result.id
         self.save_to_db()
-
-       
-
-    @classmethod
-    def get(cls, media_id, force = False):
-        obj = cls.find_default_by_media_id(media_id=media_id)
-        if not obj:
-            obj = cls.start_task(media_id)
-        elif force:
-            obj.restart_task(media_id)
-        obj.update_status()
-        return obj
+        self.update_status()
 
     def update_status(self):
         task_id = self.task_id
@@ -102,3 +92,25 @@ class BackgroundTaskModel(db.Model):
         except:
             self.task_status = "notfound"
         self.save_to_db()
+
+
+    @classmethod
+    def get(cls, media_id):
+        obj = cls.find_default_by_media_id(media_id=media_id)
+        if  obj:
+            obj.update_status()
+            return obj
+        raise NotFound(f"task with  media id {media_id} not found")
+     
+
+    @classmethod
+    def start(cls, media_id):
+        obj = cls.find_default_by_media_id(media_id=media_id)
+        if not obj:
+            obj = cls.start_task(media_id)
+        else:
+            obj.restart_task(media_id)
+        
+        return obj
+
+    
