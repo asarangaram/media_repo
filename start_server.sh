@@ -65,9 +65,17 @@ if [ "$os_name" == "Darwin" ]; then
 fi
 create_venv
 
-if [ "$os_name" == "Linux" ]; then
-   # avahi-publish-service -s "CL IMAGE REPO" _image_repo_api._tcp 5000 "CL Image Repo Service" &
-   avahi-publish-service -s "server100@cloudonlapapps" _http._tcp 5000 "CL Image Repo Service" &
-fi
+# avahi is running as a service
+# vi /etc/systemd/system/avahi.service
+# check status by sudo systemctl status avahi
+# if [ "$os_name" == "Linux" ]; then
+#   # avahi-publish-service -s "CL IMAGE REPO" _image_repo_api._tcp 5000 "CL Image Repo Service" &
+#   avahi-publish-service -s "server100@cloudonlapapps" _http._tcp 5000 "CL Image Repo Service" &
+#fi
+#celery -A src.endpoint.background.models.celery worker --loglevel=info > log.celery.txt 2>&1 &
+# celery is running as a service
+# sudo vi /etc/systemd/system/celery.service
+# check status by sudo systemctl status celery
+
 python -m src.wsgi
 
