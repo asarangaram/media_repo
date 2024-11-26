@@ -10,8 +10,9 @@ import time
 from marshmallow import ValidationError
 from werkzeug.exceptions import  InternalServerError, NotFound
 
-from src.endpoint.landing.models import ServerStatusModel
-from src.image_proc.hls_stream_generator import HLSStreamGenerator, HLSVariant
+from ...endpoint.background.wrapper import startBackgroundProcess
+from ...endpoint.landing.models import ServerStatusModel
+from ...image_proc.hls_stream_generator import HLSStreamGenerator, HLSVariant
 
 
 from ..collection.model import CollectionModel
@@ -85,17 +86,21 @@ class MediaModel(db.Model):
             return abs_path
         raise InternalServerError("Media not stored yet")
 
-    
+    def preview_absolute_path_name(self):
+        return os.path.join(
+                ConfigClass.FILE_STORAGE_LOCATION, f"{self.path}.tn.jpg"
+            )
+        
+
 
     def preview_path(self):
         if self.path:
-            preview = os.path.join(
-                ConfigClass.FILE_STORAGE_LOCATION, f"{self.path}.tn.jpg"
-            )
+            preview = self.preview_absolute_path_name()
             path = self.absolute_path()
-            if not os.path.exists(preview):
-                self.generate_preview(path, preview)
-            return preview
+            if os.path.exists(preview):
+                return preview
+            else:
+                raise NotFound("preview file not found")
         raise InternalServerError("Media not stored yet")
 
     def generate_preview(self, path, preview):
@@ -152,6 +157,8 @@ class MediaModel(db.Model):
         entity.save_to_db()  # So that we get id!
         entity.save()
         entity.save_to_db()
+        startBackgroundProcess(entity.id)
+        
         return entity
 
     def replaceMedia(self, filename, bytes_io):
@@ -196,6 +203,7 @@ class MediaModel(db.Model):
             bytes_io=kwargs.get("bytes_io"),
             filename=kwargs.get("filename"),
         )
+        fileChanged = isUpdated
         filtered_kwargs = {
             key: value
             for key, value in kwargs.items()
@@ -216,6 +224,9 @@ class MediaModel(db.Model):
             if not filtered_kwargs.get('updatedDate'):
                 entity.updatedDate  = datetime.now()
             entity.save_to_db()
+            if fileChanged:
+                startBackgroundProcess(id=entity.id)
+
         return entity
 
     @classmethod

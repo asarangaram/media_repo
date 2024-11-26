@@ -4,10 +4,16 @@ from flask import jsonify
 from werkzeug.exceptions import InternalServerError, NotFound
 from sqlalchemy.schema import UniqueConstraint
 from celery.result import AsyncResult
+
+from src.endpoint.media.media_types import MediaType
+
+
 from ...db import db
 
 
-celery = Celery("tasks", broker="redis://localhost:6379/0", backend='redis://localhost:6379/0')
+celery = Celery(
+    "tasks", broker="redis://localhost:6379/0", backend="redis://localhost:6379/0"
+)
 
 
 class BackgroundTaskModel(db.Model):
@@ -16,15 +22,11 @@ class BackgroundTaskModel(db.Model):
     __tablename__ = "BackgroundTask"
 
     id = db.Column(db.Integer, primary_key=True)
-    media_id = db.Column(
-        db.Integer, db.ForeignKey("media.id"), nullable=False
-    )
+    media_id = db.Column(db.Integer, db.ForeignKey("media.id"), nullable=False)
     task_name = db.Column(db.String, nullable=False)
     task_id = db.Column(db.Integer, nullable=False)
     task_status = db.Column(db.String)
-    __table_args__ = (
-        UniqueConstraint('media_id', 'task_name', name='uq_media_task'),
-    )
+    __table_args__ = (UniqueConstraint("media_id", "task_name", name="uq_media_task"),)
 
     def __init__(self, media_id, task_name, task_id, private_key=None, **kwargs):
         if private_key != BackgroundTaskModel.__private_key:
@@ -44,22 +46,48 @@ class BackgroundTaskModel(db.Model):
 
     @classmethod
     def find_default_by_media_id(cls, media_id):
-        return cls.query.filter_by(media_id=media_id, task_name='default').first()
+        return cls.query.filter_by(media_id=media_id, task_name="default").first()
 
     @celery.task(bind=True)
-    def default_task(cls, command):
-        """Simulate processing of the command"""
-        print(f"Processing: {command}")
-        time.sleep(10)  # Simulate a long-running task
-        print(f"Finished: {command}")
-        return f"Task {command} completed"
+    def default_task(cls, media_id, media_path, preview_path, type):
+        from ...utils.image_thumbnail import create_image_thumbnail
+        from ...utils.video_thumbnail import create_video_thumbnail4x4
+
+        print(media_path)
+        print(preview_path)
+        print(type)
+        if type == MediaType.VIDEO:
+            create_video_thumbnail4x4(media_path, preview_path)
+            return f"preview generated for {media_id}, {type}"
+        if type == MediaType.IMAGE:
+            create_image_thumbnail(media_path, preview_path)
+            return f"preview generated for {media_id}, {type}"
+        return f"unsupported media type for {media_id}, {type}"
+
+    @classmethod
+    def start_preview_task(cls, media_id):
+        from ...endpoint.media.models import MediaModel
+
+        media = MediaModel.get(media_id)
+        if media:
+            print("generating preview for media")
+            print(f"preview path {media.preview_absolute_path_name()}")
+            return cls.default_task.apply_async(
+                args=[
+                    media.id,
+                    media.absolute_path(),
+                    media.preview_absolute_path_name(),
+                    media.type,
+                ]
+            )
+        raise NotFound("Media not found to start the background task")
 
     @classmethod
     def start_task(cls, media_id):
-        result = cls.default_task.apply_async(args=[media_id])
+        result = cls.start_preview_task(media_id)
         obj = BackgroundTaskModel(
             media_id=media_id,
-            task_name = 'default',
+            task_name="default",
             task_id=result.id,
             private_key=BackgroundTaskModel.__private_key,
         )
@@ -69,17 +97,17 @@ class BackgroundTaskModel(db.Model):
         return obj
 
     def restart_task(self, media_id):
-        result = self.default_task.apply_async(args=[media_id])
-        
-        self.task_name = 'default';
-        self.task_id=result.id
+        result = self.start_preview_task(media_id)
+
+        self.task_name = "default"
+        self.task_id = result.id
         self.save_to_db()
         self.update_status()
 
     def update_status(self):
         task_id = self.task_id
         try:
-            task_result =  self.default_task.AsyncResult(task_id)
+            task_result = self.default_task.AsyncResult(task_id)
             print(f"state is {task_result.state}")
             if task_result.state == "PENDING":
                 self.task_status = "pending"
@@ -87,21 +115,21 @@ class BackgroundTaskModel(db.Model):
                 self.task_status = "completed"
             elif task_result.state == "REVOKED":
                 self.task_status = "cancelled"
+            elif task_result.state == "FAILURE":
+                self.task_status = "failed"
             else:
                 self.task_status = "inprogress"
         except:
             self.task_status = "notfound"
         self.save_to_db()
 
-
     @classmethod
     def get(cls, media_id):
         obj = cls.find_default_by_media_id(media_id=media_id)
-        if  obj:
+        if obj:
             obj.update_status()
             return obj
         raise NotFound(f"task with  media id {media_id} not found")
-     
 
     @classmethod
     def start(cls, media_id):
@@ -110,7 +138,5 @@ class BackgroundTaskModel(db.Model):
             obj = cls.start_task(media_id)
         else:
             obj.restart_task(media_id)
-        
-        return obj
 
-    
+        return obj
