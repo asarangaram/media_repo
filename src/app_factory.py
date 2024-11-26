@@ -1,5 +1,6 @@
 # app_factory.py
 import os
+from celery import Celery
 from flask import Flask
 
 from .db import db
@@ -12,6 +13,8 @@ from . import lock
 from flask_migrate import Migrate
 
 from .endpoint.urlmap.resources import URLMapResource
+from .endpoint.background.resources import background_task_bp
+from .endpoint.background.models  import celery 
 
 
 def create_app(config_object):
@@ -22,6 +25,7 @@ def create_app(config_object):
     app = Flask(config_object.APP_NAME,
                 template_folder=os.path.abspath('./src/html'))
     app.config.from_object(config_object)
+    celery.conf.update(app.config)
 
     db.init_app(app)
     migrate = Migrate(app, db)
@@ -36,6 +40,7 @@ def create_app(config_object):
     app.register_blueprint(media_bp)
     app.register_blueprint(URL_map_resouce_bp)
     app.register_blueprint(collection_bp)
+    app.register_blueprint(background_task_bp)
     
 
     return app

@@ -43,6 +43,7 @@ class MediaModel(db.Model):
     isDeleted = db.Column(db.Boolean, default=False, nullable=False)
 
     path = db.Column(db.UnicodeText, nullable=True)
+    task = db.relationship("BackgroundTaskModel", uselist=True, backref="media") # remove  uselist=True,?
 
     def __init__(self, private_key=None, **kwargs):
         if private_key != MediaModel.__private_key:

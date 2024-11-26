@@ -68,3 +68,6 @@ class ConfigClass(object):
     # File Save
     FILE_STORAGE_LOCATION = get_required_env_variable('FILE_STORAGE_LOCATION')
     STREAM_STORAGE_LOCATION = f'{FILE_STORAGE_LOCATION}/streams'
+
+    CELERY_BROKER_URL = 'redis://localhost:6379/0'
+    CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
