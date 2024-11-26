@@ -42,24 +42,7 @@ class BackgroundTaskModel(db.Model):
         db.session.delete(self)
         db.session.commit()
 
-    def task_generate_preview(self):
-        from ...endpoint.media.models import MediaModel
-        media = MediaModel.get(self.media_id)
-        if media:
-            result = CeleryTasks.exec_generate_preview.apply_async(
-                args=[
-                    media.id,
-                    media.absolute_path(),
-                    media.preview_absolute_path_name(),
-                    media.type,
-                ]
-            )
-            self.task_id = result.id
-            self.save_to_db()
-            self.update_status()
-            return self
-        raise NotFound("Media not found to start the background task")
-        
+
 
     def update_status(self):
         task_id = self.task_id
@@ -87,7 +70,20 @@ class BackgroundTaskModel(db.Model):
             obj.update_status()
             return obj
         raise NotFound(f"task with  media id {media_id} not found")
+    
+    def start_task(self):
+        if self.task_name == 'generate_preview':
+            result = CeleryTasks.exec_generate_preview.apply_async( args=[self.media_id,] )
+        elif self.task_name == 'generate_stream_lq':
+            result = CeleryTasks.exec_generate_stream_lq.apply_async( args=[self.media_id,] )
+        else:
+            raise InternalServerError(f"{self.task_name} is not a valid background task")
 
+        self.task_id = result.id
+        self.save_to_db()
+        self.update_status()
+        return self
+          
     @classmethod
     def start(cls, media_id, task_name):
         obj = cls.query.filter_by(media_id=media_id, task_name=task_name).first()
@@ -97,18 +93,15 @@ class BackgroundTaskModel(db.Model):
                 task_name = task_name,
                 private_key=BackgroundTaskModel.__private_key,
             )
-        if task_name == 'generate_preview':
-            obj.task_generate_preview()
-
-        return obj
-
+        return obj.start_task()
+        
+    
     @classmethod
     def start_all(cls, media_id):
-        return [cls.start(media_id, task_name='generate_preview'),]
+        return [cls.start(media_id, task_name=taskname) for taskname in CeleryTasks.tasks]
     
     @classmethod
     def get_all(cls, media_id):
-        return [
-            cls.get_status(media_id, task_name='generate_preview'),
-        ]
+        return [cls.get_status(media_id, task_name=taskname) for taskname in CeleryTasks.tasks]
+        
 
