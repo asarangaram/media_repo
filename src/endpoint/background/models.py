@@ -28,11 +28,10 @@ class BackgroundTaskModel(db.Model):
     task_status = db.Column(db.String)
     __table_args__ = (UniqueConstraint("media_id", "task_name", name="uq_media_task"),)
 
-    def __init__(self, media_id, task_name, task_id, private_key=None, **kwargs):
+    def __init__(self, media_id, task_name, private_key=None, **kwargs):
         if private_key != BackgroundTaskModel.__private_key:
             raise InternalServerError("Use Class Method  receive_file.")
-        self.media_id = media_id
-        self.task_id = task_id
+        self.media_id = media_id       
         self.task_name = task_name
         pass
 
@@ -44,18 +43,10 @@ class BackgroundTaskModel(db.Model):
         db.session.delete(self)
         db.session.commit()
 
-    @classmethod
-    def find_default_by_media_id(cls, media_id):
-        return cls.query.filter_by(media_id=media_id, task_name="default").first()
-
     @celery.task(bind=True)
-    def default_task(cls, media_id, media_path, preview_path, type):
+    def exec_generate_preview(cls, media_id, media_path, preview_path, type):
         from ...utils.image_thumbnail import create_image_thumbnail
         from ...utils.video_thumbnail import create_video_thumbnail4x4
-
-        print(media_path)
-        print(preview_path)
-        print(type)
         if type == MediaType.VIDEO:
             create_video_thumbnail4x4(media_path, preview_path)
             return f"preview generated for {media_id}, {type}"
@@ -63,16 +54,13 @@ class BackgroundTaskModel(db.Model):
             create_image_thumbnail(media_path, preview_path)
             return f"preview generated for {media_id}, {type}"
         return f"unsupported media type for {media_id}, {type}"
+      
 
-    @classmethod
-    def start_preview_task(cls, media_id):
+    def task_generate_preview(self):
         from ...endpoint.media.models import MediaModel
-
-        media = MediaModel.get(media_id)
+        media = MediaModel.get(self.media_id)
         if media:
-            print("generating preview for media")
-            print(f"preview path {media.preview_absolute_path_name()}")
-            return cls.default_task.apply_async(
+            result = self.exec_generate_preview.apply_async(
                 args=[
                     media.id,
                     media.absolute_path(),
@@ -80,34 +68,17 @@ class BackgroundTaskModel(db.Model):
                     media.type,
                 ]
             )
+            self.task_id = result.id
+            self.save_to_db()
+            self.update_status()
+            return self
         raise NotFound("Media not found to start the background task")
-
-    @classmethod
-    def start_task(cls, media_id):
-        result = cls.start_preview_task(media_id)
-        obj = BackgroundTaskModel(
-            media_id=media_id,
-            task_name="default",
-            task_id=result.id,
-            private_key=BackgroundTaskModel.__private_key,
-        )
-        obj.save_to_db()
-        obj.update_status()
-
-        return obj
-
-    def restart_task(self, media_id):
-        result = self.start_preview_task(media_id)
-
-        self.task_name = "default"
-        self.task_id = result.id
-        self.save_to_db()
-        self.update_status()
+        
 
     def update_status(self):
         task_id = self.task_id
         try:
-            task_result = self.default_task.AsyncResult(task_id)
+            task_result = self.exec_generate_preview.AsyncResult(task_id)
             print(f"state is {task_result.state}")
             if task_result.state == "PENDING":
                 self.task_status = "pending"
@@ -124,19 +95,34 @@ class BackgroundTaskModel(db.Model):
         self.save_to_db()
 
     @classmethod
-    def get(cls, media_id):
-        obj = cls.find_default_by_media_id(media_id=media_id)
+    def get_status(cls, media_id, task_name):
+        obj = cls.query.filter_by(media_id=media_id, task_name=task_name).first()
         if obj:
             obj.update_status()
             return obj
         raise NotFound(f"task with  media id {media_id} not found")
 
     @classmethod
-    def start(cls, media_id):
-        obj = cls.find_default_by_media_id(media_id=media_id)
+    def start(cls, media_id, task_name):
+        obj = cls.query.filter_by(media_id=media_id, task_name=task_name).first()
         if not obj:
-            obj = cls.start_task(media_id)
-        else:
-            obj.restart_task(media_id)
+            obj = BackgroundTaskModel(
+                media_id=media_id,
+                task_name = task_name,
+                private_key=BackgroundTaskModel.__private_key,
+            )
+        if task_name == 'generate_preview':
+            obj.task_generate_preview()
 
         return obj
+
+    @classmethod
+    def start_all(cls, media_id):
+        return [cls.start(media_id, task_name='generate_preview'),]
+    
+    @classmethod
+    def get_all(cls, media_id):
+        return [
+            cls.get_status(media_id, task_name='generate_preview'),
+        ]
+
