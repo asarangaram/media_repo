@@ -10,6 +10,9 @@ import time
 from marshmallow import ValidationError
 from werkzeug.exceptions import  InternalServerError, NotFound
 
+from src.celery import CeleryTasks
+from src.endpoint.background.models import BackgroundTaskModel
+
 from ...endpoint.background.wrapper import startBackgroundProcess
 from ...endpoint.landing.models import ServerStatusModel
 from ...image_proc.hls_stream_generator import HLSStreamGenerator, HLSVariant
@@ -278,44 +281,13 @@ class MediaModel(db.Model):
             media.delete_from_db()
     
     @classmethod
-    def runFFMPEG(cls,input_file: str , output_dir:str, start_time):
-        os.makedirs(os.path.dirname(output_dir), exist_ok=True)
-        master_pl = os.path.join(output_dir, 'adaptive.m3u8')
-        if os.path.exists(master_pl):
-            return output_dir
-        generator = HLSStreamGenerator(
-            input_file=input_file,
-            output_dir=output_dir,
-        )
-        #HLSVariant(resolution=720, bitrate=900),
-        #HLSVariant(resolution=480, bitrate=400),
-        try:
-            valid = generator.addVariants([ HLSVariant(resolution=240, bitrate=200)])
-            
-        except Exception as e:
-            # FIXME: WE may consider deleting if ffmpeg fails
-            valid = False
-
-        end_time = time.time()
-
-        print(f"Time taken: {end_time - start_time:.4f} seconds")
-        return valid
-
-    @classmethod
-    def invokeFFMPEG(cls,input_file: str , output_dir:str, start_time):
-        thread = Thread(target=cls.runFFMPEG, args=(input_file, output_dir, start_time), daemon=True)
-        thread.start()
-        return True 
-    
-    @classmethod
-    def wait_for_m3u8(self, output_dir: str, timeout: int = 60):
+    def wait_for_m3u8(self, master_pl: str, timeout: int = 60):
         """Wait for adaptive.m3u8 file to be written within the timeout."""
-        master_pl = os.path.join(output_dir, 'adaptive.m3u8')
         start_time = time.time()
         while not os.path.exists(master_pl):
             elapsed_time = time.time() - start_time
             if elapsed_time > timeout:
-                print("Timeout waiting for adaptive.m3u8.")
+                print(f"Timeout waiting for {master_pl}.")
                 return False
             time.sleep(1)  # Poll every second
         print("adaptive.m3u8 found!")
@@ -325,20 +297,13 @@ class MediaModel(db.Model):
         if self.type != 'video': # why MediaType.VIDEO is not working?
             print(f"can't stream {self.id}. not a video")
             raise InternalServerError(f"can't stream {self.id}. not a video")
-        input_file = self.absolute_path()
         stream_path = os.path.join( self.content_type, f"media_{str(self.id)}")
-        
         output_dir = os.path.join(ConfigClass.STREAM_STORAGE_LOCATION, stream_path)
-        os.makedirs(os.path.dirname(output_dir), exist_ok=True)
         master_pl = os.path.join(output_dir, 'adaptive.m3u8')
-        if os.path.exists(master_pl):
-            return output_dir
-        start_time = time.time()
-        self.invokeFFMPEG(input_file, output_dir, start_time) 
-        success = self.wait_for_m3u8(output_dir=output_dir)
-        end_time = time.time()
-        print(f"Time taken: {end_time - start_time:.4f} seconds")
-        if not success:
-            InternalServerError(f"failed to get stream for {self.id}")
+        if not os.path.exists(master_pl):
+            BackgroundTaskModel.start( self.id,'generate_stream_lq' )
+            success = self.wait_for_m3u8(master_pl=master_pl)
+            if not success:
+                raise InternalServerError(f"failed to get stream for {self.id}")
         return output_dir
                 
