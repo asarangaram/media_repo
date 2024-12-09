@@ -79,3 +79,6 @@ create_venv
 
 python -m src.wsgi
 
+## Clear log
+# sudo journalctl --rotate;sudo journalctl --vacuum-time=1s
+# 
