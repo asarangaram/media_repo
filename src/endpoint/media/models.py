@@ -1,16 +1,21 @@
 from datetime import datetime
 
-from io import BytesIO
 import mimetypes
 import os
 import shutil
+from threading import Thread
+import time
 
 
 from marshmallow import ValidationError
-from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
+from werkzeug.exceptions import  InternalServerError, NotFound
 
-from src.endpoint.landing.models import ServerStatusModel
+from src.celery import CeleryTasks
+from src.endpoint.background.models import BackgroundTaskModel
+
+from ...endpoint.background.wrapper import startBackgroundProcess
+from ...endpoint.landing.models import ServerStatusModel
+from ...image_proc.hls_stream_generator import HLSStreamGenerator, HLSVariant
 
 
 from ..collection.model import CollectionModel
@@ -19,7 +24,7 @@ from .hash.md5 import get_md5_hexdigest
 from ...db import db
 from ...config import ConfigClass
 from ...utils.image_thumbnail import create_image_thumbnail
-from ...utils.video_thumbnail import create_video_thumbnail
+from ...utils.video_thumbnail import create_video_thumbnail4x4
 from .media_types import MediaType, determine_media_type, determine_mime
 
 
@@ -42,6 +47,7 @@ class MediaModel(db.Model):
     isDeleted = db.Column(db.Boolean, default=False, nullable=False)
 
     path = db.Column(db.UnicodeText, nullable=True)
+    task = db.relationship("BackgroundTaskModel", uselist=True, backref="media") # remove  uselist=True,?
 
     def __init__(self, private_key=None, **kwargs):
         if private_key != MediaModel.__private_key:
@@ -77,26 +83,33 @@ class MediaModel(db.Model):
     
     def absolute_path(self):
         if self.path:
-            return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
+            abs_path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
+            if not os.path.exists(abs_path):
+                raise InternalServerError("Media file not found")
+            return abs_path
         raise InternalServerError("Media not stored yet")
 
-    
+    def preview_absolute_path_name(self):
+        return os.path.join(
+                ConfigClass.FILE_STORAGE_LOCATION, f"{self.path}.tn.jpg"
+            )
+        
+
 
     def preview_path(self):
         if self.path:
-            preview = os.path.join(
-                ConfigClass.FILE_STORAGE_LOCATION, f"{self.path}.tn.jpg"
-            )
+            preview = self.preview_absolute_path_name()
             path = self.absolute_path()
-            if not os.path.exists(preview):
-                self.generate_preview(path, preview)
-            return preview
+            if os.path.exists(preview):
+                return preview
+            else:
+                raise NotFound("preview file not found")
         raise InternalServerError("Media not stored yet")
 
     def generate_preview(self, path, preview):
         try:
             if self.type == MediaType.VIDEO:
-                create_video_thumbnail(path, preview)
+                create_video_thumbnail4x4(path, preview)
             if self.type == MediaType.IMAGE:
                 create_image_thumbnail(path, preview)
             return
@@ -147,6 +160,8 @@ class MediaModel(db.Model):
         entity.save_to_db()  # So that we get id!
         entity.save()
         entity.save_to_db()
+        startBackgroundProcess(entity.id)
+        
         return entity
 
     def replaceMedia(self, filename, bytes_io):
@@ -191,6 +206,7 @@ class MediaModel(db.Model):
             bytes_io=kwargs.get("bytes_io"),
             filename=kwargs.get("filename"),
         )
+        fileChanged = isUpdated
         filtered_kwargs = {
             key: value
             for key, value in kwargs.items()
@@ -211,6 +227,9 @@ class MediaModel(db.Model):
             if not filtered_kwargs.get('updatedDate'):
                 entity.updatedDate  = datetime.now()
             entity.save_to_db()
+            if fileChanged:
+                startBackgroundProcess(id=entity.id)
+
         return entity
 
     @classmethod
@@ -260,3 +279,31 @@ class MediaModel(db.Model):
         all = cls.query.all()
         for media in all:
             media.delete_from_db()
+    
+    @classmethod
+    def wait_for_m3u8(self, master_pl: str, timeout: int = 60):
+        """Wait for adaptive.m3u8 file to be written within the timeout."""
+        start_time = time.time()
+        while not os.path.exists(master_pl):
+            elapsed_time = time.time() - start_time
+            if elapsed_time > timeout:
+                print(f"Timeout waiting for {master_pl}.")
+                return False
+            time.sleep(1)  # Poll every second
+        print("adaptive.m3u8 found!")
+        return True
+
+    def get_stream_folder(self):
+        if self.type != 'video': # why MediaType.VIDEO is not working?
+            print(f"can't stream {self.id}. not a video")
+            raise InternalServerError(f"can't stream {self.id}. not a video")
+        stream_path = os.path.join( self.content_type, f"media_{str(self.id)}")
+        output_dir = os.path.join(ConfigClass.STREAM_STORAGE_LOCATION, stream_path)
+        master_pl = os.path.join(output_dir, 'adaptive.m3u8')
+        if not os.path.exists(master_pl):
+            BackgroundTaskModel.start( self.id,'generate_stream_lq' )
+            success = self.wait_for_m3u8(master_pl=master_pl)
+            if not success:
+                raise InternalServerError(f"failed to get stream for {self.id}")
+        return output_dir
+                

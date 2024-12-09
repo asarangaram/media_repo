@@ -2,6 +2,7 @@ Flask
 Flask-SQLAlchemy
 SQLAlchemy
 flask_smorest
+Flask-RangeRequest
 marshmallow
 Pillow
 pillow-heif
@@ -18,3 +19,4 @@ httpie
 pytest
 flask_migrate
 python-magic
+m3u8

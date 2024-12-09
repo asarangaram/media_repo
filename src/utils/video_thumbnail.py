@@ -1,5 +1,6 @@
 import subprocess
 import math
+import time
 
 def get_video_properties(input_file):
     """Use FFprobe to get video properties."""
@@ -61,9 +62,33 @@ def create_video_thumbnail(input_file, output_file, dimension=256):
     subprocess.run(ffmpeg_command, check=True)
     print(f"Thumbnail created: {output_file}")
 
+def create_video_thumbnail4x4(input_file, output_file, dimension=256):
+    tile_size = (4,4)
+    # Step 3: Build and run the FFmpeg command
+    ffmpeg_command = [
+        'ffmpeg', 
+        '-loglevel', 'panic', 
+        '-y', 
+        '-skip_frame', 'nokey',
+        '-i', input_file, 
+        '-frames', '1', 
+        '-q:v', '1', 
+        #'-vf', f'select=not(mod(n\\,{int(frame_freq)})),tile={tile_size[0]}x{tile_size[1]},scale=-1:{dimension}', 
+        '-vf', f'tile={tile_size[0]}x{tile_size[1]},loop={tile_size[0]*tile_size[1]}:1,scale=-1:{dimension}', 
+        output_file
+    ]
+    
+    subprocess.run(ffmpeg_command, check=True)
+    print(f"Thumbnail created: {output_file}")
+
 if __name__ == "__main__":
     # Example usage:
-    video_file = 'path_to_video.mp4'
+    video_file = '/disks/backup/nalini_anand/oldPhone/Camera Roll/VID_20240216_095109.mp4'
     output_thumbnail = 'thumbnail_grid.jpg'
 
-    create_video_thumbnail(video_file, output_thumbnail)
+    
+    start_time = time.time()
+    create_video_thumbnail4x4(video_file, output_thumbnail)
+    end_time = time.time()
+    process_time = end_time - start_time
+    print(f"process_time {process_time}")

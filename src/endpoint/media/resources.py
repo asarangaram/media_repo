@@ -1,12 +1,13 @@
+from datetime import datetime
 from functools import wraps
 from io import BytesIO
-from flask import jsonify, request, send_file
+from flask import jsonify, request, send_file, send_from_directory
 from flask import render_template, make_response
 from flask.views import MethodView
 from flask_smorest import Blueprint
 
 from werkzeug.utils import secure_filename
-from werkzeug.exceptions import  InternalServerError
+from werkzeug.exceptions import  InternalServerError, NotFound
 from .media_types import MediaType
 
 
@@ -116,6 +117,8 @@ class MediaUploadForm(MethodView):
 class MediaDownload(MethodView):
     def get(cls, media_id: int):
         media = MediaModel.get(media_id)
+        if not media:
+            NotFound("Media not found")
         return send_file(
             media.absolute_path(), mimetype=media.content_type, download_name=media.name
         )
@@ -124,11 +127,44 @@ class MediaDownload(MethodView):
 class PreviewDownload(MethodView):
     def get(cls, media_id: int):
         media = MediaModel.get(media_id)
+        if not media:
+            NotFound("Media not found")
         return send_file(
             media.preview_path(), mimetype=media.content_type, download_name=media.name
         )
 
+@media_bp.route("/<int:media_id>/stream/m3u8")
+class get_m3u8(MethodView):
+    def get(cls, media_id: int):
+        media = MediaModel.get(media_id)
+        if not media:
+            NotFound("Media not found")
+        stream_folder = media.get_stream_folder()
+        try:
+            return send_from_directory(stream_folder, "adaptive.m3u8", as_attachment=False)
+        except FileNotFoundError:
+            raise NotFound( description="M3U8 file not found")
 
+@media_bp.route("/<int:media_id>/stream/<string:filename>")
+class get_segment(MethodView):
+    def get(cls, media_id: int, filename: str):
+        media = MediaModel.get(media_id)
+        if not media:
+            NotFound("Media not found")
+        stream_folder = media.get_stream_folder()
+        if filename.endswith(".ts"):
+            try:
+                return send_from_directory(stream_folder, filename, as_attachment=False)
+            except FileNotFoundError:
+                raise NotFound( description="Segment file not found")
+        if filename.endswith(".m3u8"):
+            try:
+                return send_from_directory(stream_folder, filename, as_attachment=False)
+            except FileNotFoundError:
+                raise NotFound( description="Segment file not found")
+        else:
+            raise NotFound( description="Invalid file type requested")
+    
 @media_bp.errorhandler(404)
 def not_found_error(error):
     response = {"message": str(error)}
