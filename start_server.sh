@@ -1,4 +1,5 @@
 #! /bin/bash
+# TODO: When offline, we need to skip pip install..
 
 set -e
 
