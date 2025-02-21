@@ -16,8 +16,8 @@ if [ -f "$file" ]; then
     echo "uploading $filename"
     mime_type=$(file --mime-type -b "$file")
 
-    echo curl -X POST -F "media=@${file};type=${mime_type}" -F "collectionLabel=largeVideo"  "$url"
-    time curl -v  -F "media=@${file};type=${mime_type}" -F "collectionLabel=largeVideo"  "$url"
+    echo curl -X POST -F "media=@${file};type=${mime_type}" -F "collectionLabel=AllImages"  "$url"
+    time curl -v  -F "media=@${file};type=${mime_type}" -F "collectionLabel=AllImages"  "$url"
     sleep 1
 
 fi
