@@ -6,9 +6,8 @@ import shutil
 from threading import Thread
 import time
 
-
 from marshmallow import ValidationError
-from werkzeug.exceptions import  InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound
 
 from src.celery import CeleryTasks
 from src.endpoint.background.models import BackgroundTaskModel
@@ -16,7 +15,6 @@ from src.endpoint.background.models import BackgroundTaskModel
 from ...endpoint.background.wrapper import startBackgroundProcess
 from ...endpoint.landing.models import ServerStatusModel
 from ...image_proc.hls_stream_generator import HLSStreamGenerator, HLSVariant
-
 
 from ..collection.model import CollectionModel
 
@@ -47,7 +45,9 @@ class MediaModel(db.Model):
     isDeleted = db.Column(db.Boolean, default=False, nullable=False)
 
     path = db.Column(db.UnicodeText, nullable=True)
-    task = db.relationship("BackgroundTaskModel", uselist=True, backref="media") # remove  uselist=True,?
+    # remove  uselist=True,?
+    task = db.relationship("BackgroundTaskModel",
+                           uselist=True, backref="media")
 
     def __init__(self, private_key=None, **kwargs):
         if private_key != MediaModel.__private_key:
@@ -55,9 +55,10 @@ class MediaModel(db.Model):
         timeNow = datetime.now()
         self.__bytes_io = kwargs.get("bytes_io")  # This don't go to db
         self.__filename = kwargs.get("filename")
-        self.name = kwargs.get("name", self.__filename) 
-        
-        collection = CollectionModel.create(label=kwargs.get("collectionLabel"))
+        self.name = kwargs.get("name", self.__filename)
+
+        collection = CollectionModel.create(
+            label=kwargs.get("collectionLabel"))
         self.collectionId = collection.id
         self.md5String = kwargs.get("md5String")
         self.createdDate = kwargs.get("createdDate", timeNow)
@@ -65,10 +66,10 @@ class MediaModel(db.Model):
         self.updatedDate = kwargs.get("updatedDate", self.createdDate)
         self.ref = kwargs.get("ref")
         self.isDeleted = kwargs.get("isDeleted", False)
-        self.content_type = determine_mime(self.__bytes_io, kwargs.get("content_type"))
+        self.content_type = determine_mime(
+            self.__bytes_io, kwargs.get("content_type"))
         self.fExt = mimetypes.guess_extension(self.content_type)
         self.type = determine_media_type(self.__bytes_io, self.content_type)
-        
 
     def save_to_db(self):
         db.session.add(self)
@@ -77,13 +78,14 @@ class MediaModel(db.Model):
 
     def delete_from_db(self):
         db.session.delete(self)
-        
+
         db.session.commit()
         ServerStatusModel.update_time_stamp(self.__tablename__)
-    
+
     def absolute_path(self):
         if self.path:
-            abs_path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
+            abs_path = os.path.join(
+                ConfigClass.FILE_STORAGE_LOCATION, self.path)
             if not os.path.exists(abs_path):
                 raise InternalServerError("Media file not found")
             return abs_path
@@ -91,19 +93,20 @@ class MediaModel(db.Model):
 
     def preview_absolute_path_name(self):
         return os.path.join(
-                ConfigClass.FILE_STORAGE_LOCATION, f"{self.path}.tn.jpg"
-            )
-        
-
+            ConfigClass.FILE_STORAGE_LOCATION, f"{self.path}.tn.jpg"
+        )
 
     def preview_path(self):
         if self.path:
+            path = self.absolute_path()
             preview = self.preview_absolute_path_name()
             path = self.absolute_path()
+            if not os.path.exists(preview):
+                self.generate_preview(path, preview)
             if os.path.exists(preview):
                 return preview
             else:
-                raise NotFound("preview file not found")
+                raise NotFound("failed to generate preview")
         raise InternalServerError("Media not stored yet")
 
     def generate_preview(self, path, preview):
@@ -129,9 +132,10 @@ class MediaModel(db.Model):
             with open(path, "wb") as file:
                 file.write(self.__bytes_io.getvalue())
             del self.__bytes_io
+            preview = self.preview_absolute_path_name()
+            self.generate_preview(path, preview)
         else:
             raise InternalServerError("Media not in DB")
-
 
     @classmethod
     def create(cls, **kwargs):
@@ -143,8 +147,10 @@ class MediaModel(db.Model):
 
         has_duplicate: MediaModel | None = cls.get_by_md5String(md5String)
         if has_duplicate:
-            targetCollection = CollectionModel.find_by_label(kwargs.get("collectionLabel"))
-            currentCollection = CollectionModel.find_by_id(has_duplicate.collectionId)
+            targetCollection = CollectionModel.find_by_label(
+                kwargs.get("collectionLabel"))
+            currentCollection = CollectionModel.find_by_id(
+                has_duplicate.collectionId)
             if currentCollection.id != targetCollection.id:
                 raise ValidationError(
                     {
@@ -161,7 +167,7 @@ class MediaModel(db.Model):
         entity.save()
         entity.save_to_db()
         startBackgroundProcess(entity.id)
-        
+
         return entity
 
     def replaceMedia(self, filename, bytes_io):
@@ -186,11 +192,12 @@ class MediaModel(db.Model):
         md5String = get_md5_hexdigest(
             bytes_io,
         )
-        # What if the replacement provide is already present 
+        # What if the replacement provide is already present
         # in the DB with different id?
         searchResult = self.get_by_md5String(md5String)
         if searchResult:
-            raise InternalServerError(f"The media you are trying to replace is already present with id {searchResult.id}")
+            raise InternalServerError(
+                f"The media you are trying to replace is already present with id {searchResult.id}")
         self.md5String = md5String
         self.__filename = filename
         self.save()
@@ -214,7 +221,8 @@ class MediaModel(db.Model):
         }
         print(f'before: entity.collectionId = {entity.collectionId}')
         if "collectionLabel" in kwargs:
-            collection = CollectionModel.create(label=kwargs.get("collectionLabel"))
+            collection = CollectionModel.create(
+                label=kwargs.get("collectionLabel"))
             entity.collectionId = collection.id
         print(f'after: entity.collectionId = {entity.collectionId}')
 
@@ -225,7 +233,7 @@ class MediaModel(db.Model):
                     isUpdated = True
         if isUpdated:
             if not filtered_kwargs.get('updatedDate'):
-                entity.updatedDate  = datetime.now()
+                entity.updatedDate = datetime.now()
             entity.save_to_db()
             if fileChanged:
                 startBackgroundProcess(id=entity.id)
@@ -249,14 +257,14 @@ class MediaModel(db.Model):
         for item in items:
             item.fExt = mimetypes.guess_extension(item.content_type)
         return items
-    
+
     @classmethod
     def get_by_md5String(cls, md5String):
-        media =  cls.query.filter_by(md5String=md5String).first()
+        media = cls.query.filter_by(md5String=md5String).first()
         if media:
             media.fExt = mimetypes.guess_extension(media.content_type)
         return media
-    
+
     @classmethod
     def delete(cls, _id: int):
         media = cls.get(_id)
@@ -279,7 +287,7 @@ class MediaModel(db.Model):
         all = cls.query.all()
         for media in all:
             media.delete_from_db()
-    
+
     @classmethod
     def wait_for_m3u8(self, master_pl: str, timeout: int = 60):
         """Wait for adaptive.m3u8 file to be written within the timeout."""
@@ -294,16 +302,17 @@ class MediaModel(db.Model):
         return True
 
     def get_stream_folder(self):
-        if self.type != 'video': # why MediaType.VIDEO is not working?
+        if self.type != 'video':  # why MediaType.VIDEO is not working?
             print(f"can't stream {self.id}. not a video")
             raise InternalServerError(f"can't stream {self.id}. not a video")
-        stream_path = os.path.join( self.content_type, f"media_{str(self.id)}")
-        output_dir = os.path.join(ConfigClass.STREAM_STORAGE_LOCATION, stream_path)
+        stream_path = os.path.join(self.content_type, f"media_{str(self.id)}")
+        output_dir = os.path.join(
+            ConfigClass.STREAM_STORAGE_LOCATION, stream_path)
         master_pl = os.path.join(output_dir, 'adaptive.m3u8')
         if not os.path.exists(master_pl):
-            BackgroundTaskModel.start( self.id,'generate_stream_lq' )
+            BackgroundTaskModel.start(self.id, 'generate_stream_lq')
             success = self.wait_for_m3u8(master_pl=master_pl)
             if not success:
-                raise InternalServerError(f"failed to get stream for {self.id}")
+                raise InternalServerError(
+                    f"failed to get stream for {self.id}")
         return output_dir
-                

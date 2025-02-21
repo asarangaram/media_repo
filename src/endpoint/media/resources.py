@@ -7,9 +7,8 @@ from flask.views import MethodView
 from flask_smorest import Blueprint
 
 from werkzeug.utils import secure_filename
-from werkzeug.exceptions import  InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound
 from .media_types import MediaType
-
 
 from .schemas import (
     MediaFileSchemaPOST,
@@ -27,6 +26,7 @@ media_bp = Blueprint("media_bp", __name__, url_prefix="/media")
 
 enableLogging = False
 
+
 def mask_errors(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -38,6 +38,7 @@ def mask_errors(func):
         except Exception as e:
             raise InternalServerError(f"{e}")
     return wrapper
+
 
 @media_bp.route("/")
 @media_bp.route("")
@@ -60,11 +61,12 @@ class MediaList(MethodView):
         return MediaModel.create(**kwargs, **argsExtra)
 
     @media_bp.response(200, MediaSchemaGET(many=True))
-    @media_bp.arguments(MediaSchemaGETQuery, location="query") 
+    @media_bp.arguments(MediaSchemaGETQuery, location="query")
     def get(cls, kargs):
         # print((kargs['type'][0]))
         # print(type(kargs['type'][0]))
-        return list(MediaModel.get_all(types=kargs['type'] ))
+        res = list(MediaModel.get_all(types=kargs['type']))
+        return res
 
     @media_bp.response(200)
     def delete(cls):
@@ -96,7 +98,7 @@ class Media(MethodView):
         if files.get("media"):
             bytes_io = BytesIO()
             files["media"].save(bytes_io)
-            
+
             argsExtra["bytes_io"] = bytes_io
             argsExtra["filename"] = secure_filename(files["media"].filename)
             argsExtra["content_type"] = files["media"].content_type
@@ -123,6 +125,7 @@ class MediaDownload(MethodView):
             media.absolute_path(), mimetype=media.content_type, download_name=media.name
         )
 
+
 @media_bp.route("/<int:media_id>/preview")
 class PreviewDownload(MethodView):
     def get(cls, media_id: int):
@@ -132,6 +135,7 @@ class PreviewDownload(MethodView):
         return send_file(
             media.preview_path(), mimetype=media.content_type, download_name=media.name
         )
+
 
 @media_bp.route("/<int:media_id>/stream/m3u8")
 class get_m3u8(MethodView):
@@ -143,7 +147,8 @@ class get_m3u8(MethodView):
         try:
             return send_from_directory(stream_folder, "adaptive.m3u8", as_attachment=False)
         except FileNotFoundError:
-            raise NotFound( description="M3U8 file not found")
+            raise NotFound(description="M3U8 file not found")
+
 
 @media_bp.route("/<int:media_id>/stream/<string:filename>")
 class get_segment(MethodView):
@@ -156,15 +161,16 @@ class get_segment(MethodView):
             try:
                 return send_from_directory(stream_folder, filename, as_attachment=False)
             except FileNotFoundError:
-                raise NotFound( description="Segment file not found")
+                raise NotFound(description="Segment file not found")
         if filename.endswith(".m3u8"):
             try:
                 return send_from_directory(stream_folder, filename, as_attachment=False)
             except FileNotFoundError:
-                raise NotFound( description="Segment file not found")
+                raise NotFound(description="Segment file not found")
         else:
-            raise NotFound( description="Invalid file type requested")
-    
+            raise NotFound(description="Invalid file type requested")
+
+
 @media_bp.errorhandler(404)
 def not_found_error(error):
     response = {"message": str(error)}
