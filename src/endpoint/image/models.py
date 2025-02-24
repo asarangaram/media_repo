@@ -61,7 +61,7 @@ class ImageModel(db.Model):
 
     def absolute_path(self):
         return self.get_absolutepath(self.path)
-    
+
     def set_path(self):
         self.path = os.path.join(f"image_{str(self.id)}", self.name)
         self.save_to_db()
@@ -182,9 +182,7 @@ class ImageModel(db.Model):
                     if err:
                         result[image.id] = err
                 if result:
-                    ImageModelException(
-                        "not all images are deleted"
-                    )
+                    ImageModelException("not all images are deleted")
                 return {"success": "all images deleted"}, None
             raise ImageModelException("No image found")
         except Exception as e:
@@ -193,7 +191,9 @@ class ImageModel(db.Model):
     def get_thumbnail_path(self):
         try:
             thumbnail = os.path.join(
-                ConfigClass.FILE_STORAGE_LOCATION, f"image_{str(self.id)}", "thumbnail.png"
+                ConfigClass.FILE_STORAGE_LOCATION,
+                f"image_{str(self.id)}",
+                "thumbnail.png",
             )
 
             if not os.path.isfile(thumbnail):

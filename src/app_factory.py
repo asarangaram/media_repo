@@ -7,7 +7,8 @@ from src.celery import CeleryTasks
 
 from .db import db
 from .endpoint.landing.resources import landing_bp
-#from .endpoint.image.resources import image_bp
+
+# from .endpoint.image.resources import image_bp
 from .endpoint.media.resources import media_bp
 from .endpoint.urlmap.resources import URL_map_resouce_bp
 from .endpoint.collection.resources import collection_bp
@@ -16,19 +17,15 @@ from flask_migrate import Migrate
 
 from .endpoint.urlmap.resources import URLMapResource
 from .endpoint.background.resources import background_task_bp
-from .celery import celery 
-
+from .celery import celery
 
 
 def create_app(config_object):
-
     if lock.instance_already_running(config_object):
         print("A instance is already accessing file storage")
         exit(-1)
-    app = Flask(config_object.APP_NAME,
-                template_folder=os.path.abspath('./src/html'))
+    app = Flask(config_object.APP_NAME, template_folder=os.path.abspath("./src/html"))
     app.config.from_object(config_object)
-    
 
     db.init_app(app)
     migrate = Migrate(app, db)
@@ -44,6 +41,5 @@ def create_app(config_object):
     app.register_blueprint(URL_map_resouce_bp)
     app.register_blueprint(collection_bp)
     app.register_blueprint(background_task_bp)
-    
 
     return app

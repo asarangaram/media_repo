@@ -2,7 +2,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv('.flaskenv')
+load_dotenv(".flaskenv")
 
 
 def get_required_env_variable(var_name):
@@ -21,14 +21,14 @@ def check_path(path):
 
 def get_db_uri():
     try:
-        use_mysql = get_required_env_variable('USE_MYSQL')
+        use_mysql = get_required_env_variable("USE_MYSQL")
     except BaseException:
         use_mysql = False
 
-    repo = get_required_env_variable('IMAGE_REPO_DB')
+    repo = get_required_env_variable("IMAGE_REPO_DB")
     if use_mysql:
-        user = get_required_env_variable('IMAGE_REPO_DB_ADMIN')
-        password = get_required_env_variable('IMAGE_REPO_DB_ADMIN_PW')
+        user = get_required_env_variable("IMAGE_REPO_DB_ADMIN")
+        password = get_required_env_variable("IMAGE_REPO_DB_ADMIN_PW")
         return f"mysql+pymysql://{user}:{password}@localhost/{repo}"
     elif check_path(repo):
         return f"sqlite:///{repo}"
@@ -37,15 +37,15 @@ def get_db_uri():
 
 
 class ConfigClass(object):
-    APP_NAME = get_required_env_variable('APP_NAME')
+    APP_NAME = get_required_env_variable("APP_NAME")
     API_TITLE = APP_NAME
     API_VERSION = "v1"
     PROPAGATE_EXCEPTIONS = True
 
     try:
-        SECRET_KEY = get_required_env_variable('FLASK_SECRET_KEY1')
+        SECRET_KEY = get_required_env_variable("FLASK_SECRET_KEY1")
     except BaseException:
-        SECRET_KEY = 'Secret!'
+        SECRET_KEY = "Secret!"
 
     API_VERSION = "v1"
     OPENAPI_VERSION = "3.0.2"
@@ -66,8 +66,8 @@ class ConfigClass(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # File Save
-    FILE_STORAGE_LOCATION = get_required_env_variable('FILE_STORAGE_LOCATION')
-    STREAM_STORAGE_LOCATION = f'{FILE_STORAGE_LOCATION}/streams'
+    FILE_STORAGE_LOCATION = get_required_env_variable("FILE_STORAGE_LOCATION")
+    STREAM_STORAGE_LOCATION = f"{FILE_STORAGE_LOCATION}/streams"
 
-    CELERY_BROKER_URL = 'redis://localhost:6379/0'
-    CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+    CELERY_BROKER_URL = "redis://localhost:6379/0"
+    CELERY_RESULT_BACKEND = "redis://localhost:6379/0"

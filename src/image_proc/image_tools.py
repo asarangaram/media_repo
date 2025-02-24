@@ -4,16 +4,16 @@ from pillow_heif import register_heif_opener
 
 register_heif_opener()
 
+
 class ImageToolsException(Exception):
     pass
 
-class ImageTools(object):
 
+class ImageTools(object):
     def __init__(self, filename):
         self.image_name = filename
 
     def __enter__(self):
-
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -24,7 +24,7 @@ class ImageTools(object):
         try:
             image = Image.open(self.image_name)
             image.thumbnail((256, 256))
-            image.save(thumbnail, format='png')
+            image.save(thumbnail, format="png")
             # image.save(f"{self.image_name}.png", format='png')
             # temp = BytesIO()
             # image.save(temp, format='png')

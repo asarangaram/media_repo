@@ -5,14 +5,13 @@ from src.endpoint.media.media_types import determine_media_type, MediaType
 
 
 class TestMediaTypeDetection(unittest.TestCase):
-
     def setUp(self):
         self.test_cases = {
-            'images/Screenshot 2024-07-17 at 19.30.57.jpeg': MediaType.IMAGE,
+            "images/Screenshot 2024-07-17 at 19.30.57.jpeg": MediaType.IMAGE,
         }
 
     def read_file(self, file_path):
-        with open(file_path, 'rb') as file:
+        with open(file_path, "rb") as file:
             return file.read()
 
     def test_media_types(self):
@@ -27,5 +26,6 @@ class TestMediaTypeDetection(unittest.TestCase):
         # Clean up if needed
         pass
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

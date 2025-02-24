@@ -22,8 +22,11 @@ def measure_time(func):
         result = func(*args, **kwargs)
         end_time = time.time()
         execution_time = (end_time - start_time) * 1000  # Convert to milliseconds
-        logger.info(f"{func.__name__} Execution time: {execution_time:.2f} ms, {result}")
+        logger.info(
+            f"{func.__name__} Execution time: {execution_time:.2f} ms, {result}"
+        )
         return result
+
     return wrapper
 
 
@@ -39,10 +42,14 @@ class FaceScanner(FaceDB):
 
                 self.update(method, faces)
 
-                self.save_faces(method, img, )
+                self.save_faces(
+                    method,
+                    img,
+                )
             else:
                 logger.critical(
-                    f'Error: decode failed, image id {self.json["id"]}, path:{self.json["path"]}')
+                    f'Error: decode failed, image id {self.json["id"]}, path:{self.json["path"]}'
+                )
         return self
 
     def save_faces(self, method, img):
@@ -54,28 +61,29 @@ class FaceScanner(FaceDB):
 
     def get_path(self, i, method):
         path = os.path.dirname(self.json["path"])
-        output_path = os.path.join(path, f'face_{str(i).zfill(4)}.png')
+        output_path = os.path.join(path, f"face_{str(i).zfill(4)}.png")
         output_path = output_path.replace("image_repo", f"image_repo_faces_by_{method}")
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         return output_path
 
 
 @measure_time
-def scan_db_for_faces(start=0, count=1000, db_uri=ConfigClass.SQLALCHEMY_DATABASE_URI, ):
+def scan_db_for_faces(
+    start=0,
+    count=1000,
+    db_uri=ConfigClass.SQLALCHEMY_DATABASE_URI,
+):
     images = ImageDB(db_uri).get_images(limit=count, offset=start)
     with DBase(db_uri) as db:
         FaceScanner.create_table(db.session)
         for image in images:
-            FaceScanner(
-                db.session,
-                image).detect_faces(
-                "facenet_pytorch",
-                detect_faces,
-                retry=True).save()
+            FaceScanner(db.session, image).detect_faces(
+                "facenet_pytorch", detect_faces, retry=True
+            ).save()
     return f"start={start}, count={count}"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     batch_size = 100
 
     for i in range(578):

@@ -2,7 +2,7 @@ import json
 import sqlalchemy as db
 
 # Create a SQLite database in memory (you can use a different database URL)
-database_url = 'sqlite:///:memory:'
+database_url = "sqlite:///:memory:"
 isFlask = False
 if not isFlask:
     from sqlalchemy import create_engine
@@ -63,7 +63,9 @@ class EXIFModel(Base):
             setattr(self, key, value)
 
     def __repr__(self):
-        attributes = ', '.join([f"{key}={value}" for key, value in self.__dict__.items()])
+        attributes = ", ".join(
+            [f"{key}={value}" for key, value in self.__dict__.items()]
+        )
         return f"EXIFModel({attributes})"
 
     @classmethod
@@ -106,7 +108,7 @@ class EXIFModel(Base):
         return all
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     json_exif = """{
         "ISO": 640,
         "Make": "Microsoft",

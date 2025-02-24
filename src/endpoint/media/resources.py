@@ -37,6 +37,7 @@ def mask_errors(func):
             return func(*args, **kwargs)
         except Exception as e:
             raise InternalServerError(f"{e}")
+
     return wrapper
 
 
@@ -65,7 +66,7 @@ class MediaList(MethodView):
     def get(cls, kargs):
         # print((kargs['type'][0]))
         # print(type(kargs['type'][0]))
-        res = list(MediaModel.get_all(types=kargs['type']))
+        res = list(MediaModel.get_all(types=kargs["type"]))
         return res
 
     @media_bp.response(200)
@@ -145,7 +146,9 @@ class get_m3u8(MethodView):
             NotFound("Media not found")
         stream_folder = media.get_stream_folder()
         try:
-            return send_from_directory(stream_folder, "adaptive.m3u8", as_attachment=False)
+            return send_from_directory(
+                stream_folder, "adaptive.m3u8", as_attachment=False
+            )
         except FileNotFoundError:
             raise NotFound(description="M3U8 file not found")
 

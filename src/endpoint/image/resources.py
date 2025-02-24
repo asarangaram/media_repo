@@ -7,11 +7,12 @@ from werkzeug.exceptions import UnsupportedMediaType
 
 import logging
 
-from .schemas import MultipartFileSchema, ImageSchema,ErrorSchema
+from .schemas import MultipartFileSchema, ImageSchema, ErrorSchema
 
 from .models import ImageModel
 
 image_bp = Blueprint("image_bp", __name__, url_prefix="/image")
+
 
 class RepoException(Exception):
     pass
@@ -27,22 +28,22 @@ class Upload(MethodView):
         image = files["image"]
         if image.filename == "":
             logging.debug("No image name provided")
-            raise UnsupportedMediaType('Image name is not specified')
+            raise UnsupportedMediaType("Image name is not specified")
         object, err = ImageModel.create(image=image)
-        if err :
+        if err:
             raise UnsupportedMediaType(str(err))
-        if not object :
-            raise UnsupportedMediaType('unexpected error')
-            
-        return object
-    
+        if not object:
+            raise UnsupportedMediaType("unexpected error")
 
-@image_bp.route('/upload/form')
+        return object
+
+
+@image_bp.route("/upload/form")
 class TestUpload(MethodView):
     def get(self):
-        headers = {'Content-Type': 'text/html'}
-        return make_response(render_template('upload.html'), 200,
-                             headers)
+        headers = {"Content-Type": "text/html"}
+        return make_response(render_template("upload.html"), 200, headers)
+
 
 @image_bp.route("/<int:image_id>")
 class Image(MethodView):
@@ -65,6 +66,7 @@ class Image(MethodView):
             return {"message": e}, 400
         return {"success": "Image deleted successfully"}
 
+
 @image_bp.route("/list")
 class Images(MethodView):
     def get(cls):
@@ -79,6 +81,7 @@ class Images(MethodView):
             return {"message": e}, 400
         return {"images": all}, 201
 
+
 @image_bp.route("/<int:image_id>/metadata")
 class ImageMetadata(MethodView):
     def get(cls, image_id: int):
@@ -87,6 +90,7 @@ class ImageMetadata(MethodView):
             return {"message": e}, 400
 
         return metadata, 201
+
 
 @image_bp.route("/<int:image_id>/thumbnail")
 class ImageThumbnail(MethodView):
@@ -99,7 +103,9 @@ class ImageThumbnail(MethodView):
             if e:
                 return {"message": e}, 400
             return send_file(
-                thumbnail, mimetype="image/jpeg", download_name=f"{image_id}_thumbnail.png"
+                thumbnail,
+                mimetype="image/jpeg",
+                download_name=f"{image_id}_thumbnail.png",
             )
 
         except Exception as e:

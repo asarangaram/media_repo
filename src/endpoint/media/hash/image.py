@@ -8,6 +8,7 @@ import time
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 register_heif_opener()
 
+
 def sha512hash_image(image_stream: BytesIO):
     start_time = time.time()
     with Image.open(image_stream) as im:
