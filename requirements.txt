@@ -1,6 +1,7 @@
 Flask
 Flask-SQLAlchemy
 SQLAlchemy
+sqlalchemy_continuum
 flask_smorest
 Flask-RangeRequest
 marshmallow

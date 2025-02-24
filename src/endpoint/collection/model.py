@@ -8,6 +8,7 @@ from ...db import db
 
 class CollectionModel(db.Model):
     __private_key = object()
+    __versioned__ = {}
 
     __tablename__ = "collection"
     id = db.Column(db.Integer, primary_key=True)

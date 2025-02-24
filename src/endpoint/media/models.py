@@ -28,6 +28,7 @@ from .media_types import MediaType, determine_media_type, determine_mime
 
 class MediaModel(db.Model):
     __private_key = object()
+    __versioned__ = {}
 
     __tablename__ = "media"
     id = db.Column(db.Integer, primary_key=True)

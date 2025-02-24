@@ -4,6 +4,8 @@ from celery import Celery
 from flask import Flask
 
 from src.celery import CeleryTasks
+from src.endpoint.collection.model import CollectionModel
+from src.endpoint.media.models import MediaModel
 
 from .db import db
 from .endpoint.landing.resources import landing_bp
@@ -14,6 +16,7 @@ from .endpoint.urlmap.resources import URL_map_resouce_bp
 from .endpoint.collection.resources import collection_bp
 from . import lock
 from flask_migrate import Migrate
+from sqlalchemy_continuum import version_class
 
 from .endpoint.urlmap.resources import URLMapResource
 from .endpoint.background.resources import background_task_bp
@@ -29,6 +32,11 @@ def create_app(config_object):
 
     db.init_app(app)
     migrate = Migrate(app, db)
+    db.configure_mappers()
+
+    CollectionVersion = version_class(CollectionModel)
+    MediaVersion = version_class(MediaModel)
+
     with app.app_context():
         db.create_all()
 
