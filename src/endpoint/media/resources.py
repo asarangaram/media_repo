@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from datetime import datetime
 from functools import wraps
 from io import BytesIO
@@ -19,7 +20,9 @@ from .schemas import (
     MediaSchemaGETQuery,
     ErrorSchema,
 )
-
+from ...db import db
+from sqlalchemy import func
+from sqlalchemy_continuum import version_class
 from .models import MediaModel
 
 media_bp = Blueprint("media_bp", __name__, url_prefix="/media")
@@ -73,6 +76,133 @@ def create_media_resources(MediaVersion):
         @media_bp.response(200)
         def delete(cls):
             return MediaModel.delete_all()
+
+    @media_bp.route("/page")
+    class PaginatedResource(MethodView):
+        @media_bp.arguments(MediaSchemaGETQuery, location="query")
+        @media_bp.response(200)
+        def get(cls, kargs):
+            current_version = request.args.get("current_version", type=int)
+            last_known_version = request.args.get("last_known_version", type=int)
+            page = request.args.get("page", default=1, type=int)
+            per_page = request.args.get("per_page", None, type=int)
+
+            if page > 1 and (current_version is None or per_page is None):
+                return (
+                    jsonify(
+                        {
+                            "error": "current_version and per_page are required to get further pages"
+                        }
+                    ),
+                    400,
+                )
+
+            try:
+                VersionModel = version_class(MediaVersion)
+
+                # Get min and max versions available
+                version_query = db.session.query(
+                    func.min(VersionModel.transaction_id).label("min_version"),
+                    func.max(VersionModel.transaction_id).label("max_version"),
+                ).one()
+
+                min_version = (
+                    version_query.min_version or 0
+                )  # Handle case with no versions
+                max_version = version_query.max_version or 0
+
+                # Set defaults if versions are not provided
+                effective_current_version = (
+                    current_version if current_version is not None else max_version
+                )
+                effective_last_version = (
+                    last_known_version
+                    if last_known_version is not None
+                    else min_version
+                )
+
+                # Validate versions
+                if effective_current_version < effective_last_version:
+                    return (
+                        jsonify(
+                            {
+                                "error": "Current version must be greater than or equal to last known version"
+                            }
+                        ),
+                        400,
+                    )
+
+                if max_version > 0:  # Only check bounds if we have versions
+                    if (
+                        effective_current_version > max_version
+                        or effective_last_version < min_version
+                    ):
+                        return jsonify({"error": "Version numbers out of range"}), 400
+
+                # Base query for modified items
+                subquery = (
+                    MediaVersion.query.filter(
+                        VersionModel.transaction_id > effective_last_version,
+                        VersionModel.transaction_id <= effective_current_version,
+                    )
+                    .group_by(MediaVersion.id)
+                    .subquery()
+                )
+
+                query = db.session.query(MediaVersion).join(
+                    subquery,
+                    (MediaVersion.id == subquery.c.id)
+                    & (MediaVersion.transaction_id == subquery.c.transaction_id),
+                )
+
+                # Get total count for pagination
+                total_items = query.count()
+
+                # Apply pagination
+                if per_page:
+                    total_pages = (total_items + per_page - 1) // per_page
+                    paginated_query = (
+                        query.order_by(VersionModel.id.desc())
+                        .limit(per_page)
+                        .offset((page - 1) * per_page)
+                    )
+
+                    # Execute query
+                    paginated = paginated_query.all()
+                else:
+                    paginated = query.all()
+                    total_pages = 1
+
+                items = [MediaSchemaGET().dump(item) for item in paginated]
+
+                # Format response
+                response = OrderedDict()
+
+                response["items"] = items
+
+                response["meta_info"] = {
+                    "count": len(items),
+                    "current_version": effective_current_version,
+                    "last_known_version": effective_last_version,
+                    "latest_version": max_version,
+                    "updates_available": effective_current_version < max_version,
+                }
+                if per_page:
+                    response["meta_info"]["pagination"] = {
+                        "current_page": page,
+                        "per_page": per_page if per_page else total_items,
+                        "total_items": total_items,
+                        "total_pages": total_pages,
+                        "has_next": page < total_pages,
+                        "has_previous": page > 1,
+                    }
+
+                return jsonify(response), 200
+
+            except Exception as e:
+                MediaVersion.rollback()
+                print(str(e))
+                return jsonify({"error": str(e)}), 500
 
     @media_bp.route("/<int:media_id>")
     class Media(MethodView):

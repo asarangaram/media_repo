@@ -36,6 +36,8 @@ class MediaFileSchemaPUT(Schema):
 
 class MediaSchemaGETQuery(Schema):
     type = fields.List(MediaTypeField(), required=True)
+    page = fields.Int(required=False)
+    per_page = fields.Int(required=False)
 
     @post_load
     def convert(self, data, **kwargs):
