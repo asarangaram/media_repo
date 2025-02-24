@@ -11,9 +11,9 @@ from .db import db
 from .endpoint.landing.resources import landing_bp
 
 # from .endpoint.image.resources import image_bp
-from .endpoint.media.resources import media_bp
+from .endpoint.media.resources import create_media_resources, media_bp
 from .endpoint.urlmap.resources import URL_map_resouce_bp
-from .endpoint.collection.resources import collection_bp
+from .endpoint.collection.resources import collection_bp, create_collection_resources
 from . import lock
 from flask_migrate import Migrate
 from sqlalchemy_continuum import version_class
@@ -36,6 +36,9 @@ def create_app(config_object):
 
     CollectionVersion = version_class(CollectionModel)
     MediaVersion = version_class(MediaModel)
+
+    create_collection_resources(CollectionVersion)
+    create_media_resources(MediaVersion)
 
     with app.app_context():
         db.create_all()
