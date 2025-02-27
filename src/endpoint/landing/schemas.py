@@ -11,9 +11,9 @@ class LandingPageResultSchema(Schema):
 
     def get_status(self, obj):
         items = [item.to_json() for item in ServerStatusModel.find_all()]
-        
+
         status = {}
         for d in items:
             status.update(d)
-        #print(f"status {status}")
+        # print(f"status {status}")
         return status

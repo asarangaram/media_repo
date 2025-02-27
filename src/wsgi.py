@@ -12,13 +12,14 @@ from src.celery import CeleryTasks
 from .app_factory import create_app
 from .config import ConfigClass
 
-app= create_app(ConfigClass)
+app = create_app(ConfigClass)
 CeleryTasks.init_celery(app)
 
 
 @app.errorhandler(IntegrityError)
 def handle_integrity_error(e):
     return jsonify({"error": "Database integrity error occurred"}), 400
+
 
 @app.errorhandler(HTTPException)
 def handle_exception(e):
@@ -58,20 +59,26 @@ def handle_unprocessable_entity(e):
     else:
         return jsonify({"errors": messages}), e.code
 
+
 @app.errorhandler(InternalServerError)
 def internalservererror(e):
     return jsonify({"error": e.description}), e.code
+
 
 @app.errorhandler(TypeError)
 def typerror(e):
     return jsonify({"error": e}), 500
 
 
-
 @app.errorhandler(Exception)
 def handle_validation_error(error):
     try:
-        message = "; ".join([f"{field}: {'; '.join(messages)}" for field, messages in error.messages.items()])
+        message = "; ".join(
+            [
+                f"{field}: {'; '.join(messages)}"
+                for field, messages in error.messages.items()
+            ]
+        )
     except:
         message = error
 
@@ -83,7 +90,4 @@ def handle_validation_error(error):
 
 
 if __name__ == "__main__":
-    app.run( 
-        host='0.0.0.0', port=5000,
-        debug=True, threaded=True
-    )
+    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)

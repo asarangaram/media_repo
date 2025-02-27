@@ -9,8 +9,10 @@ from ...db import db
 from ...image_proc.metadata import ExifTool
 import humanize
 
+
 class ImageModelException(Exception):
     pass
+
 
 class EXIFModel(db.Model):
     __private_key = object()
@@ -19,7 +21,7 @@ class EXIFModel(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
 
-    image_id = db.Column(db.Integer, db.ForeignKey('images.id'))
+    image_id = db.Column(db.Integer, db.ForeignKey("images.id"))
 
     FileSize = db.Column(db.Integer)
     MIMEType = db.Column(db.Text)
@@ -80,7 +82,9 @@ class EXIFModel(db.Model):
                 self.__delattr__("DateTimeOriginal")
 
     def __repr__(self):
-        attributes = ', '.join([f"{key}={value}" for key, value in self.__dict__.items()])
+        attributes = ", ".join(
+            [f"{key}={value}" for key, value in self.__dict__.items()]
+        )
         return f"EXIFModel({attributes})"
 
     @classmethod

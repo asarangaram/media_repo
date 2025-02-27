@@ -2,15 +2,25 @@ from datetime import datetime
 from flask import request
 from flask_smorest.fields import Upload
 from werkzeug.utils import secure_filename
-from marshmallow import Schema, ValidationError, fields, post_load, validates_schema, validate
-from werkzeug.exceptions import  InternalServerError
+from marshmallow import (
+    Schema,
+    ValidationError,
+    fields,
+    post_load,
+    validates_schema,
+    validate,
+)
+from werkzeug.exceptions import InternalServerError
 from src.endpoint.collection.model import CollectionModel
 
 
-from .media_types import IntigerizedBool, MediaTypeField, MediaType, MillisecondsSinceEpoch
+from .media_types import (
+    IntigerizedBool,
+    MediaTypeField,
+    MediaType,
+    MillisecondsSinceEpoch,
+)
 
-
-        
 
 class MediaFileSchemaPOST(Schema):
     media = Upload(required=True, error_messages={"required": "media is required."})
@@ -23,15 +33,18 @@ class MediaFileSchemaPUT(Schema):
 ## All fields are mandatory when reading
 ## Few are optional for POST, and almost all except id are optional for PUT
 
+
 class MediaSchemaGETQuery(Schema):
     type = fields.List(MediaTypeField(), required=True)
-    
+    page = fields.Int(required=False)
+    per_page = fields.Int(required=False)
+
     @post_load
     def convert(self, data, **kwargs):
         # Convert strings to MediaType enum instances
-        data['type'] = [MediaType(t) for t in data['type']]
+        data["type"] = [MediaType(t) for t in data["type"]]
         return data
-    
+
 
 class MediaSchemaPOST(Schema):
     class Meta:
@@ -43,14 +56,13 @@ class MediaSchemaPOST(Schema):
         required=True, error_messages={"required": "collectionLabel is required."}
     )
 
-    
     originalDate = MillisecondsSinceEpoch(
         error_messages={"invalid": "originalDate: Invalid date format."}
     )
-    createdDate = MillisecondsSinceEpoch( 
+    createdDate = MillisecondsSinceEpoch(
         error_messages={"invalid": "createdDate: Invalid date format."}
     )
-    
+
     ref = fields.Str()
     isDeleted = IntigerizedBool()
     notes = fields.List(fields.Int())
@@ -59,7 +71,8 @@ class MediaSchemaPOST(Schema):
     def validate_at_least_one(self, data, **kwargs):
         print(data)
         print(kwargs)
-        values =    [data.get(variable)
+        values = [
+            data.get(variable)
             for variable in [
                 "name",
                 "collectionLabel",
@@ -67,22 +80,24 @@ class MediaSchemaPOST(Schema):
                 "ref",
                 "isDeleted",
                 "notes",
-                'createdDate',
-                'updatedDate',
-            ]] 
-        print (values)
+                "createdDate",
+                "updatedDate",
+            ]
+        ]
+        print(values)
 
 
 class MediaSchemaPUT(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
+
     updatedDate = MillisecondsSinceEpoch(
         error_messages={"invalid": "updatedDate: Invalid date format."}
     )
 
     name = fields.Str()
     collectionLabel = fields.Str()
-    
+
     originalDate = MillisecondsSinceEpoch(
         error_messages={"invalid": "originalDate: Invalid date format."}
     )
@@ -118,7 +133,8 @@ class MediaSchemaPUT(Schema):
             ) """
         print(data)
         print(kwargs)
-        values =    [data.get(variable)
+        values = [
+            data.get(variable)
             for variable in [
                 "name",
                 "collectionLabel",
@@ -126,17 +142,17 @@ class MediaSchemaPUT(Schema):
                 "ref",
                 "isDeleted",
                 "notes",
-                'createdDate',
-                'updatedDate',
-            ]] 
-        print (f'PUT/Incoming: {values}')
+                "createdDate",
+                "updatedDate",
+            ]
+        ]
+        print(f"PUT/Incoming: {values}")
 
 
 class MediaSchemaGET(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
 
-    
     server_uid = fields.Int(attribute="id", data_key="serverUID", dump_only=True)
     name = fields.Str(required=True, error_messages={"required": "name is required."})
     type = MediaTypeField(
@@ -168,15 +184,14 @@ class MediaSchemaGET(Schema):
         required=True,
     )
 
-     
     collectionLabel = fields.Method("get_collection_label", dump_only=True)
 
     def get_collection_label(self, obj):
-        if hasattr(obj, 'collectionId'):
+        if hasattr(obj, "collectionId"):
             collection = CollectionModel.find_by_id(obj.collectionId)
             return collection.label
         else:
-            raise  InternalServerError('couldnot get collection label')
+            raise InternalServerError("couldnot get collection label")
 
 
 class ErrorSchema(Schema):

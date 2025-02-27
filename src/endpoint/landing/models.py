@@ -1,4 +1,3 @@
-
 import uuid
 from ...db import db
 from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
@@ -12,12 +11,11 @@ Consult the API documentation or relevant resources to identify the correct endp
 
 
 class LandingPageModel:
-    def __init__(self, name='colan_server'):
+    def __init__(self, name="colan_server"):
         self.name = name
         self.info = _info
-        self.id = 100 # TODO: FIND A UNIQUE ID FOR EACH SERVER AND REPLACE 
-        
-        
+        self.id = 100  # TODO: FIND A UNIQUE ID FOR EACH SERVER AND REPLACE
+
 
 class ServerStatusModel(db.Model):
     __private_key = object()
@@ -27,15 +25,19 @@ class ServerStatusModel(db.Model):
     name = db.Column(db.UnicodeText, nullable=False, unique=True)
     updatedDate = db.Column(db.DateTime, nullable=False)
 
-    def __init__(self,tableName, private_key=None, ):
+    def __init__(
+        self,
+        tableName,
+        private_key=None,
+    ):
         if private_key != ServerStatusModel.__private_key:
             raise InternalServerError("Use Class Method  create / update.")
         self.name = tableName
-        
+
     def save_to_db(self):
         db.session.add(self)
         db.session.commit()
-    
+
     def delete_from_db(self):
         db.session.delete(self)
         db.session.commit()
@@ -57,10 +59,12 @@ class ServerStatusModel(db.Model):
         return all
 
     @classmethod
-    def update_time_stamp(cls,tableName ):
-        entity = cls.find_by_name(tableName)  
+    def update_time_stamp(cls, tableName):
+        entity = cls.find_by_name(tableName)
         if not entity:
-            entity = ServerStatusModel(tableName, private_key=cls.__private_key,)
-        entity.updatedDate =  datetime.now()
+            entity = ServerStatusModel(
+                tableName,
+                private_key=cls.__private_key,
+            )
+        entity.updatedDate = datetime.now()
         entity.save_to_db()
-    

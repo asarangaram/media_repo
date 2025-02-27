@@ -17,7 +17,8 @@ class DBase(object):
 
 
 class ImageDB(DBase):
-    """ This is a read-only table """
+    """This is a read-only table"""
+
     select_query = """ LIMIT 0, 20"""
 
     def get_images(self, limit=None, offset=None):

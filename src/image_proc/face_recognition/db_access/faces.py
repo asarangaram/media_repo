@@ -1,4 +1,3 @@
-
 import os
 import json
 
@@ -13,8 +12,7 @@ It is intentional that create_all() is not called
 
 
 class FaceDB(Base):
-
-    __tablename__ = 'faces'
+    __tablename__ = "faces"
 
     create_table_query = """
         CREATE TABLE IF NOT EXISTS faces (

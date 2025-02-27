@@ -8,17 +8,18 @@ from ...db import db
 
 class CollectionModel(db.Model):
     __private_key = object()
+    __versioned__ = {}
 
     __tablename__ = "collection"
     id = db.Column(db.Integer, primary_key=True)
     label = db.Column(db.UnicodeText, nullable=False, unique=True)
     description = db.Column(db.UnicodeText, nullable=True)
     createdDate = db.Column(db.DateTime, nullable=False)
-    updatedDate = db.Column(db.DateTime, nullable=False)   
+    updatedDate = db.Column(db.DateTime, nullable=False)
     isDeleted = db.Column(db.Boolean, default=False, nullable=False)
     media = db.relationship("MediaModel", uselist=True, backref="collection")
 
-    def __init__( self, private_key=None, **kwargs ):
+    def __init__(self, private_key=None, **kwargs):
         if private_key != CollectionModel.__private_key:
             raise InternalServerError("Use Class Method  create / update.")
         timeNow = datetime.now()
@@ -52,8 +53,8 @@ class CollectionModel(db.Model):
         return all
 
     @classmethod
-    def create( cls,   **kwargs):
-        """ 
+    def create(cls, **kwargs):
+        """
         If the label is present, we return the existing one, else
         create one. Note, we can't provide description here.
         """
@@ -61,43 +62,43 @@ class CollectionModel(db.Model):
         entity = cls.find_by_label(label=kwargs.get("label"))
         if entity:
             # update values? debate
-            return entity 
-        entity = CollectionModel(private_key=cls.__private_key,**kwargs )
+            return entity
+        entity = CollectionModel(private_key=cls.__private_key, **kwargs)
         entity.save_to_db()
         return entity
-    
+
     @classmethod
     def get(cls, id):
         entity = cls.find_by_id(id)
         if not entity:
             raise NotFound(f"Entity with id {id} not found")
         return entity
-    
+
     @classmethod
     def get_all(cls):
         return cls.find_all()
-    
+
     @classmethod
     def update(cls, id, **kwargs):
         time_now = datetime.now()
-        entity:CollectionModel|None = cls.find_by_id(id=id)
+        entity: CollectionModel | None = cls.find_by_id(id=id)
         if not entity:
             raise NotFound(f"Entity with id {id} not found")
-        entity.label = kwargs.get("label",  entity.label)
+        entity.label = kwargs.get("label", entity.label)
         entity.description = kwargs.get("description", entity.description)
         entity.createdDate = kwargs.get("createdDate", entity.createdDate)
         entity.updatedDate = kwargs.get("updatedDate", entity.updatedDate)
-        entity.isDeleted = kwargs.get("isDeleted", entity.isDeleted )
+        entity.isDeleted = kwargs.get("isDeleted", entity.isDeleted)
         entity.save_to_db()
         return entity
-    
+
     @classmethod
     def delete(cls, id):
-        entity:CollectionModel|None = cls.find_by_id(id=id)
+        entity: CollectionModel | None = cls.find_by_id(id=id)
         if not entity:
             raise NotFound(f"Entity with id {id} not found")
         if entity.media:
-            raise InternalServerError(f"Can't delete actively used collection. Remove media before deleting the collection")
+            raise InternalServerError(
+                f"Can't delete actively used collection. Remove media before deleting the collection"
+            )
         entity.delete_from_db()
-                
-        
