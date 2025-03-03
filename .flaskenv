@@ -1,8 +1,8 @@
 FLASK_APP = 'src.wsgi'
 FLASK_DEBUG = True
-APP_NAME = "Image Repo"
-IMAGE_REPO_DB = '/disks/data/aana.ohana.media/media_sqlite.db'
-FILE_STORAGE_LOCATION = '/disks/data/aana.ohana.media/media'
+APP_NAME = "CoLAN server"
+IMAGE_REPO_DB = '/colan_storage/colan.db'
+FILE_STORAGE_LOCATION = '/colan_storage'
 
 # FLASK_SECRET_KEY1
 

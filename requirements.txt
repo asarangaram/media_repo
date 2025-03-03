@@ -15,9 +15,9 @@ python-magic
 python-dotenv
 pytz
 humanize
-python-dotenv
 httpie
 pytest
 flask_migrate
 python-magic
 m3u8
+celery[librabbitmq,redis,auth,msgpack]
