@@ -2,7 +2,10 @@ import os
 from celery import Celery
 from src.config import ConfigClass
 from src.endpoint.media.media_types import MediaType
-from src.image_proc.hls_stream_generator import HLSStreamGenerator, HLSVariant
+from src.media_processing.hls_streaming.hls_stream_generator import (
+    HLSStreamGenerator,
+    HLSVariant,
+)
 
 celery = Celery(
     "tasks", broker="redis://localhost:6379/0", backend="redis://localhost:6379/0"
@@ -34,8 +37,12 @@ class CeleryTasks:
         if media:
             media_path = media.absolute_path()
             preview_path = media.preview_absolute_path_name()
-            from .utils.image_thumbnail import create_image_thumbnail
-            from .utils.video_thumbnail import create_video_thumbnail4x4
+            from .media_processing.create_thumbnails.image_thumbnail import (
+                create_image_thumbnail,
+            )
+            from .media_processing.create_thumbnails.video_thumbnail import (
+                create_video_thumbnail4x4,
+            )
 
             if media.type == MediaType.VIDEO:
                 create_video_thumbnail4x4(media_path, preview_path)

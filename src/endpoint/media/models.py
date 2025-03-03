@@ -14,15 +14,20 @@ from src.endpoint.background.models import BackgroundTaskModel
 
 from ...endpoint.background.wrapper import startBackgroundProcess
 from ...endpoint.landing.models import ServerStatusModel
-from ...image_proc.hls_stream_generator import HLSStreamGenerator, HLSVariant
+from ...media_processing.hls_streaming.hls_stream_generator import (
+    HLSStreamGenerator,
+    HLSVariant,
+)
 
 from ..collection.model import CollectionModel
 
 from .hash.md5 import get_md5_hexdigest
 from ...db import db
 from ...config import ConfigClass
-from ...utils.image_thumbnail import create_image_thumbnail
-from ...utils.video_thumbnail import create_video_thumbnail4x4
+from ...media_processing.create_thumbnails.image_thumbnail import create_image_thumbnail
+from ...media_processing.create_thumbnails.video_thumbnail import (
+    create_video_thumbnail4x4,
+)
 from .media_types import MediaType, determine_media_type, determine_mime
 
 
