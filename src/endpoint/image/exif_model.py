@@ -6,7 +6,7 @@ from dateutil import parser
 
 from ...utils.text2date import Text2Time
 from ...db import db
-from ...image_proc.metadata import ExifTool
+from .exif_tool import ExifTool
 import humanize
 
 

@@ -6,14 +6,14 @@ import base64
 from werkzeug.datastructures import FileStorage
 from datetime import datetime
 
-from .metadata import EXIFModel
+from .exif_model import EXIFModel
 
 from ...db import db
 from ...config import ConfigClass
-from ...image_proc import hash
-from ...image_proc.file_utilities import load_image_from_werkzeug_cache as image_loader
+from . import hash
+from .file_utilities import load_image_from_werkzeug_cache as image_loader
 
-from ...image_proc.image_tools import ImageTools
+from .image_tools import ImageTools
 
 
 class ImageModelException(Exception):
