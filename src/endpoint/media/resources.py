@@ -109,6 +109,10 @@ def create_media_resources(MediaVersion):
                 min_version = (
                     version_query.min_version or 0
                 )  # Handle case with no versions
+                # min version, bettter to set 0
+                # need to investigate why the min version is set to 2
+                # in version query.
+                min_version = 0
                 max_version = version_query.max_version or 0
 
                 # Set defaults if versions are not provided
