@@ -118,22 +118,17 @@ class MediaModel(db.Model):
             raise InternalServerError(f"failed to generate preview {e}")
 
     def save(self, overwrite=True):
-        if self.id:
-            if not self.fExt:
-                self.fExt = mimetypes.guess_extension(self.content_type)
-            self.path = os.path.join(
-                self.content_type, f"media_{str(self.id)}{self.fExt}"
-            )
-            path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            self.__bytes_io.seek(0)
-            with open(path, "wb") as file:
-                file.write(self.__bytes_io.getvalue())
-            del self.__bytes_io
-            preview = self.preview_absolute_path_name()
-            self.generate_preview(path, preview)
-        else:
-            raise InternalServerError("Media not in DB")
+        if not self.fExt:
+            self.fExt = mimetypes.guess_extension(self.content_type)
+        self.path = os.path.join(self.content_type, f"media_{str(self.id)}{self.fExt}")
+        path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        self.__bytes_io.seek(0)
+        with open(path, "wb") as file:
+            file.write(self.__bytes_io.getvalue())
+        del self.__bytes_io
+        preview = self.preview_absolute_path_name()
+        self.generate_preview(path, preview)
 
     @classmethod
     def create(cls, **kwargs):
@@ -160,10 +155,10 @@ class MediaModel(db.Model):
         entity = MediaModel(
             private_key=cls.__private_key, md5String=md5String, **kwargs
         )
-        entity.save_to_db()  # So that we get id!
+
         entity.save()
         entity.save_to_db()
-        startBackgroundProcess(entity.id)
+        # startBackgroundProcess(entity.id)
 
         return entity
 

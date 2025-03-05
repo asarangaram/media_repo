@@ -58,7 +58,8 @@ class CollectionUpdateSchema(Schema):
 
     @validates_schema
     def validate_at_least_one(self, data, **kwargs):
-        print(data)
+        pass
+        # print(data)
         """ if not data.get("label") and not data.get("description"):
             raise ValidationError("Either 'label' or 'description' must be provided.") """
 
