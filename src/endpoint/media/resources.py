@@ -184,21 +184,20 @@ def create_media_resources(MediaVersion):
 
                 response["items"] = items
 
-                response["meta_info"] = {
-                    "count": len(items),
-                    "current_version": effective_current_version,
-                    "last_known_version": effective_last_version,
-                    "latest_version": max_version,
-                    "updates_available": effective_current_version < max_version,
+                response["metaInfo"] = {
+                    "currentVersion": effective_current_version,
+                    "lastSyncedVersion": effective_last_version,
+                    "latestVersion": max_version,
+                    # "updates_available": effective_current_version < max_version,
                 }
                 if per_page:
-                    response["meta_info"]["pagination"] = {
-                        "current_page": page,
-                        "per_page": per_page if per_page else total_items,
-                        "total_items": total_items,
-                        "total_pages": total_pages,
-                        "has_next": page < total_pages,
-                        "has_previous": page > 1,
+                    response["metaInfo"]["pagination"] = {
+                        "currentPage": page,
+                        "perPage": per_page if per_page else total_items,
+                        "totalItems": total_items,
+                        "totalPages": total_pages,
+                        # "hasNext": page < total_pages,
+                        # "hasPrevious": page > 1,
                     }
 
                 return jsonify(response), 200
