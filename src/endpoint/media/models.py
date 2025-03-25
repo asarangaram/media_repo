@@ -30,6 +30,11 @@ from ..collection.model import CollectionModel
 
 
 class MediaModel(db.Model):
+    """
+    Represents a media item in the database.
+    This model handles metadata, file storage, preview generation, and other media-related operations.
+    """
+
     __private_key = object()
     __versioned__ = {}
 
@@ -46,6 +51,17 @@ class MediaModel(db.Model):
     task = db.relationship("BackgroundTaskModel", uselist=True, backref="media")
 
     def __init__(self, metaData: CLMetaData, private_key=None, **kwargs):
+        """
+        Initialize a MediaModel instance with metadata and optional attributes.
+
+        Args:
+            metaData (CLMetaData): Metadata object containing media details.
+            private_key: A private key to ensure proper instantiation.
+            **kwargs: Additional attributes such as name, collectionLabel, createdDate, etc.
+
+        Raises:
+            IncorrectUsageError: If the private key is invalid.
+        """
         if private_key != MediaModel.__private_key:
             raise IncorrectUsageError()
         timeNow = datetime.now()
@@ -67,19 +83,23 @@ class MediaModel(db.Model):
         self.md5 = metaData.md5
 
     def save_to_db(self):
+        """Save the current media instance to the database."""
         db.session.add(self)
         db.session.commit()
 
     def delete_from_db(self):
+        """Delete the current media instance from the database."""
         db.session.delete(self)
         db.session.commit()
 
     @property
     def type(self):
+        """Determine the media type based on its MIME type."""
         return MediaType.from_mime(self.MIMEType)
 
     @property
     def extension(self):
+        """Guess the file extension based on the MIME type. Defaults to '.bin' if unknown."""
         extension = mimetypes.guess_extension(self.MIMEType)
         if not extension:
             extension = ".bin"
@@ -87,21 +107,29 @@ class MediaModel(db.Model):
 
     @property
     def filename(self):
+        """Generate the relative filename for the media based on its content type and MD5 hash."""
         return os.path.join(self.content_type, f"{str(self.md5)}{self.extension}")
 
     @property
     def preview_filename(self):
+        """Generate the filename for the media's preview image."""
         return f"{self.filename}.tn.jpeg"
 
     @property
     def absolute_filename(self):
+        """Get the absolute path to the media file in the storage location."""
         return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.filename)
 
     @property
     def absolute_preview_filename(self):
+        """Get the absolute path to the media's preview image in the storage location."""
         return f"{self.absolute_filename}.tn.jpeg"
 
     def get_preview(self):
+        """
+        Retrieve the preview image for the media.
+        Generate the preview if it does not already exist.
+        """
         if not os.path.exists(self.absolute_filename):
             raise MissingMediaFileError()
 
@@ -136,6 +164,10 @@ class MediaModel(db.Model):
         metaData: CLMetaData,
         targetCollectionLabel: int,
     ):
+        """
+        Check if a media item with the same MD5 hash already exists.
+        If it exists in a different collection, raise a DuplicateItemError.
+        """
         entity: MediaModel | None = cls.get_by_md5String(metaData.md5)
         if entity:
             targetCollection = CollectionModel.find_by_label(targetCollectionLabel)
@@ -146,6 +178,10 @@ class MediaModel(db.Model):
 
     @classmethod
     def create(cls, metaData: CLMetaData, **kwargs):
+        """
+        Create a new media instance.
+        If the media is a duplicate, return the existing instance.
+        """
         if metaData.md5 is None:
             raise MissingMD5Error()
         if duplicate := cls.is_duplicate(metaData, kwargs.get("collectionLabel")):
@@ -156,6 +192,9 @@ class MediaModel(db.Model):
         return entity
 
     def __eq__(self, other):
+        """
+        Compare two media instances for equality based on their attributes.
+        """
         if not isinstance(other, self.__class__):
             return False
         return (
@@ -176,6 +215,10 @@ class MediaModel(db.Model):
 
     @classmethod
     def update(cls, _id, metaData: CLMetaData | None, **kwargs):
+        """
+        Update an existing media instance with new metadata or attributes.
+        If the updated media is a duplicate, raise a DuplicateItemError.
+        """
         currentEntity = cls.get(_id)
         updatedEntity = shutil.copy.deepcopy(currentEntity)
         if metaData:
@@ -209,6 +252,10 @@ class MediaModel(db.Model):
 
     @classmethod
     def get(cls, _id):
+        """
+        Retrieve a media instance by its ID.
+        Raise MissingMediaError if the media does not exist.
+        """
         media = cls.query.filter_by(id=_id).first()
         if not media:
             raise MissingMediaError()
@@ -217,6 +264,10 @@ class MediaModel(db.Model):
 
     @classmethod
     def get_all(cls, types=None):
+        """
+        Retrieve all media instances.
+        Optionally filter by media types.
+        """
         if not types:
             items = cls.query.all()
         else:
@@ -227,6 +278,9 @@ class MediaModel(db.Model):
 
     @classmethod
     def get_by_md5String(cls, md5String):
+        """
+        Retrieve a media instance by its MD5 hash.
+        """
         media = cls.query.filter_by(md5String=md5String).first()
         if media:
             media.fExt = mimetypes.guess_extension(media.content_type)
@@ -234,6 +288,10 @@ class MediaModel(db.Model):
 
     @classmethod
     def delete(cls, _id: int):
+        """
+        Delete a media instance by its ID.
+        Raise HardDeleteFailedError if the media is not marked as deleted.
+        """
         entity = cls.get(_id)
         if not entity.isDeleted:
             raise HardDeleteFailedError()
@@ -245,13 +303,17 @@ class MediaModel(db.Model):
 
     @classmethod
     def delete_all(cls):
+        """Delete all media instances from the database."""
         all = cls.query.all()
         for media in all:
             media.delete_from_db()
 
     @classmethod
     def wait_for_m3u8(self, master_pl: str, timeout: int = 60):
-        """Wait for adaptive.m3u8 file to be written within the timeout."""
+        """
+        Wait for the adaptive.m3u8 file to be created within the specified timeout.
+        Return False if the timeout is exceeded.
+        """
         start_time = time.time()
         while not os.path.exists(master_pl):
             elapsed_time = time.time() - start_time
@@ -263,6 +325,10 @@ class MediaModel(db.Model):
         return True
 
     def get_stream_folder(self):
+        """
+        Retrieve the folder containing the media's video stream.
+        If the stream does not exist, initiate its generation.
+        """
         if self.type != "video":  # why MediaType.VIDEO is not working?
             print(f"can't stream {self.id}. not a video")
             raise VideoStreamError(self.id, additionalMessage="not a video")
