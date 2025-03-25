@@ -42,7 +42,6 @@ class MediaModel(db.Model):
     ref = db.Column(db.UnicodeText, nullable=True)
     isDeleted = db.Column(db.Boolean, default=False, nullable=False)
 
-    path = db.Column(db.UnicodeText, nullable=True)
     # remove  uselist=True,?
     task = db.relationship("BackgroundTaskModel", uselist=True, backref="media")
 
@@ -75,34 +74,45 @@ class MediaModel(db.Model):
         db.session.delete(self)
         db.session.commit()
 
-    def absolute_path(self):
-        if self.path:
-            abs_path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
-            if os.path.exists(abs_path):
-                return abs_path
-        raise MissingMediaFileError()
-
-    def preview_absolute_path_name(self):
-        return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, f"{self.path}.tn.jpg")
-
-    def preview_path(self):
-        if self.path and os.path.exists(self.absolute_path()):
-            path = self.absolute_path()
-            preview = self.preview_absolute_path_name()
-            path = self.absolute_path()
-            if not os.path.exists(preview):
-                self.generate_preview(path, preview)
-            if os.path.exists(preview):
-                return preview
-        raise PreviewGenerationFailedError()
-
     @property
     def type(self):
         return MediaType.from_mime(self.MIMEType)
 
     @property
     def extension(self):
-        return mimetypes.guess_extension(self.MIMEType)
+        extension = mimetypes.guess_extension(self.MIMEType)
+        if not extension:
+            extension = ".bin"
+        return extension
+
+    @property
+    def filename(self):
+        return os.path.join(self.content_type, f"{str(self.md5)}{self.extension}")
+
+    @property
+    def preview_filename(self):
+        return f"{self.filename}.tn.jpeg"
+
+    @property
+    def absolute_filename(self):
+        return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.filename)
+
+    @property
+    def absolute_preview_filename(self):
+        return f"{self.absolute_filename}.tn.jpeg"
+
+    def get_preview(self):
+        if not os.path.exists(self.absolute_filename):
+            raise MissingMediaFileError()
+
+        if not os.path.exists(
+            absolute_preview_filename := self.absolute_preview_filename
+        ):
+            self.generate_preview(self.absolute_filename, absolute_preview_filename)
+        if os.path.exists(absolute_preview_filename):
+            return absolute_preview_filename
+        else:
+            raise PreviewGenerationFailedError()
 
     def generate_preview(self, path, preview):
         try:
@@ -115,13 +125,10 @@ class MediaModel(db.Model):
             raise PreviewGenerationFailedError()
 
     def save(self, metaData: CLMetaData, overwrite=True):
-        self.path = os.path.join(self.content_type, f"{str(metaData.md5)}{self.fExt}")
-        path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.path)
+        path = self.absolute_filename
         os.makedirs(os.path.dirname(path), exist_ok=True)
         shutil.copy(metaData.filepath, path)
-
-        preview = self.preview_absolute_path_name()
-        self.generate_preview(path, preview)
+        self.generate_preview(path, self.absolute_preview_filename)
 
     @classmethod
     def is_duplicate(
