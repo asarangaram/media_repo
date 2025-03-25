@@ -2,10 +2,8 @@ import os
 from celery import Celery
 from src.config import ConfigClass
 from src.endpoint.media.media_types import MediaType
-from src.media_processing.hls_streaming.hls_stream_generator import (
-    HLSStreamGenerator,
-    HLSVariant,
-)
+from clmediakit import HLSStreamGenerator, HLSVariant
+
 
 celery = Celery(
     "tasks", broker="redis://localhost:6379/0", backend="redis://localhost:6379/0"
@@ -13,9 +11,6 @@ celery = Celery(
 
 
 class CeleryTasks:
-    tasks = [
-        "generate_preview",
-    ]  #  'generate_stream_lq',
 
     @classmethod
     def init_celery(cls, app):
@@ -28,31 +23,6 @@ class CeleryTasks:
 
         celery.Task = ContextTask
         return celery
-
-    @celery.task(bind=True)
-    def exec_generate_preview(cls, media_id):
-        from src.endpoint.media.models import MediaModel
-
-        media = MediaModel.get(media_id)
-        if media:
-            media_path = media.absolute_path()
-            preview_path = media.preview_absolute_path_name()
-            from .media_processing.create_thumbnails.image_thumbnail import (
-                create_image_thumbnail,
-            )
-            from .media_processing.create_thumbnails.video_thumbnail import (
-                create_video_thumbnail4x4,
-            )
-
-            if media.type == MediaType.VIDEO:
-                create_video_thumbnail4x4(media_path, preview_path)
-                return f"preview generated for {media_id}, {media.type}"
-            elif media.type == MediaType.IMAGE:
-                create_image_thumbnail(media_path, preview_path)
-                return f"preview generated for {media_id}, {media.type}"
-            else:
-                return f"unsupported media type for {media_id}, {media.type}"
-        return f"media not found {media_id}"
 
     @celery.task(bind=True)
     def exec_generate_stream_lq(cls, media_id):

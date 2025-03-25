@@ -67,13 +67,7 @@ class BackgroundTaskModel(db.Model):
         raise NotFound(f"task with  media id {media_id} not found")
 
     def start_task(self):
-        if self.task_name == "generate_preview":
-            result = CeleryTasks.exec_generate_preview.apply_async(
-                args=[
-                    self.media_id,
-                ]
-            )
-        elif self.task_name == "generate_stream_lq":
+        if self.task_name == "generate_stream_lq":
             result = CeleryTasks.exec_generate_stream_lq.apply_async(
                 args=[
                     self.media_id,
