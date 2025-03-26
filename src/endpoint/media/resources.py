@@ -9,7 +9,13 @@ from flask_smorest import Blueprint
 
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import InternalServerError, NotFound
-from .media_types import MediaType
+from clmediakit import MediaType, CLMetaData
+
+from src.utils.errors import (
+    MissingMediaFileError,
+    PreviewGenerationFailedError,
+    VideoStreamError,
+)
 
 from .schemas import (
     MediaFileSchemaPOST,
@@ -23,7 +29,7 @@ from .schemas import (
 from ...db import db
 from sqlalchemy import func
 from sqlalchemy_continuum import version_class
-from .models import MediaModel
+from .models import FileHandler, MediaModel
 
 media_bp = Blueprint("media_bp", __name__, url_prefix="/media")
 
@@ -54,16 +60,9 @@ def create_media_resources(MediaVersion):
         @media_bp.response(201, MediaSchemaGET)
         @media_bp.alt_response(415, ErrorSchema, description="Failed to create")
         def post(cls, files, kwargs):
-            bytes_io = BytesIO()
-            files["media"].save(bytes_io)
-            argsExtra = {}
-            argsExtra["bytes_io"] = bytes_io
-            if not kwargs.get("name"):
-                argsExtra["name"] = files["media"].filename
-            argsExtra["filename"] = secure_filename(files["media"].filename)
-            argsExtra["content_type"] = files["media"].content_type
-
-            return MediaModel.create(**kwargs, **argsExtra)
+            file = FileHandler.save(files["media"])
+            metadata = CLMetaData.from_media(file)
+            return MediaModel.create(metadata, **kwargs)
 
         @media_bp.response(200, MediaSchemaGET(many=True))
         @media_bp.arguments(MediaSchemaGETQuery, location="query")
@@ -227,19 +226,11 @@ def create_media_resources(MediaVersion):
         @media_bp.response(200, MediaSchemaGET)
         @media_bp.alt_response(415, ErrorSchema, description="Failed to update")
         def put(cls, files, kwargs, media_id):
-            bytes_io = None
-            argsExtra = {}
+            metadata = None
             if files.get("media"):
-                bytes_io = BytesIO()
-                files["media"].save(bytes_io)
-
-                argsExtra["bytes_io"] = bytes_io
-                argsExtra["filename"] = secure_filename(files["media"].filename)
-                argsExtra["content_type"] = files["media"].content_type
-            mediaType = kwargs.get("type")
-            if mediaType:
-                kwargs["type"] = MediaType[kwargs.get("type").upper()]
-            return MediaModel.update(media_id, **kwargs, **argsExtra)
+                file = FileHandler.save(files["media"])
+                metadata = CLMetaData.from_media(file)
+            return MediaModel.update(media_id, metadata=metadata, **kwargs)
 
     @media_bp.route("/upload")
     class MediaUploadForm(MethodView):
@@ -252,11 +243,11 @@ def create_media_resources(MediaVersion):
         def get(cls, media_id: int):
             media = MediaModel.get(media_id)
             if not media:
-                NotFound("Media not found")
+                raise MissingMediaFileError()
             return send_file(
                 media.absolute_path(),
                 mimetype=media.content_type,
-                download_name=media.name,
+                download_name=secure_filename(f"{media.name}.{media.extension}"),
             )
 
     @media_bp.route("/<int:media_id>/preview")
@@ -264,7 +255,7 @@ def create_media_resources(MediaVersion):
         def get(cls, media_id: int):
             media = MediaModel.get(media_id)
             if not media:
-                NotFound("Media not found")
+                raise PreviewGenerationFailedError()
             return send_file(
                 media.preview_path(),
                 mimetype=media.content_type,
@@ -276,38 +267,27 @@ def create_media_resources(MediaVersion):
         def get(cls, media_id: int):
             media = MediaModel.get(media_id)
             if not media:
-                NotFound("Media not found")
+                raise MissingMediaFileError()
             stream_folder = media.get_stream_folder()
-            try:
-                return send_from_directory(
-                    stream_folder, "adaptive.m3u8", as_attachment=False
-                )
-            except FileNotFoundError:
-                raise NotFound(description="M3U8 file not found")
+            return send_from_directory(
+                stream_folder, "adaptive.m3u8", as_attachment=False
+            )
 
     @media_bp.route("/<int:media_id>/stream/<string:filename>")
     class get_segment(MethodView):
         def get(cls, media_id: int, filename: str):
             media = MediaModel.get(media_id)
             if not media:
-                NotFound("Media not found")
+                raise MissingMediaFileError()
             stream_folder = media.get_stream_folder()
             if filename.endswith(".ts"):
-                try:
-                    return send_from_directory(
-                        stream_folder, filename, as_attachment=False
-                    )
-                except FileNotFoundError:
-                    raise NotFound(description="Segment file not found")
+                return send_from_directory(stream_folder, filename, as_attachment=False)
             if filename.endswith(".m3u8"):
-                try:
-                    return send_from_directory(
-                        stream_folder, filename, as_attachment=False
-                    )
-                except FileNotFoundError:
-                    raise NotFound(description="Segment file not found")
+                return send_from_directory(stream_folder, filename, as_attachment=False)
             else:
-                raise NotFound(description="Invalid file type requested")
+                raise VideoStreamError(
+                    id=media_id, additionalMessage="Invalid file type"
+                )
 
 
 @media_bp.errorhandler(404)

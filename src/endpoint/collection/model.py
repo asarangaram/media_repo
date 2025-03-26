@@ -1,4 +1,5 @@
 from datetime import datetime
+import shutil
 from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
 
 from src.endpoint.landing.models import ServerStatusModel
@@ -14,7 +15,7 @@ class CollectionModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     label = db.Column(db.UnicodeText, nullable=False, unique=True)
     description = db.Column(db.UnicodeText, nullable=True)
-    createdDate = db.Column(db.DateTime, nullable=False)
+    addedDate = db.Column(db.DateTime, nullable=False)
     updatedDate = db.Column(db.DateTime, nullable=False)
     isDeleted = db.Column(db.Boolean, default=False, nullable=False)
     media = db.relationship("MediaModel", uselist=True, backref="collection")
@@ -25,8 +26,8 @@ class CollectionModel(db.Model):
         timeNow = datetime.now()
         self.label = kwargs.get("label")
         self.description = kwargs.get("description")
-        self.createdDate = kwargs.get("createdDate", timeNow)
-        self.updatedDate = kwargs.get("updatedDate", self.createdDate)
+        self.addedDate = kwargs.get("addedDate", timeNow)
+        self.updatedDate = kwargs.get("updatedDate", self.addedDate)
         self.isDeleted = kwargs.get("isDeleted", False)
 
     def save_to_db(self):
@@ -78,19 +79,28 @@ class CollectionModel(db.Model):
     def get_all(cls):
         return cls.find_all()
 
+    def __eq__(self, other):
+        return (
+            self.label == other.label
+            and self.description == other.description
+            and self.isDeleted == other.isDeleted
+        )
+
     @classmethod
     def update(cls, id, **kwargs):
-        time_now = datetime.now()
-        entity: CollectionModel | None = cls.find_by_id(id=id)
-        if not entity:
+        currentEntity: CollectionModel | None = cls.find_by_id(id=id)
+        if not currentEntity:
             raise NotFound(f"Entity with id {id} not found")
-        entity.label = kwargs.get("label", entity.label)
-        entity.description = kwargs.get("description", entity.description)
-        entity.createdDate = kwargs.get("createdDate", entity.createdDate)
-        entity.updatedDate = kwargs.get("updatedDate", entity.updatedDate)
-        entity.isDeleted = kwargs.get("isDeleted", entity.isDeleted)
-        entity.save_to_db()
-        return entity
+        updatedEntity = shutil.copy.deepcopy(currentEntity)
+        updatedEntity.label = kwargs.get("label", updatedEntity.label)
+        updatedEntity.description = kwargs.get("description", updatedEntity.description)
+        updatedEntity.isDeleted = kwargs.get("isDeleted", updatedEntity.isDeleted)
+        if currentEntity != updatedEntity:
+            updatedEntity.updatedDate = kwargs.get("updatedDate", datetime.now())
+            updatedEntity.save_to_db()
+            return updatedEntity
+        else:
+            return updatedEntity
 
     @classmethod
     def delete(cls, id):

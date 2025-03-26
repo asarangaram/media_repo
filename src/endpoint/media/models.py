@@ -3,6 +3,7 @@ from datetime import datetime
 import mimetypes
 import os
 import shutil
+import tempfile
 import time
 
 from clmediakit import (
@@ -40,12 +41,21 @@ class MediaModel(db.Model):
 
     __tablename__ = "media"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.UnicodeText, nullable=False)
+    label = db.Column(db.UnicodeText, nullable=True)
+    description = db.Column(db.UnicodeText, nullable=True)
     collectionId = db.Column(db.Integer, db.ForeignKey("collection.id"), nullable=False)
-    createdDate = db.Column(db.DateTime, nullable=False)
+    addedDate = db.Column(db.DateTime, nullable=False)
     updatedDate = db.Column(db.DateTime, nullable=False)
     ref = db.Column(db.UnicodeText, nullable=True)
     isDeleted = db.Column(db.Boolean, default=False, nullable=False)
+    CreateDate = db.Column(db.DateTime, nullable=True)
+    FileSize = db.Column(db.String, nullable=True)
+    ImageHeight = db.Column(db.Integer, nullable=True)
+    ImageWidth = db.Column(db.Integer, nullable=True)
+    Duration = db.Column(db.String, nullable=True)
+    MIMEType = db.Column(db.String, nullable=False)
+    dHash = db.Column(db.String, nullable=False)
+    md5 = db.Column(db.String, nullable=False, unique=True)
 
     # remove  uselist=True,?
     task = db.relationship("BackgroundTaskModel", uselist=True, backref="media")
@@ -57,7 +67,7 @@ class MediaModel(db.Model):
         Args:
             metaData (CLMetaData): Metadata object containing media details.
             private_key: A private key to ensure proper instantiation.
-            **kwargs: Additional attributes such as name, collectionLabel, createdDate, etc.
+            **kwargs: Additional attributes such as name, collectionLabel, addedDate, etc.
 
         Raises:
             IncorrectUsageError: If the private key is invalid.
@@ -66,11 +76,12 @@ class MediaModel(db.Model):
             raise IncorrectUsageError()
         timeNow = datetime.now()
 
-        self.name = kwargs.get("name", self.__filename)
+        self.label = kwargs.get("label")
+        self.description = kwargs.get("description")
         collection = CollectionModel.create(label=kwargs.get("collectionLabel"))
         self.collectionId = collection.id
-        self.createdDate = kwargs.get("createdDate", timeNow)
-        self.updatedDate = kwargs.get("updatedDate", self.createdDate)
+        self.addedDate = kwargs.get("addedDate", timeNow)
+        self.updatedDate = kwargs.get("updatedDate", self.addedDate)
         self.ref = kwargs.get("ref")
         self.isDeleted = kwargs.get("isDeleted", False)
         self.CreateDate = metaData.CreateDate
@@ -108,7 +119,7 @@ class MediaModel(db.Model):
     @property
     def filename(self):
         """Generate the relative filename for the media based on its content type and MD5 hash."""
-        return os.path.join(self.content_type, f"{str(self.md5)}{self.extension}")
+        return os.path.join(self.MIMEType, f"{str(self.md5)}{self.extension}")
 
     @property
     def preview_filename(self):
@@ -168,7 +179,7 @@ class MediaModel(db.Model):
         Check if a media item with the same MD5 hash already exists.
         If it exists in a different collection, raise a DuplicateItemError.
         """
-        entity: MediaModel | None = cls.get_by_md5String(metaData.md5)
+        entity: MediaModel | None = cls.get_by_md5(metaData.md5)
         if entity:
             targetCollection = CollectionModel.find_by_label(targetCollectionLabel)
             currentCollection = CollectionModel.find_by_id(entity.collectionId)
@@ -199,7 +210,7 @@ class MediaModel(db.Model):
             return False
         return (
             self.id == other.id
-            and self.name == other.name
+            and self.label == other.label
             and self.collectionId == other.collectionId
             and self.ref == other.ref
             and self.isDeleted == other.isDeleted
@@ -244,7 +255,7 @@ class MediaModel(db.Model):
             collection = CollectionModel.create(label=kwargs.get("collectionLabel"))
             updatedEntity.collectionId = collection.id
         if currentEntity != updatedEntity:
-            updatedEntity.updatedDate = datetime.now()
+            updatedEntity.updatedDate = kwargs.get("updatedDate", datetime.now())
             updatedEntity.save_to_db()
             return updatedEntity
         else:
@@ -259,7 +270,7 @@ class MediaModel(db.Model):
         media = cls.query.filter_by(id=_id).first()
         if not media:
             raise MissingMediaError()
-        media.fExt = mimetypes.guess_extension(media.content_type)
+
         return media
 
     @classmethod
@@ -272,18 +283,16 @@ class MediaModel(db.Model):
             items = cls.query.all()
         else:
             items = cls.query.filter(MediaModel.type.in_(types)).all()
-        for item in items:
-            item.fExt = mimetypes.guess_extension(item.content_type)
+
         return items
 
     @classmethod
-    def get_by_md5String(cls, md5String):
+    def get_by_md5(cls, md5):
         """
         Retrieve a media instance by its MD5 hash.
         """
-        media = cls.query.filter_by(md5String=md5String).first()
-        if media:
-            media.fExt = mimetypes.guess_extension(media.content_type)
+        media = cls.query.filter_by(md5=md5).first()
+
         return media
 
     @classmethod
@@ -332,7 +341,7 @@ class MediaModel(db.Model):
         if self.type != "video":  # why MediaType.VIDEO is not working?
             print(f"can't stream {self.id}. not a video")
             raise VideoStreamError(self.id, additionalMessage="not a video")
-        stream_path = os.path.join(self.content_type, f"media_{str(self.id)}")
+        stream_path = os.path.join(self.MIMEType, f"media_{str(self.id)}")
         output_dir = os.path.join(ConfigClass.STREAM_STORAGE_LOCATION, stream_path)
         master_pl = os.path.join(output_dir, "adaptive.m3u8")
         if not os.path.exists(master_pl):
@@ -341,3 +350,22 @@ class MediaModel(db.Model):
             if not success:
                 raise VideoStreamError(self.id)
         return output_dir
+
+
+class FileHandler:
+    def __init__(self, file):
+        pass
+
+    @classmethod
+    def save(cls, file):
+        temp_dir = tempfile.gettempdir()
+        temp_path = os.path.join(temp_dir, file.filename)
+
+        # Avoid overwriting by adding a number if file exists
+        base, ext = os.path.splitext(temp_path)
+        counter = 1
+        while os.path.exists(temp_path):
+            temp_path = f"{base}_{counter}{ext}"
+            counter += 1
+        file.save(temp_path)
+        return temp_path

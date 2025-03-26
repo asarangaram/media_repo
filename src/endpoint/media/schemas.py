@@ -4,22 +4,61 @@ from flask_smorest.fields import Upload
 from werkzeug.utils import secure_filename
 from marshmallow import (
     Schema,
-    ValidationError,
+    post_dump,
     fields,
     post_load,
-    validates_schema,
-    validate,
 )
 from werkzeug.exceptions import InternalServerError
 from src.endpoint.collection.model import CollectionModel
 
 
-from .media_types import (
+from clmediakit import (
     IntigerizedBool,
     MediaTypeField,
     MediaType,
     MillisecondsSinceEpoch,
 )
+
+
+class MediaSchemaGET(Schema):
+    SKIP_VALUES = set([None, ""])
+
+    class Meta:
+        ordered = True  # Enable ordered serialization
+
+    server_uid = fields.Int(attribute="id", data_key="serverUID", dump_only=True)
+    collectionLabel = fields.Method("get_collection_label", dump_only=True)
+
+    label = fields.Str(allow_none=True, required=True)
+    description = fields.Str(allow_none=True, required=True)
+    ref = fields.Str(allow_none=True, required=True)
+
+    addedDate = MillisecondsSinceEpoch(
+        required=True, error_messages={"invalid": "addedDate: Invalid date format."}
+    )
+    updatedDate = MillisecondsSinceEpoch(
+        required=True, error_messages={"invalid": "updatedDate: Invalid date format."}
+    )
+    CreateDate = fields.DateTime(allow_none=True, required=True)
+    FileSize = fields.Str(allow_none=True, required=True)
+    ImageHeight = fields.Int(allow_none=True, required=True)
+    ImageWidth = fields.Int(allow_none=True, required=True)
+    Duration = fields.Str(allow_none=True, required=True)
+    MIMEType = fields.Str(allow_none=True, required=True)
+    md5 = fields.Str(allow_none=True, required=True)
+
+    def get_collection_label(self, obj):
+        if hasattr(obj, "collectionId"):
+            collection = CollectionModel.find_by_id(obj.collectionId)
+            return collection.label
+        else:
+            raise InternalServerError("couldnot get collection label")
+
+    @post_dump
+    def remove_skip_values(self, data, **kwargs):
+        return {
+            key: value for key, value in data.items() if value not in self.SKIP_VALUES
+        }
 
 
 class MediaFileSchemaPOST(Schema):
@@ -28,10 +67,6 @@ class MediaFileSchemaPOST(Schema):
 
 class MediaFileSchemaPUT(Schema):
     media = Upload(required=False)
-
-
-## All fields are mandatory when reading
-## Few are optional for POST, and almost all except id are optional for PUT
 
 
 class MediaSchemaGETQuery(Schema):
@@ -50,148 +85,21 @@ class MediaSchemaPOST(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
 
-    name = fields.Str()
-
-    collectionLabel = fields.Str(
-        required=True, error_messages={"required": "collectionLabel is required."}
-    )
-
-    originalDate = MillisecondsSinceEpoch(
-        error_messages={"invalid": "originalDate: Invalid date format."}
-    )
-    createdDate = MillisecondsSinceEpoch(
-        error_messages={"invalid": "createdDate: Invalid date format."}
-    )
-
-    ref = fields.Str()
-    isDeleted = IntigerizedBool()
-    notes = fields.List(fields.Int())
-
-    @validates_schema
-    def validate_at_least_one(self, data, **kwargs):
-        print(data)
-        print(kwargs)
-        values = [
-            data.get(variable)
-            for variable in [
-                "name",
-                "collectionLabel",
-                "originalDate",
-                "ref",
-                "isDeleted",
-                "notes",
-                "createdDate",
-                "updatedDate",
-            ]
-        ]
-        print(values)
+    label = fields.Str()
+    description = fields.Str()
+    collectionLabel = fields.Str(required=True)
+    ref = fields.Str(allow_none=True)
 
 
 class MediaSchemaPUT(Schema):
     class Meta:
         ordered = True  # Enable ordered serialization
 
-    updatedDate = MillisecondsSinceEpoch(
-        error_messages={"invalid": "updatedDate: Invalid date format."}
-    )
-
-    name = fields.Str()
+    label = fields.Str()
+    description = fields.Str()
     collectionLabel = fields.Str()
-
-    originalDate = MillisecondsSinceEpoch(
-        error_messages={"invalid": "originalDate: Invalid date format."}
-    )
     ref = fields.Str()
     isDeleted = IntigerizedBool()
-    notes = fields.List(fields.Int())
-
-    @validates_schema
-    def validate_at_least_one(self, data, **kwargs):
-        if not data:
-            raise ValidationError(
-                {
-                    "empty": ["Nothing to update!"],
-                }
-            )
-        ## This is not the appropriate place to update
-        ## as the file may be sent in PUT call without any form data.
-        """ flags =    [data.get(variable) is not None
-            for variable in [
-                "name",
-                "collectionLabel",
-                "originalDate",
-                "ref",
-                "isDeleted",
-                "notes",
-            ]] 
-        
-        if not any( flags ):
-            raise ValidationError(
-                {
-                    "empty": ["Nothing to update!"],
-                }
-            ) """
-        print(data)
-        print(kwargs)
-        values = [
-            data.get(variable)
-            for variable in [
-                "name",
-                "collectionLabel",
-                "originalDate",
-                "ref",
-                "isDeleted",
-                "notes",
-                "createdDate",
-                "updatedDate",
-            ]
-        ]
-        print(f"PUT/Incoming: {values}")
-
-
-class MediaSchemaGET(Schema):
-    class Meta:
-        ordered = True  # Enable ordered serialization
-
-    server_uid = fields.Int(attribute="id", data_key="serverUID", dump_only=True)
-    name = fields.Str(required=True, error_messages={"required": "name is required."})
-    type = MediaTypeField(
-        enum=MediaType, dump_only=True, error_messages={"required": "type is required."}
-    )
-    md5String = fields.Str(
-        required=True, error_messages={"required": "md5String is required."}
-    )
-    createdDate = MillisecondsSinceEpoch(
-        required=True, error_messages={"invalid": "createdDate: Invalid date format."}
-    )
-    originalDate = MillisecondsSinceEpoch(
-        error_messages={"invalid": "originalDate: Invalid date format."}
-    )
-    updatedDate = MillisecondsSinceEpoch(
-        required=True, error_messages={"invalid": "updatedDate: Invalid date format."}
-    )
-    ref = fields.Str(
-        required=True,
-    )
-    isDeleted = IntigerizedBool(
-        required=True, error_messages={"required": "isDeleterd is required."}
-    )
-    notes = fields.List(fields.Int())
-    content_type = fields.Str(
-        required=True,
-    )
-    fExt = fields.Str(
-        required=True,
-    )
-
-    collectionLabel = fields.Method("get_collection_label", dump_only=True)
-
-    def get_collection_label(self, obj):
-        if hasattr(obj, "collectionId"):
-            collection = CollectionModel.find_by_id(obj.collectionId)
-            return collection.label
-        else:
-            raise InternalServerError("couldnot get collection label")
 
 
 class ErrorSchema(Schema):

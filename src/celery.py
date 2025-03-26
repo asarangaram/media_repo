@@ -1,7 +1,7 @@
 import os
 from celery import Celery
 from src.config import ConfigClass
-from src.endpoint.media.media_types import MediaType
+
 from clmediakit import HLSStreamGenerator, HLSVariant
 
 

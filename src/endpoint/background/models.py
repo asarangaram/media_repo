@@ -6,7 +6,6 @@ from sqlalchemy.schema import UniqueConstraint
 from celery.result import AsyncResult
 
 from src.celery import CeleryTasks
-from src.endpoint.media.media_types import MediaType
 
 
 from ...db import db
