@@ -12,7 +12,7 @@ from clmediakit import (
     MediaType,
     CLMetaData,
 )
-
+from src.hnsw_indices import hnsw_image_lookup, hnsw_video_lookup
 from src.endpoint.background.models import BackgroundTaskModel
 from src.utils.errors import (
     DuplicateItemError,
@@ -200,6 +200,10 @@ class MediaModel(db.Model):
         entity = MediaModel(metaData=metaData, private_key=cls.__private_key, **kwargs)
         entity.save(metaData=metaData)
         entity.save_to_db()
+        if entity.type == MediaType.VIDEO:
+            hnsw_video_lookup.add(entity.id, entity.dHash)
+        elif entity.type == MediaType.IMAGE:
+            hnsw_image_lookup.add(entity.id, entity.dHash)
         return entity
 
     def __eq__(self, other):
@@ -257,6 +261,11 @@ class MediaModel(db.Model):
         if currentEntity != updatedEntity:
             updatedEntity.updatedDate = kwargs.get("updatedDate", datetime.now())
             updatedEntity.save_to_db()
+            if metaData:
+                if updatedEntity.type == MediaType.VIDEO:
+                    hnsw_video_lookup.replace(updatedEntity.id, updatedEntity.dHash)
+                elif updatedEntity.type == MediaType.IMAGE:
+                    hnsw_image_lookup.replace(updatedEntity.id, updatedEntity.dHash)
             return updatedEntity
         else:
             return currentEntity
@@ -308,6 +317,12 @@ class MediaModel(db.Model):
         path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, entity.path)
         if os.path.exists(path):
             os.remove(path)
+
+        if entity.type == MediaType.VIDEO:
+            hnsw_video_lookup.remove(entity.id)
+        elif entity.type == MediaType.IMAGE:
+            hnsw_image_lookup.remove(entity.id)
+
         entity.delete_from_db()
 
     @classmethod
@@ -315,7 +330,8 @@ class MediaModel(db.Model):
         """Delete all media instances from the database."""
         all = cls.query.all()
         for media in all:
-            media.delete_from_db()
+            if not media.isDeleted:
+                cls.delete(media.id)
 
     @classmethod
     def wait_for_m3u8(self, master_pl: str, timeout: int = 60):

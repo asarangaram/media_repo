@@ -7,7 +7,7 @@ fi
 
 file="$1"
 
-url="http://192.168.1.222:5000/media"
+url="http://192.168.0.225:5000/media"
 
 if [ -f "$file" ]; then
 

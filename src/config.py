@@ -71,3 +71,6 @@ class ConfigClass(object):
 
     CELERY_BROKER_URL = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+
+    HNSW_IMAGE_LOOKUP_LOCATION = f"{FILE_STORAGE_LOCATION}/image_lookup.idx"
+    HNSW_VIDEO_LOOKUP_LOCATION = f"{FILE_STORAGE_LOCATION}/video_lookup.idx"

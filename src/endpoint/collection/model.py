@@ -2,7 +2,6 @@ from datetime import datetime
 import shutil
 from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
 
-from src.endpoint.landing.models import ServerStatusModel
 
 from ...db import db
 
@@ -33,12 +32,10 @@ class CollectionModel(db.Model):
     def save_to_db(self):
         db.session.add(self)
         db.session.commit()
-        ServerStatusModel.update_time_stamp(self.__tablename__)
 
     def delete_from_db(self):
         db.session.delete(self)
         db.session.commit()
-        ServerStatusModel.update_time_stamp(self.__tablename__)
 
     @classmethod
     def find_by_label(cls, label):
@@ -80,6 +77,12 @@ class CollectionModel(db.Model):
         return cls.find_all()
 
     def __eq__(self, other):
+        """
+        Compare two collection instances for equality based on their attributes.
+        """
+        if not isinstance(other, self.__class__):
+            return False
+
         return (
             self.label == other.label
             and self.description == other.description

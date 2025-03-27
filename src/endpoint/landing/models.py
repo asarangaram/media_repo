@@ -17,7 +17,7 @@ class LandingPageModel:
         self.id = 100  # TODO: FIND A UNIQUE ID FOR EACH SERVER AND REPLACE
 
 
-class ServerStatusModel(db.Model):
+""" class ServerStatusModel(db.Model):
     __private_key = object()
 
     __tablename__ = "server_status"
@@ -68,3 +68,4 @@ class ServerStatusModel(db.Model):
             )
         entity.updatedDate = datetime.now()
         entity.save_to_db()
+ """
