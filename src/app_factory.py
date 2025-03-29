@@ -1,19 +1,15 @@
 # app_factory.py
 import os
-from celery import Celery
 from flask import Flask
 
-from src.celery import CeleryTasks
-from src.endpoint.collection.model import CollectionModel
-from src.endpoint.media.models import MediaModel
+from src.endpoint.entity.models import EntityModel
 
 from .db import db
 from .endpoint.landing.resources import landing_bp
 
-# from .endpoint.image.resources import image_bp
-from .endpoint.media.resources import create_media_resources, media_bp
+from .endpoint.entity.resources import create_entity_resources, entity_bp
 from .endpoint.urlmap.resources import URL_map_resouce_bp
-from .endpoint.collection.resources import collection_bp, create_collection_resources
+
 from . import lock
 from flask_migrate import Migrate
 from sqlalchemy_continuum import version_class
@@ -34,11 +30,9 @@ def create_app(config_object):
     migrate = Migrate(app, db)
     db.configure_mappers()
 
-    CollectionVersion = version_class(CollectionModel)
-    MediaVersion = version_class(MediaModel)
+    EntityVersion = version_class(EntityModel)
 
-    create_collection_resources(CollectionVersion)
-    create_media_resources(MediaVersion)
+    create_entity_resources(EntityVersion)
 
     with app.app_context():
         db.create_all()
@@ -47,10 +41,9 @@ def create_app(config_object):
 
     # Landing Page
     app.register_blueprint(landing_bp)
-    # app.register_blueprint(image_bp)
-    app.register_blueprint(media_bp)
     app.register_blueprint(URL_map_resouce_bp)
-    app.register_blueprint(collection_bp)
+
+    app.register_blueprint(entity_bp)
     app.register_blueprint(background_task_bp)
 
     return app

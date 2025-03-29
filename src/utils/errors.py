@@ -40,6 +40,11 @@ class MissingMediaFileError(NotFound):
         super().__init__("media file not found")
 
 
+class NoFileForCollectionError(NotFound):
+    def __init__(self):
+        super().__init__("can't attach file to Collection")
+
+
 class MissingMediaError(NotFound):
     def __init__(self):
         super().__init__("media not found")

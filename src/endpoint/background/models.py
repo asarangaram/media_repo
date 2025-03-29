@@ -17,7 +17,7 @@ class BackgroundTaskModel(db.Model):
     __tablename__ = "BackgroundTask"
 
     id = db.Column(db.Integer, primary_key=True)
-    media_id = db.Column(db.Integer, db.ForeignKey("media.id"), nullable=False)
+    media_id = db.Column(db.Integer, db.ForeignKey("entities.id"), nullable=False)
     task_name = db.Column(db.String, nullable=False)
     task_id = db.Column(db.Integer, nullable=False)
     task_status = db.Column(db.String)
