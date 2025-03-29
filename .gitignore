@@ -165,3 +165,6 @@ log.celery.txt
 utilities/*.txt
 utilities/*.log
 
+utilities/delete**
+utilities/files_old.sh
+

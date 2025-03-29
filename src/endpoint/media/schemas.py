@@ -46,6 +46,9 @@ class MediaSchemaGET(Schema):
     Duration = fields.Str(allow_none=True, required=True)
     MIMEType = fields.Str(allow_none=True, required=True)
     md5 = fields.Str(allow_none=True, required=True)
+    extension = fields.Str(allow_none=True, required=True)
+    type = MediaTypeField(required=True)
+    isDeleted = IntigerizedBool(required=True)
 
     def get_collection_label(self, obj):
         if hasattr(obj, "collectionId"):
