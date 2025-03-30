@@ -2,12 +2,12 @@
 import os
 from flask import Flask
 
-from src.endpoint.entity.models import EntityModel
-
 from .db import db
-from .endpoint.landing.resources import landing_bp
-
+from .endpoint.entity.models import EntityModel
 from .endpoint.entity.resources import create_entity_resources, entity_bp
+
+
+from .endpoint.landing.resources import landing_bp
 from .endpoint.urlmap.resources import URL_map_resouce_bp
 
 from . import lock

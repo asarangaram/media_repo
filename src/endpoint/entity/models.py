@@ -34,7 +34,47 @@ from ...db import db
 from ...config import ConfigClass
 
 
-class EntityModel(db.Model):
+class EntityModelReaderMixin:
+    @classmethod
+    def get(cls, **kwargs):
+        """
+        Retrieve a entity instance by its ID.
+        Raise MissingMediaError if the entity does not exist.
+        """
+        filters = {key: kwargs[key] for key in kwargs if key in cls.__table__.columns}
+
+        entity = cls.query.filter_by(**filters).first()
+
+        return entity
+
+    @classmethod
+    def get_all(cls, **kwargs):
+        """
+        Retrieve all entity instances.
+        Optionally filter by entity types.
+        """
+        if len(kwargs) == 0:
+            items = cls.query.all()
+        else:
+            filters = {
+                getattr(cls, key): kwargs[key]  # Convert key string to model attribute
+                for key in kwargs
+                if key in cls.__table__.columns
+            }
+
+            # Handle parentId being 0 as None
+            if cls.parentId in filters and filters[cls.parentId] == 0:
+                filters[cls.parentId] = None
+
+            # Use *filters to unpack expressions
+            items = cls.query.filter(
+                *[col == val for col, val in filters.items()]
+            ).all()
+
+        return items
+
+
+class EntityModel(db.Model, EntityModelReaderMixin):
     """
     Represents a entity in the database.
     This model handles metadata, file storage, preview generation, and other entity-related operations.
@@ -137,44 +177,6 @@ class EntityModel(db.Model):
         """Delete the current entity instance from the database."""
         db.session.delete(self)
         db.session.commit()
-
-    @classmethod
-    def get(cls, **kwargs):
-        """
-        Retrieve a entity instance by its ID.
-        Raise MissingMediaError if the entity does not exist.
-        """
-        filters = {key: kwargs[key] for key in kwargs if key in cls.__table__.columns}
-
-        entity = cls.query.filter_by(**filters).first()
-
-        return entity
-
-    @classmethod
-    def get_all(cls, **kwargs):
-        """
-        Retrieve all entity instances.
-        Optionally filter by entity types.
-        """
-        if len(kwargs) == 0:
-            items = cls.query.all()
-        else:
-            filters = {
-                getattr(cls, key): kwargs[key]  # Convert key string to model attribute
-                for key in kwargs
-                if key in cls.__table__.columns
-            }
-
-            # Handle parentId being 0 as None
-            if cls.parentId in filters and filters[cls.parentId] == 0:
-                filters[cls.parentId] = None
-
-            # Use *filters to unpack expressions
-            items = cls.query.filter(
-                *[col == val for col, val in filters.items()]
-            ).all()
-
-        return items
 
     @classmethod
     def create(cls, **kwargs):

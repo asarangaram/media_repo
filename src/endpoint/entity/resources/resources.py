@@ -13,6 +13,9 @@ from werkzeug.exceptions import InternalServerError, NotFound
 from clmediakit import MediaType, CLMetaData
 
 from src.endpoint.entity.models import EntityModel, TempFile
+from src.endpoint.entity.resources.paginated_entities import (
+    create_resource_paginated_entities,
+)
 from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema, MediaFileSchema
 from src.utils.errors import (
     MissingMediaFileError,
@@ -23,33 +26,14 @@ from src.utils.errors import (
 )
 
 
-from ...db import db
 from sqlalchemy import func
 from sqlalchemy_continuum import version_class
-
-
-entity_bp = Blueprint("entity_bp", __name__, url_prefix="/entity")
-
-enableLogging = False
-
-
-def mask_errors(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if enableLogging:
-            form_data = request.form.to_dict()
-            print(f"Incoming Request Data: {form_data}")
-        try:
-            return func(*args, **kwargs)
-        except NotFound:
-            raise
-        except Exception as e:
-            raise InternalServerError(f"{e}")
-
-    return wrapper
+from .blueprint import entity_bp, mask_errors
 
 
 def create_entity_resources(MediaVersion):
+    create_resource_paginated_entities(MediaVersion)
+
     @entity_bp.route("/")
     @entity_bp.route("")
     class MediaList(MethodView):

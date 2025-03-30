@@ -52,7 +52,7 @@ class ItemSchema(Schema):
     ImageWidth = fields.Int(dump_only=True)
     Duration = fields.Str(dump_only=True)
     MIMEType = fields.Str(dump_only=True)
-    dHash = fields.Str(dump_only=True)
+    # dHash = fields.Str(dump_only=True)
     md5 = fields.Str(dump_only=True)
 
     @validates_schema
@@ -113,7 +113,7 @@ class ItemsQuerySchema(Schema):
     ImageWidth = fields.Int()
     Duration = fields.Str()
     MIMEType = fields.Str()
-    dHash = fields.Str()
+    # dHash = fields.Str()
     md5 = fields.Str()
 
     similar_to = fields.Int()
