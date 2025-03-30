@@ -8,15 +8,8 @@ class MissingMD5Error(ValidationError):
 
 
 class DuplicateItemError(ValidationError):
-    def __init__(self, currentCollection, entity):
-        super().__init__(
-            {
-                "collectionLabel": [
-                    f"duplicate item found in {currentCollection.label}, with id {entity.id}."
-                    ""
-                ]
-            }
-        )
+    def __init__(self, entity, parent=None):
+        super().__init__(f"duplicate item found with id {entity.id}.")
 
 
 class HardDeleteFailedError(ValidationError):

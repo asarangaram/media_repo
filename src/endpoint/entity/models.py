@@ -160,27 +160,24 @@ class EntityModel(db.Model):
             items = cls.query.all()
         else:
             filters = {
-                key: kwargs[key] for key in kwargs if key in cls.__table__.columns
+                getattr(cls, key): kwargs[key]  # Convert key string to model attribute
+                for key in kwargs
+                if key in cls.__table__.columns
             }
-            items = cls.query.filter(filters).all()
+
+            # Handle parentId being 0 as None
+            if cls.parentId in filters and filters[cls.parentId] == 0:
+                filters[cls.parentId] = None
+
+            # Use *filters to unpack expressions
+            items = cls.query.filter(
+                *[col == val for col, val in filters.items()]
+            ).all()
 
         return items
 
     @classmethod
     def create(cls, **kwargs):
-        ## Check for duplicate
-        if kwargs.get("isCollection"):
-            if duplicate := cls.get(label=kwargs.get("label")):
-                if kwargs.get("parentId") != duplicate.parentId:
-                    raise DuplicateItemError()
-                return duplicate
-        else:
-            if kwargs.get("md5") is None:
-                raise MissingMD5Error()
-            if duplicate := cls.get(md5=kwargs.get("md5")):
-                if kwargs.get("parentId") != duplicate.parentId:
-                    raise DuplicateItemError()
-                return duplicate
 
         ## check if the parent exists and it is a collection
         parentId = kwargs.get("parentId")
@@ -208,6 +205,26 @@ class EntityModel(db.Model):
                 )
             parentArg = {"parentId": parent.id}
             pass
+
+        ## Check for duplicate
+        if kwargs.get("isCollection"):
+            if duplicate := cls.get(label=kwargs.get("label")):
+                if (
+                    kwargs.get("parentId")
+                    and kwargs.get("parentId") != duplicate.parentId
+                ):
+                    raise DuplicateItemError(duplicate, parent=parent)
+                return duplicate
+        else:
+            if kwargs.get("md5") is None:
+                raise MissingMD5Error()
+            if duplicate := cls.get(md5=kwargs.get("md5")):
+                if (
+                    kwargs.get("parentId")
+                    and kwargs.get("parentId") != duplicate.parentId
+                ):
+                    raise DuplicateItemError(duplicate, parent=parent)
+                return duplicate
 
         # Create and accept
         try:

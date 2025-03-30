@@ -13,7 +13,7 @@ from werkzeug.exceptions import InternalServerError, NotFound
 from clmediakit import MediaType, CLMetaData
 
 from src.endpoint.entity.models import EntityModel, TempFile
-from src.endpoint.entity.schema import ItemSchema, MediaFileSchema
+from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema, MediaFileSchema
 from src.utils.errors import (
     MissingMediaFileError,
     MissingMediaWhenUploadError,
@@ -40,7 +40,6 @@ def mask_errors(func):
             form_data = request.form.to_dict()
             print(f"Incoming Request Data: {form_data}")
         try:
-            print(kwargs)
             return func(*args, **kwargs)
         except NotFound:
             raise
@@ -54,10 +53,10 @@ def create_entity_resources(MediaVersion):
     @entity_bp.route("/")
     @entity_bp.route("")
     class MediaList(MethodView):
+        @mask_errors
         @entity_bp.arguments(MediaFileSchema, location="files")
         @entity_bp.arguments(ItemSchema, location="form")
         @entity_bp.response(201, ItemSchema)
-        @mask_errors
         def post(cls, files, kwargs):
             temp_file = None
             if not kwargs.get("isCollection", False):
@@ -75,8 +74,12 @@ def create_entity_resources(MediaVersion):
                 temp_file.remove()
             return item
 
-        def get(cls):
-            return {"success": "yes"}
+        @mask_errors
+        @entity_bp.arguments(ItemsQuerySchema, location="query")
+        @entity_bp.response(200, ItemSchema(many=True))
+        def get(cls, query_args):
+            print(query_args)
+            return EntityModel.get_all(**query_args)
 
         @entity_bp.response(200)
         def delete(cls):

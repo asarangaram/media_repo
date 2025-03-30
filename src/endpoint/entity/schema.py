@@ -46,7 +46,7 @@ class ItemSchema(Schema):
     )
     isDeleted = IntigerizedBool(default=False)
 
-    CreateDate = fields.DateTime(dump_only=True)  # May be allow to update?
+    CreateDate = MillisecondsSinceEpoch(dump_only=True)
     FileSize = fields.Str(dump_only=True)
     ImageHeight = fields.Int(dump_only=True)
     ImageWidth = fields.Int(dump_only=True)
@@ -97,3 +97,28 @@ class ItemSchema(Schema):
         return {
             key: value for key, value in data.items() if value not in self.SKIP_VALUES
         }
+
+
+class ItemsQuerySchema(Schema):
+    id = fields.Int()
+    isCollection = IntigerizedBool()
+    label = fields.Str()
+    parentId = fields.Int(allow_none=True)
+    addedDate = MillisecondsSinceEpoch()
+    updatedDate = MillisecondsSinceEpoch()
+    isDeleted = IntigerizedBool()
+    CreateDate = MillisecondsSinceEpoch()
+    FileSize = fields.Str()
+    ImageHeight = fields.Int()
+    ImageWidth = fields.Int()
+    Duration = fields.Str()
+    MIMEType = fields.Str()
+    dHash = fields.Str()
+    md5 = fields.Str()
+
+    similar_to = fields.Int()
+    any = IntigerizedBool()
+
+    ## TODO:
+    ## Range for dates, width and height, duration
+    ## OR or AND ??
