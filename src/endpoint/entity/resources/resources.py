@@ -18,6 +18,7 @@ from src.endpoint.entity.resources.paginated_entities import (
 )
 from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema, MediaFileSchema
 from src.utils.errors import (
+    MissingMediaError,
     MissingMediaFileError,
     MissingMediaWhenUploadError,
     NoFileForCollectionError,
@@ -62,7 +63,6 @@ def create_entity_resources(MediaVersion):
         @entity_bp.arguments(ItemsQuerySchema, location="query")
         @entity_bp.response(200, ItemSchema(many=True))
         def get(cls, query_args):
-            print(query_args)
             return EntityModel.get_all(**query_args)
 
         @entity_bp.response(200)
@@ -71,8 +71,13 @@ def create_entity_resources(MediaVersion):
 
     @entity_bp.route("/<int:entity_id>")
     class Media(MethodView):
+        @mask_errors
+        @entity_bp.response(200, ItemSchema())
         def get(cls, entity_id: int):
-            pass
+            entity = EntityModel.get(id=entity_id)
+            if not entity:
+                raise MissingMediaFileError()
+            return entity
 
         @entity_bp.response(200)
         def delete(cls, entity_id: int):
@@ -83,43 +88,49 @@ def create_entity_resources(MediaVersion):
 
     @entity_bp.route("/upload")
     class MediaUploadForm(MethodView):
+        @mask_errors
         def get(self):
             headers = {"Content-Type": "text/html"}
             return make_response(render_template("upload_media.html"), 200, headers)
 
     @entity_bp.route("/<int:entity_id>/download")
     class MediaDownload(MethodView):
+        @mask_errors
         def get(cls, entity_id: int):
-            entity: EntityModel | None = EntityModel.get(entity_id)
+            entity: EntityModel | None = EntityModel.get(id=entity_id)
             if not entity:
-                raise MissingMediaFileError()
+                raise MissingMediaError()
             if entity.isCollection:
                 raise NoFileForCollectionError()
+            if not os.path.exists(entity.absolute_filename):
+                raise MissingMediaFileError()
             return send_file(
-                entity.absolute_filename(),
-                mimetype=entity.content_type,
-                download_name=secure_filename(f"{entity.md5}.{entity.extension}"),
+                entity.absolute_filename,
+                mimetype=entity.MIMEType,
+                download_name=secure_filename(entity.filename),
             )
 
     @entity_bp.route("/<int:entity_id>/preview")
     class PreviewDownload(MethodView):
+        @mask_errors
         def get(cls, entity_id: int):
-            entity = EntityModel.get(entity_id)
+            entity = EntityModel.get(id=entity_id)
             if not entity:
                 raise MissingMediaFileError()
             if entity.isCollection:
                 raise NoFileForCollectionError()  # consider creating preview
-            if os.path.exists(entity.absolute_preview_filename()):
+            if os.path.exists(entity.absolute_preview_filename):
                 return send_file(
-                    entity.absolute_preview_filename(),
+                    entity.absolute_preview_filename,
                     mimetype="image/jpeg",
-                    download_name=secure_filename(f"{entity.md5}_preview.jpeg"),
+                    download_name=secure_filename(entity.preview_filename),
                 )
 
     @entity_bp.route("/<int:entity_id>/stream/m3u8")
     class get_m3u8(MethodView):
+        @mask_errors
         def get(cls, entity_id: int):
-            entity = EntityModel.get(entity_id)
+            entity = EntityModel.get(id=entity_id)
             if not entity:
                 raise MissingMediaFileError()
             if entity.isCollection:
@@ -132,7 +143,7 @@ def create_entity_resources(MediaVersion):
     @entity_bp.route("/<int:entity_id>/stream/<string:filename>")
     class get_segment(MethodView):
         def get(cls, entity_id: int, filename: str):
-            entity = EntityModel.get(entity_id)
+            entity = EntityModel.get(id=entity_id)
             if not entity:
                 raise MissingMediaFileError()
             if entity.isCollection:

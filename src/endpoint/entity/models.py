@@ -14,6 +14,8 @@ from clmediakit import (
     create_video_thumbnail4x4,
     MediaType,
     CLMetaData,
+    HLSStreamGenerator,
+    HLSVariant,
 )
 from marshmallow import ValidationError
 from src.hnsw_indices import hnsw_image_lookup, hnsw_video_lookup
@@ -37,15 +39,8 @@ from ...config import ConfigClass
 class EntityModelReaderMixin:
     @classmethod
     def get(cls, **kwargs):
-        """
-        Retrieve a entity instance by its ID.
-        Raise MissingMediaError if the entity does not exist.
-        """
-        filters = {key: kwargs[key] for key in kwargs if key in cls.__table__.columns}
-
-        entity = cls.query.filter_by(**filters).first()
-
-        return entity
+        items = cls.get_all(**kwargs)
+        return items[0] if items else None
 
     @classmethod
     def get_all(cls, **kwargs):
@@ -460,11 +455,48 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         output_dir = os.path.join(ConfigClass.STREAM_STORAGE_LOCATION, stream_path)
         master_pl = os.path.join(output_dir, "adaptive.m3u8")
         if not os.path.exists(master_pl):
-            BackgroundTaskModel.start(self.id, "generate_stream_lq")
-            success = self.wait_for_m3u8(master_pl=master_pl)
-            if not success:
-                raise VideoStreamError(self.id)
+            RUN_IN_BACKGROUND = True
+
+            if RUN_IN_BACKGROUND:
+                BackgroundTaskModel.start(self.id, "generate_stream_lq")
+                success = self.wait_for_m3u8(master_pl=master_pl)
+                if not success:
+                    raise VideoStreamError(self.id)
+            else:
+                EntityModel.exec_generate_stream_lq(self.id)
+
         return output_dir
+
+    @classmethod
+    def exec_generate_stream_lq(cls, media_id):
+        media = EntityModel.get(id=media_id)
+        if media:
+            if media.type != "video":  # why MediaType.VIDEO is not working?
+                return f"media_{str(media.id)}: can't stream . not a video. type: {media.type}"
+            input_file = media.absolute_filename
+            stream_path = os.path.join(media.MIMEType, f"media_{str(media.id)}")
+
+            output_dir = os.path.join(ConfigClass.STREAM_STORAGE_LOCATION, stream_path)
+            os.makedirs(os.path.dirname(output_dir), exist_ok=True)
+            master_pl = os.path.join(output_dir, "adaptive.m3u8")
+            if os.path.exists(master_pl):
+                return f"media_{str(media.id)}: master_pl exists. not regenerating"
+            generator = HLSStreamGenerator(
+                input_file=input_file,
+                output_dir=output_dir,
+            )
+            # HLSVariant(resolution=720, bitrate=900),
+            # HLSVariant(resolution=480, bitrate=400),
+            try:
+                valid = generator.addVariants([HLSVariant(resolution=240, bitrate=200)])
+
+            except Exception as e:
+                # FIXME: WE may consider deleting if ffmpeg fails
+                valid = False
+            if not valid:
+                return f"media_{str(media.id)}: failed to generate stream"
+            return f"media_{str(media.id)}: stream generated"
+        return f"media_{str(media.id)}: media not found"
 
 
 class TempFile:

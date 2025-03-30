@@ -41,7 +41,7 @@ class BackgroundTaskModel(db.Model):
     def update_status(self):
         task_id = self.task_id
         try:
-            task_result = CeleryTasks.exec_generate_preview.AsyncResult(task_id)
+            task_result = CeleryTasks.exec_generate_stream_lq.AsyncResult(task_id)
             print(f"state is {task_result.state}")
             if task_result.state == "PENDING":
                 self.task_status = "pending"
