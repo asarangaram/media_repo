@@ -21,3 +21,6 @@ if [ -f "$file" ]; then
     sleep 1
 
 fi
+
+
+# curl -X POST -H "Content-Type: application/json" -d '{"isCollection": 1, "label": "default4"}'

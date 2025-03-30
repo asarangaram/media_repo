@@ -47,7 +47,12 @@ class NoFileForCollectionError(NotFound):
 
 class MissingMediaError(NotFound):
     def __init__(self):
-        super().__init__("media not found")
+        super().__init__("media not found.")
+
+
+class MissingMediaWhenUploadError(NotFound):
+    def __init__(self):
+        super().__init__("post media with a file.")
 
 
 class VideoStreamError(InternalServerError):

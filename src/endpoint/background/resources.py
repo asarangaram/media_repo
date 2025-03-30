@@ -1,7 +1,6 @@
 from flask.views import MethodView
 from flask_smorest import Blueprint
 
-from src.endpoint.media.resources import mask_errors
 
 from .schemas import BGTaskSchema
 from .models import BackgroundTaskModel

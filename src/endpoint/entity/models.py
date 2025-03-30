@@ -3,8 +3,11 @@ from datetime import datetime
 import mimetypes
 import os
 import shutil
+import sqlite3
+from sqlalchemy.exc import IntegrityError
 import tempfile
 import time
+import traceback
 
 from clmediakit import (
     create_image_thumbnail,
@@ -12,6 +15,7 @@ from clmediakit import (
     MediaType,
     CLMetaData,
 )
+from marshmallow import ValidationError
 from src.hnsw_indices import hnsw_image_lookup, hnsw_video_lookup
 from src.endpoint.background.models import BackgroundTaskModel
 from src.utils.errors import (
@@ -21,6 +25,7 @@ from src.utils.errors import (
     MissingMD5Error,
     MissingMediaError,
     MissingMediaFileError,
+    MissingMediaWhenUploadError,
     PreviewGenerationFailedError,
     VideoStreamError,
 )
@@ -31,8 +36,8 @@ from ...config import ConfigClass
 
 class EntityModel(db.Model):
     """
-    Represents a media item in the database.
-    This model handles metadata, file storage, preview generation, and other media-related operations.
+    Represents a entity in the database.
+    This model handles metadata, file storage, preview generation, and other entity-related operations.
     """
 
     __private_key = object()
@@ -46,22 +51,22 @@ class EntityModel(db.Model):
     isCollection = db.Column(db.Boolean)
 
     # Mandatory for Collections, Optional for Files
-    label = db.Column(db.UnicodeText, nullable=False if isCollection else True)
+    label = db.Column(db.UnicodeText, nullable=True)
     parentId = db.Column(
         db.Integer,
         db.ForeignKey("entities.id"),
-        nullable=False if not isCollection else True,
+        nullable=True,
     )
 
     # Optional for Collections and Media
     description = db.Column(db.UnicodeText, nullable=True)
 
     # Mandatory for Media, should be set to None for Collections
-    FileSize = db.Column(db.String, nullable=False if not isCollection else True)
-    md5 = db.Column(
-        db.String, unique=True, nullable=False if not isCollection else True
-    )
-    MIMEType = db.Column(db.String, nullable=False if not isCollection else True)
+    FileSize = db.Column(db.String, nullable=True)
+    md5 = db.Column(db.String, unique=True, nullable=True)
+    MIMEType = db.Column(db.String, nullable=True)
+    type = db.Column(db.String, nullable=True)
+    extension = db.Column(db.String, nullable=True)
 
     # Optional only for Media, should be set to None for Collections
     CreateDate = db.Column(db.DateTime, nullable=True)
@@ -72,95 +77,130 @@ class EntityModel(db.Model):
 
     __table_args__ = (
         db.UniqueConstraint("label", "isCollection", name="unique_label_Collection"),
+        db.CheckConstraint(
+            "isCollection = 1 OR parentId IS NOT NULL",
+            name="check_parent_not_null_if_not_collection",
+        ),
+        db.CheckConstraint(
+            "isCollection = 1 OR FileSize IS NOT NULL",
+            name="check_file_size_not_null_if_not_collection",
+        ),
+        db.CheckConstraint(
+            "isCollection = 1 OR md5 IS NOT NULL",
+            name="check_md5_not_null_if_not_collection",
+        ),
+        db.CheckConstraint(
+            "isCollection = 1 OR MIMEType IS NOT NULL",
+            name="check_mime_type_not_null_if_not_collection",
+        ),
+        db.CheckConstraint(
+            "isCollection = 1 OR type IS NOT NULL",
+            name="check_type_not_null_if_not_collection",
+        ),
+        db.CheckConstraint(
+            "isCollection = 1 OR extension IS NOT NULL",
+            name="check_extension_not_null_if_not_collection",
+        ),
     )
     # remove  uselist=True,?
     task = db.relationship("BackgroundTaskModel", uselist=True, backref="entities")
+    error_translator = {
+        "check_parent_not_null_if_not_collection": "Media must have parentId",
+        "check_file_size_not_null_if_not_collection": "Failed to detect file_size from media",
+        "check_md5_not_null_if_not_collection": "Failed to calculate md5 from media",
+        "check_mime_type_not_null_if_not_collection": "Failed to determine mime type from media",
+        "check_type_not_null_if_not_collection": "Failed to determine type for media",
+        "check_extension_not_null_if_not_collection": "Failed to determine extensio for media",
+    }
 
     def __init__(self, private_key=None, **kwargs):
         if private_key != EntityModel.__private_key:
             raise IncorrectUsageError()
+        derived = {}
+        if kwargs.get("MIMEType"):
+            derived["type"] = MediaType.from_mime(kwargs.get("MIMEType"))
+            derived["extension"] = mimetypes.guess_extension(kwargs.get("MIMEType"))
+            if not derived["extension"]:
+                derived["extension"] = ".bin"
+
         super().__init__(
-            **{key: kwargs[key] for key in kwargs if key in self.__table__.columns}
+            **{key: kwargs[key] for key in kwargs if key in self.__table__.columns},
+            **derived,
         )
 
     def save_to_db(self):
-        """Save the current media instance to the database."""
+        """Save the current entity instance to the database."""
         db.session.add(self)
         db.session.commit()
 
     def delete_from_db(self):
-        """Delete the current media instance from the database."""
+        """Delete the current entity instance from the database."""
         db.session.delete(self)
         db.session.commit()
 
     @classmethod
-    def get(cls, _id):
+    def get(cls, **kwargs):
         """
-        Retrieve a media instance by its ID.
-        Raise MissingMediaError if the media does not exist.
+        Retrieve a entity instance by its ID.
+        Raise MissingMediaError if the entity does not exist.
         """
-        media = cls.query.filter_by(id=_id).first()
-        if not media:
-            raise MissingMediaError()
+        filters = {key: kwargs[key] for key in kwargs if key in cls.__table__.columns}
 
-        return media
+        entity = cls.query.filter_by(**filters).first()
+
+        return entity
 
     @classmethod
-    def get_all(cls, types=None):
+    def get_all(cls, **kwargs):
         """
-        Retrieve all media instances.
-        Optionally filter by media types.
+        Retrieve all entity instances.
+        Optionally filter by entity types.
         """
-        if not types:
+        if len(kwargs) == 0:
             items = cls.query.all()
         else:
-            items = cls.query.filter(EntityModel.type.in_(types)).all()
+            filters = {
+                key: kwargs[key] for key in kwargs if key in cls.__table__.columns
+            }
+            items = cls.query.filter(filters).all()
 
         return items
 
     @classmethod
-    def get_by_md5(cls, md5):
-        """
-        Retrieve a media instance by its MD5 hash.
-        """
-        media = cls.query.filter_by(md5=md5).first()
-
-        return media
-
-    @classmethod
     def create(cls, **kwargs):
         if kwargs.get("isCollection"):
-            if duplicate := cls.get_by_md5(kwargs.get("label")):
-                if kwargs.get("parentId") != entity.parentId:
+            if duplicate := cls.get(label=kwargs.get("label")):
+                if kwargs.get("parentId") != duplicate.parentId:
                     raise DuplicateItemError()
                 return duplicate
-            entity = EntityModel(private_key=cls.__private_key, **kwargs)
-            entity.addedDate = datetime.now()
-            entity.updatedDate = entity.addedDate
-            entity.save_to_db()
         else:
             if kwargs.get("md5") is None:
                 raise MissingMD5Error()
-            if duplicate := cls.get_by_md5(kwargs.get("md5")):
+            if duplicate := cls.get(md5=kwargs.get("md5")):
                 if kwargs.get("parentId") != entity.parentId:
                     raise DuplicateItemError()
                 return duplicate
+
+        try:
             entity = EntityModel(private_key=cls.__private_key, **kwargs)
-            entity.addedDate = datetime.now()
-            entity.updatedDate = entity.addedDate
-            entity.acceptMedia()
-            entity.save_to_db()
-            if entity.type == MediaType.VIDEO:
-                hnsw_video_lookup.add(entity.id, entity.dHash)
-            elif entity.type == MediaType.IMAGE:
-                hnsw_image_lookup.add(entity.id, entity.dHash)
-            return entity
+            if cls.acceptEntity(entity, filepath=kwargs.get("filepath")):
+                if not entity.isCollection:
+                    if entity.type == MediaType.VIDEO:
+                        hnsw_video_lookup.add(entity.id, entity.dHash)
+                    elif entity.type == MediaType.IMAGE:
+                        hnsw_image_lookup.add(entity.id, entity.dHash)
+                return entity
+            ## This should not occur in create, as we either return True
+            ## or generate exception
+            raise ValidationError("Entity registration failed")
+        except Exception as e:
+            raise
 
     @classmethod
     def update(cls, _id, **kwargs):
         """
-        Update an existing media instance with new metadata or attributes.
-        If the updated media is a duplicate, raise a DuplicateItemError.
+        Update an existing entity instance with new metadata or attributes.
+        If the updated entity is a duplicate, raise a DuplicateItemError.
         """
         currentEntity = cls.get(_id)
         if currentEntity:
@@ -169,15 +209,6 @@ class EntityModel(db.Model):
 
         not_modifiable_columns = ["id", "addedDate", "updatedDate", "isCollection"]
 
-        updated = False
-        if kwargs.get("filePath"):
-            if kwargs.get("md5"):
-                if duplicate := cls.get_by_md5(kwargs.get("md5")):
-                    raise DuplicateItemError()
-            existing_media = updatedEntity.absolute_path()
-        else:
-            existing_media = None
-
         for key, value in kwargs.items():
             if (
                 key in updatedEntity.__table__.columns
@@ -185,28 +216,24 @@ class EntityModel(db.Model):
             ):
                 if getattr(updatedEntity, key) != value:
                     setattr(updatedEntity, key, value)
-                    updated = True
 
-        if existing_media:
-            updatedEntity.acceptMedia()
-            if not existing_media == updatedEntity.absolute_path():
-                os.remove(existing_media)
-
-        if currentEntity != updatedEntity:
-            updatedEntity.updatedDate = kwargs.get("updatedDate", datetime.now())
-            updatedEntity.save_to_db()
-            if kwargs.get("filePath"):
-                if updatedEntity.type == MediaType.VIDEO:
-                    hnsw_video_lookup.replace(updatedEntity.id, updatedEntity.dHash)
-                elif updatedEntity.type == MediaType.IMAGE:
-                    hnsw_image_lookup.replace(updatedEntity.id, updatedEntity.dHash)
-            return updatedEntity
-        else:
+        try:
+            if cls.acceptEntity(
+                updatedEntity, currentEntity, filepath=kwargs.get("filepath")
+            ):
+                if not updatedEntity.isCollection:
+                    if updatedEntity.type == MediaType.VIDEO:
+                        hnsw_video_lookup.replace(updatedEntity.id, updatedEntity.dHash)
+                    elif updatedEntity.type == MediaType.IMAGE:
+                        hnsw_image_lookup.replace(updatedEntity.id, updatedEntity.dHash)
+                return updatedEntity
             return currentEntity
+        except Exception as e:
+            raise
 
     def __eq__(self, other):  # FIXME
         """
-        Compare two media instances for equality based on their attributes.
+        Compare two entity instances for equality based on their attributes.
         """
         if not isinstance(other, self.__class__):
             return False
@@ -227,41 +254,28 @@ class EntityModel(db.Model):
         )
 
     @property
-    def type(self):
-        """Determine the media type based on its MIME type."""
-        return MediaType.from_mime(self.MIMEType)
-
-    @property
-    def extension(self):
-        """Guess the file extension based on the MIME type. Defaults to '.bin' if unknown."""
-        extension = mimetypes.guess_extension(self.MIMEType)
-        if not extension:
-            extension = ".bin"
-        return extension
-
-    @property
     def filename(self):
-        """Generate the relative filename for the media based on its content type and MD5 hash."""
+        """Generate the relative filename for the entity based on its content type and MD5 hash."""
         return os.path.join(self.MIMEType, f"{str(self.md5)}{self.extension}")
 
     @property
     def preview_filename(self):
-        """Generate the filename for the media's preview image."""
+        """Generate the filename for the entity's preview image."""
         return f"{self.filename}.tn.jpeg"
 
     @property
     def absolute_filename(self):
-        """Get the absolute path to the media file in the storage location."""
+        """Get the absolute path to the entity file in the storage location."""
         return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.filename)
 
     @property
     def absolute_preview_filename(self):
-        """Get the absolute path to the media's preview image in the storage location."""
+        """Get the absolute path to the entity's preview image in the storage location."""
         return f"{self.absolute_filename}.tn.jpeg"
 
     def get_preview(self):
         """
-        Retrieve the preview image for the media.
+        Retrieve the preview image for the entity.
         Generate the preview if it does not already exist.
         """
         if not os.path.exists(self.absolute_filename):
@@ -286,21 +300,66 @@ class EntityModel(db.Model):
         except Exception as e:
             raise PreviewGenerationFailedError()
 
-    def acceptMedia(self, overwrite=True, **kwargs):
+    @classmethod
+    def acceptEntity(cls, curr, prev=None, filepath=None):
+        try:
+            if curr != prev:
+                timenow = datetime.now()
+                curr.addedDate = prev.addedDate if prev else timenow
+                curr.updatedDate = timenow
+                db.session.flush()
+                try:
+                    db.session.add(curr)
+
+                    if not curr.isCollection:
+                        prev_media = prev.absolute_filename if prev else None
+                        curr_media = curr.absolute_filename
+                        if curr_media != prev_media:  # different file or new file
+                            if not filepath:
+                                raise MissingMediaWhenUploadError()
+
+                            curr.acceptMedia(filepath=filepath)
+
+                            if curr_media != prev_media and prev:
+                                prev.removeMedia()
+
+                    db.session.commit()
+                except (IntegrityError, sqlite3.IntegrityError) as e:
+                    raised = False
+                    for key, value in cls.error_translator.items():
+                        if key in str(e):
+                            raised = True
+                            raise ValidationError(value)
+                    if not raised:
+                        raise
+                except Exception as e:
+                    raise Exception("Unexpected error occurred")
+            return curr != prev
+        except Exception as e:
+            db.session.rollback()
+            prev_media = prev.absolute_filename if prev else None
+            curr_media = curr.absolute_filename
+            if curr_media != prev_media:
+                curr.removeMedia()
+            raise
+
+    def acceptMedia(self, overwrite=True, filepath=None):
         path = self.absolute_filename
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        shutil.copy(kwargs.filepath, path)
+        shutil.copy(filepath, path)
         self.generate_preview(path, self.absolute_preview_filename)
 
     def removeMedia(self):
-        os.remove(self.absolute_filename)
-        os.remove(self.absolute_preview_filename)
+        if os.path.exists(self.absolute_filename):
+            os.remove(self.absolute_filename)
+        if os.path.exists(self.absolute_preview_filename):
+            os.remove(self.absolute_preview_filename)
 
     @classmethod
     def delete(cls, _id: int):
         """
-        Delete a media instance by its ID.
-        Raise HardDeleteFailedError if the media is not marked as deleted.
+        Delete a entity instance by its ID.
+        Raise HardDeleteFailedError if the entity is not marked as deleted.
         """
         entity = cls.get(_id)
         if not entity.isDeleted:
@@ -319,11 +378,11 @@ class EntityModel(db.Model):
 
     @classmethod
     def delete_all(cls):
-        """Delete all media instances from the database."""
+        """Delete all entity instances from the database."""
         all = cls.query.all()
-        for media in all:
-            if not media.isDeleted:
-                cls.delete(media.id)
+        for entity in all:
+            if not entity.isDeleted:
+                cls.delete(entity.id)
 
     @classmethod
     def wait_for_m3u8(self, master_pl: str, timeout: int = 60):

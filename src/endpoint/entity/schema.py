@@ -25,10 +25,15 @@ class ItemSchema(Schema):
         ordered = True  # Enable ordered serialization
 
     id = fields.Int(dump_only=True)
-    label = fields.Str(allow_none=True, required=True)
+    isCollection = IntigerizedBool(
+        required=True, error_messages={"missing isCollection": "TODO"}
+    )
+    label = fields.Str(
+        allow_none=True, required=False, error_messages={"missing label": "TODO"}
+    )
     description = fields.Str()
-    isCollection = IntigerizedBool(required=True)
-    parentId = fields.Int(allow_none=True, required=True)
+
+    parentId = fields.Int(allow_none=True, error_messages={"parentId": "TODO"})
     addedDate = MillisecondsSinceEpoch(
         required=True,
         dump_only=True,
@@ -39,7 +44,7 @@ class ItemSchema(Schema):
         dump_only=True,
         error_messages={"invalid": "updatedDate: Invalid date format."},
     )
-    isDeleted = IntigerizedBool(required=True)
+    isDeleted = IntigerizedBool(default=False)
 
     CreateDate = fields.DateTime(dump_only=True)  # May be allow to update?
     FileSize = fields.Str(dump_only=True)
@@ -66,7 +71,10 @@ class ItemSchema(Schema):
             "dHash",
         ]
 
-        is_collection = data.get("isCollection", False)
+        is_collection = bool(data.get("isCollection", False))
+
+        if is_collection and not "label" in data:
+            raise ValidationError(f"label is required for collection")
 
         if is_collection:
             # If it's a collection, these fields should not be present
@@ -75,25 +83,17 @@ class ItemSchema(Schema):
                     raise ValidationError(
                         f"{field} is not allowed for collections", field
                     )
-        else:
-            # If it's media, ensure required media fields are present
-            missing_fields = [field for field in media_fields if field not in data]
-            if missing_fields:
-                raise ValidationError(
-                    f"Missing required media fields: {', '.join(missing_fields)}"
-                )
 
     @pre_load
     def ensure_is_collection(self, data, **kwargs):
         """Ensure isCollection is always a boolean (prevents issues when parsing)"""
         if "isCollection" not in data:
             raise ValidationError("isCollection is required")
-        data["isCollection"] = bool(data["isCollection"])
+        # data["isCollection"] = bool(data["isCollection"])
         return data
 
-    """ @post_dump
+    @post_dump
     def remove_skip_values(self, data, **kwargs):
         return {
             key: value for key, value in data.items() if value not in self.SKIP_VALUES
         }
-    """

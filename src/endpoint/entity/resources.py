@@ -16,6 +16,7 @@ from src.endpoint.entity.models import EntityModel
 from src.endpoint.entity.schema import ItemSchema, MediaFileSchema
 from src.utils.errors import (
     MissingMediaFileError,
+    MissingMediaWhenUploadError,
     NoFileForCollectionError,
     PreviewGenerationFailedError,
     VideoStreamError,
@@ -39,7 +40,10 @@ def mask_errors(func):
             form_data = request.form.to_dict()
             print(f"Incoming Request Data: {form_data}")
         try:
+            print(kwargs)
             return func(*args, **kwargs)
+        except NotFound:
+            raise
         except Exception as e:
             raise InternalServerError(f"{e}")
 
@@ -50,15 +54,17 @@ def create_entity_resources(MediaVersion):
     @entity_bp.route("/")
     @entity_bp.route("")
     class MediaList(MethodView):
+
         @entity_bp.arguments(MediaFileSchema, location="files")
         @entity_bp.arguments(ItemSchema, location="form")
         @entity_bp.response(201, ItemSchema)
+        @mask_errors
         def post(cls, files, kwargs):
             if not kwargs.get("isCollection", False):
                 if not files.get("media"):
-                    raise MissingMediaFileError()
+                    raise MissingMediaWhenUploadError()
                 metadata = CLMetaData.from_media(
-                    EntityModel.save(files["media"])
+                    EntityModel.temp_save(files["media"])
                 ).to_dict()
             else:
                 if files.get("media"):
@@ -69,6 +75,9 @@ def create_entity_resources(MediaVersion):
             if metadata.get("filePath"):
                 os.remove(metadata.get("filePath"))
             return item
+
+        def get(cls):
+            return {"success": "yes"}
 
         @entity_bp.response(200)
         def delete(cls):
@@ -155,5 +164,8 @@ def create_entity_resources(MediaVersion):
 
 @entity_bp.errorhandler(404)
 def not_found_error(error):
-    response = {"message": str(error)}
-    return jsonify(response), 404
+    response = {
+        "error": error.description,  # Default error message
+        "status_code": 404,
+    }
+    return response, 404
