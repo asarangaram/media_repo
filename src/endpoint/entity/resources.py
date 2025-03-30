@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.exceptions import InternalServerError, NotFound
 from clmediakit import MediaType, CLMetaData
 
-from src.endpoint.entity.models import EntityModel
+from src.endpoint.entity.models import EntityModel, TempFile
 from src.endpoint.entity.schema import ItemSchema, MediaFileSchema
 from src.utils.errors import (
     MissingMediaFileError,
@@ -54,26 +54,25 @@ def create_entity_resources(MediaVersion):
     @entity_bp.route("/")
     @entity_bp.route("")
     class MediaList(MethodView):
-
         @entity_bp.arguments(MediaFileSchema, location="files")
         @entity_bp.arguments(ItemSchema, location="form")
         @entity_bp.response(201, ItemSchema)
         @mask_errors
         def post(cls, files, kwargs):
+            temp_file = None
             if not kwargs.get("isCollection", False):
                 if not files.get("media"):
                     raise MissingMediaWhenUploadError()
-                metadata = CLMetaData.from_media(
-                    EntityModel.temp_save(files["media"])
-                ).to_dict()
+                temp_file = TempFile(files["media"])
+                metadata = CLMetaData.from_media(temp_file.path).to_dict()
             else:
                 if files.get("media"):
                     raise NoFileForCollectionError()
                 metadata = {}
 
             item = EntityModel.create(**kwargs, **metadata)
-            if metadata.get("filePath"):
-                os.remove(metadata.get("filePath"))
+            if temp_file:
+                temp_file.remove()
             return item
 
         def get(cls):

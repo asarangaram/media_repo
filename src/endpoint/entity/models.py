@@ -168,6 +168,7 @@ class EntityModel(db.Model):
 
     @classmethod
     def create(cls, **kwargs):
+        ## Check for duplicate
         if kwargs.get("isCollection"):
             if duplicate := cls.get(label=kwargs.get("label")):
                 if kwargs.get("parentId") != duplicate.parentId:
@@ -177,12 +178,40 @@ class EntityModel(db.Model):
             if kwargs.get("md5") is None:
                 raise MissingMD5Error()
             if duplicate := cls.get(md5=kwargs.get("md5")):
-                if kwargs.get("parentId") != entity.parentId:
+                if kwargs.get("parentId") != duplicate.parentId:
                     raise DuplicateItemError()
                 return duplicate
 
+        ## check if the parent exists and it is a collection
+        parentId = kwargs.get("parentId")
+
+        parent = cls.get(id=parentId) if parentId else None
+
+        if parent:
+            if not parent.isCollection:
+                raise ValidationError(f" parentId {parentId} is not a collection")
+
+        if parentId and not parent:
+            raise ValidationError(f" parentId {parentId} does not exists")
+
+        ## if no parent and its a media, try creating a default parent
+        parentArg = {}
+        if not parent and not kwargs.get("isCollection"):
+            parent = cls.get(label="Unclassified")
+            if not parent:
+                parent = EntityModel.create(
+                    **{"isCollection": 1, "label": "Unclassified"}
+                )
+            if not parent:
+                raise ValidationError(
+                    "parentId not specified, unable to create default collection"
+                )
+            parentArg = {"parentId": parent.id}
+            pass
+
+        # Create and accept
         try:
-            entity = EntityModel(private_key=cls.__private_key, **kwargs)
+            entity = EntityModel(private_key=cls.__private_key, **kwargs, **parentArg)
             if cls.acceptEntity(entity, filepath=kwargs.get("filepath")):
                 if not entity.isCollection:
                     if entity.type == MediaType.VIDEO:
@@ -418,8 +447,9 @@ class EntityModel(db.Model):
                 raise VideoStreamError(self.id)
         return output_dir
 
-    @classmethod
-    def temp_save(cls, file):
+
+class TempFile:
+    def __init__(self, file):
         temp_dir = tempfile.gettempdir()
         temp_path = os.path.join(temp_dir, file.filename)
 
@@ -430,4 +460,8 @@ class EntityModel(db.Model):
             temp_path = f"{base}_{counter}{ext}"
             counter += 1
         file.save(temp_path)
-        return temp_path
+        self.path = temp_path
+
+    def remove(self):
+        if os.path.exists(self.path):
+            os.remove(self.path)
