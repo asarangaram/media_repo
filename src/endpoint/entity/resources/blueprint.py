@@ -19,6 +19,6 @@ def mask_errors(func):
         except NotFound:
             raise
         except Exception as e:
-            raise InternalServerError(f"{e}")
+            raise InternalServerError(f"{e.description}")
 
     return wrapper

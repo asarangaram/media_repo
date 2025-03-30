@@ -4,12 +4,16 @@ from werkzeug.exceptions import InternalServerError, NotFound
 
 class MissingMD5Error(ValidationError):
     def __init__(self):
-        super().__init__({"md5": ["md5 is required to create media"]})
+        super().__init__("md5 is required to create media")
 
 
 class DuplicateItemError(ValidationError):
     def __init__(self, entity, parent=None):
-        super().__init__(f"duplicate item found with id {entity.id}.")
+        super().__init__(
+            f"Duplicate item found with id {entity.id}" f", parent: {parent.id}"
+            if parent
+            else "" "."
+        )
 
 
 class HardDeleteFailedError(ValidationError):
@@ -25,37 +29,37 @@ class HardDeleteFailedError(ValidationError):
 
 class PreviewGenerationFailedError(NotFound):
     def __init__(self):
-        super().__init__("preview generation failed")
+        super().__init__("Preview generation failed")
 
 
 class MissingMediaFileError(NotFound):
     def __init__(self):
-        super().__init__("media file not found")
+        super().__init__("Media file not found")
+
+
+class NoFileAcceptedForCollectionError(NotFound):
+    def __init__(self):
+        super().__init__("Can't attach file to Collection")
 
 
 class NoFileForCollectionError(NotFound):
     def __init__(self):
-        super().__init__("can't attach file to Collection")
+        super().__init__("No file associated with Collection")
 
 
 class MissingMediaError(NotFound):
     def __init__(self):
-        super().__init__("media not found.")
+        super().__init__("Media not found.")
 
 
 class MissingMediaWhenUploadError(NotFound):
     def __init__(self):
-        super().__init__("post media with a file.")
+        super().__init__("Post media with a file.")
 
 
-class VideoStreamError(InternalServerError):
-    def __init__(self, id: int, additionalMessage=None):
-        if additionalMessage:
-            super().__init__(
-                f"[Media #{id}]: Error while streaming media, {additionalMessage}"
-            )
-        else:
-            super().__init__(f"[Media #{id}]: Error while streaming media")
+class VideoStreamError(NotFound):
+    def __init__(self, additionalMessage):
+        super().__init__(f"Error while streaming media. {additionalMessage}")
 
 
 class IncorrectUsageError(InternalServerError):

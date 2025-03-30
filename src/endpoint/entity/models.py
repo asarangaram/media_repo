@@ -437,11 +437,11 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         while not os.path.exists(master_pl):
             elapsed_time = time.time() - start_time
             if elapsed_time > timeout:
-                print(f"Timeout waiting for {master_pl}.")
-                return False
+                raise VideoStreamError(
+                    additionalMessage=f"background task not responding for media {self.id}",
+                )
             time.sleep(1)  # Poll every second
-        print("adaptive.m3u8 found!")
-        return True
+        return
 
     def get_stream_folder(self):
         """
@@ -450,7 +450,10 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         """
         if self.type != "video":  # why MediaType.VIDEO is not working?
             print(f"can't stream {self.id}. not a video")
-            raise VideoStreamError(self.id, additionalMessage="not a video")
+            raise VideoStreamError(
+                additionalMessage=f"Media with id {self.id} is "
+                f"a {self.type} (MIME: {self.MIMEType}), not a video",
+            )
         stream_path = os.path.join(self.MIMEType, f"media_{str(self.id)}")
         output_dir = os.path.join(ConfigClass.STREAM_STORAGE_LOCATION, stream_path)
         master_pl = os.path.join(output_dir, "adaptive.m3u8")
@@ -459,9 +462,8 @@ class EntityModel(db.Model, EntityModelReaderMixin):
 
             if RUN_IN_BACKGROUND:
                 BackgroundTaskModel.start(self.id, "generate_stream_lq")
-                success = self.wait_for_m3u8(master_pl=master_pl)
-                if not success:
-                    raise VideoStreamError(self.id)
+                self.wait_for_m3u8(master_pl=master_pl)
+
             else:
                 EntityModel.exec_generate_stream_lq(self.id)
 
@@ -472,7 +474,9 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         media = EntityModel.get(id=media_id)
         if media:
             if media.type != "video":  # why MediaType.VIDEO is not working?
-                return f"media_{str(media.id)}: can't stream . not a video. type: {media.type}"
+                return (
+                    f"Can't stream . media_{media.id}:not a video. type: {media.type}"
+                )
             input_file = media.absolute_filename
             stream_path = os.path.join(media.MIMEType, f"media_{str(media.id)}")
 

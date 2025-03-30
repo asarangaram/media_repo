@@ -21,9 +21,9 @@ from src.utils.errors import (
     MissingMediaError,
     MissingMediaFileError,
     MissingMediaWhenUploadError,
+    NoFileAcceptedForCollectionError,
     NoFileForCollectionError,
     PreviewGenerationFailedError,
-    VideoStreamError,
 )
 
 
@@ -51,7 +51,7 @@ def create_entity_resources(MediaVersion):
                 metadata = CLMetaData.from_media(temp_file.path).to_dict()
             else:
                 if files.get("media"):
-                    raise NoFileForCollectionError()
+                    raise NoFileAcceptedForCollectionError()
                 metadata = {}
 
             item = EntityModel.create(**kwargs, **metadata)
@@ -154,9 +154,7 @@ def create_entity_resources(MediaVersion):
             if filename.endswith(".m3u8"):
                 return send_from_directory(stream_folder, filename, as_attachment=False)
             else:
-                raise VideoStreamError(
-                    id=entity_id, additionalMessage="Invalid file type"
-                )
+                raise NotFound(f"{filename} is not available")
 
 
 @entity_bp.errorhandler(404)
