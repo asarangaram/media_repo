@@ -54,34 +54,39 @@ class ItemSchema(Schema):
         default=False
     )  # Boolean indicating if the item is deleted
 
-    mediaInfo = fields.Method("get_media_info")
-
-    mediainfo_fields = {
-        "fileSize": "FileSize",
-        "md5": "md5",
-        "mimeType": "MIMEType",
-        "type": "type",
-        "extension": "extension",
-    }
-    mediainfo_optional_fields = {
-        "createDate": "CreateDate",
-        "duration": "Duration",
-        "height": "ImageHeight",
-        "width": "ImageWidth",
-    }
-
-    def get_media_info(self, obj):
-        map = {
-            k: (
-                int(v.timestamp() * 1000)
-                if isinstance(v := obj.__dict__.get(field), datetime)
-                else v
-            )
-            for k, field in chain(
-                self.mediainfo_fields.items(), self.mediainfo_optional_fields.items()
-            )
-        }
-        return {key: value for key, value in map.items() if value}
+    # Additional metadata fields
+    CreateDate = MillisecondsSinceEpoch(
+        dump_only=True,
+        attribute="CreateDate",
+        data_key="createDate",
+    )
+    FileSize = fields.Int(
+        dump_only=True,
+        attribute="FileSize",
+        data_key="fileSize",
+    )
+    ImageHeight = fields.Int(
+        dump_only=True,
+        attribute="ImageHeight",
+        data_key="height",
+    )
+    ImageWidth = fields.Int(
+        dump_only=True,
+        attribute="ImageWidth",
+        data_key="width",
+    )
+    Duration = fields.Float(
+        dump_only=True,
+        attribute="Duration",
+        data_key="duration",
+    )
+    MIMEType = fields.Str(
+        dump_only=True,
+        attribute="MIMEType",
+        data_key="mimeType",
+    )
+    # dHash = fields.Str(dump_only=True)  # Commented out field for hash
+    md5 = fields.Str(dump_only=True)
 
     @validates_schema
     def validate_media_info(self, data, **kwargs):
@@ -92,13 +97,20 @@ class ItemSchema(Schema):
 
         is_collection = bool(data.get("isCollection", False))
 
-        if is_collection and not "label" in data:
-            raise ValidationError(f"label is required for collection")
+        if is_collection:
+            if not "label" in data:
+                raise ValidationError(f"label is required for collection")
+        else:
+            if not "CreateDate" in data:
+                raise ValidationError(f"CreateDate is required for media")
+            if not "FileSize" in data:
+                raise ValidationError(f"FileSize is required for media")
+            if not "md5" in data:
+                raise ValidationError(f"md5 is required for media")
 
     @pre_load
     def ensure_is_collection(self, data, **kwargs):
         """
-        Ensure isCollection is always a boolean (prevents issues when parsing).
         Raise a validation error if isCollection is missing.
         """
         if "isCollection" not in data:
