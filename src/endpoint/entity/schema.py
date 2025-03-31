@@ -85,6 +85,9 @@ class ItemSchema(Schema):
         attribute="MIMEType",
         data_key="mimeType",
     )
+    type = MediaTypeField(dump_only=True)
+    extension = fields.Str(dump_only=True)
+
     # dHash = fields.Str(dump_only=True)  # Commented out field for hash
     md5 = fields.Str(dump_only=True)
 
@@ -95,7 +98,7 @@ class ItemSchema(Schema):
         If the item is a collection, these fields should not be present.
         """
 
-        is_collection = bool(data.get("isCollection", False))
+        """ is_collection = bool(data.get("isCollection", False))
 
         if is_collection:
             if not "label" in data:
@@ -106,7 +109,8 @@ class ItemSchema(Schema):
             if not "FileSize" in data:
                 raise ValidationError(f"FileSize is required for media")
             if not "md5" in data:
-                raise ValidationError(f"md5 is required for media")
+                raise ValidationError(f"md5 is required for media") """
+        pass
 
     @pre_load
     def ensure_is_collection(self, data, **kwargs):
