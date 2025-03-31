@@ -206,7 +206,14 @@ def create_entity_resources(MediaVersion):
                 ):
                     filters[MediaVersion.parentId] = None
 
-                query = query.filter(*[col == val for col, val in filters.items()])
+                query_filters = []
+                for col, val in filters.items():
+                    if isinstance(val, (list, tuple)):  # Handle multiple values
+                        query_filters.append(col.in_(val))
+                    else:  # Handle single value
+                        query_filters.append(col == val)
+
+                query = query.filter(*query_filters)
 
                 total_items = query.count()
 

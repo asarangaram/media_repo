@@ -149,6 +149,8 @@ class ItemsQuerySchema(Schema):
     MIMEType = fields.Str()
     # dHash = fields.Str()  # Commented out field for hash
     md5 = fields.Str()
+    type = fields.List(MediaTypeField())
+    extension = fields.List(fields.Str())
 
     # Additional query parameters
     current_version = fields.Int()  # Current version of the item
