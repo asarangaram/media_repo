@@ -101,7 +101,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
     description = db.Column(db.UnicodeText, nullable=True)
 
     # Mandatory for Media, should be set to None for Collections
-    FileSize = db.Column(db.String, nullable=True)
+    FileSize = db.Column(db.Integer, nullable=True)
     md5 = db.Column(db.String, unique=True, nullable=True)
     MIMEType = db.Column(db.String, nullable=True)
     type = db.Column(db.String, nullable=True)
@@ -112,7 +112,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
     dHash = db.Column(db.String, nullable=True)
     ImageHeight = db.Column(db.Integer, nullable=True)
     ImageWidth = db.Column(db.Integer, nullable=True)
-    Duration = db.Column(db.String, nullable=True)
+    Duration = db.Column(db.Float, nullable=True)
 
     __table_args__ = (
         db.UniqueConstraint("label", "isCollection", name="unique_label_Collection"),

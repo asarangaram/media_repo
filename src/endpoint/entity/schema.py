@@ -1,3 +1,6 @@
+from datetime import datetime
+from itertools import chain
+
 from flask_smorest.fields import Upload
 from marshmallow import post_dump, validates_schema, ValidationError, pre_load, Schema
 from clmediakit import (
@@ -21,8 +24,6 @@ class MediaFileSchema(Schema):
 
 # Schema for representing an item with various metadata fields
 class ItemSchema(Schema):
-    SKIP_VALUES = set([None, ""])  # Values to skip during serialization
-
     class Meta:
         ordered = True  # Enable ordered serialization of fields
 
@@ -53,15 +54,34 @@ class ItemSchema(Schema):
         default=False
     )  # Boolean indicating if the item is deleted
 
-    # Additional metadata fields
-    CreateDate = MillisecondsSinceEpoch(dump_only=True)
-    FileSize = fields.Str(dump_only=True)
-    ImageHeight = fields.Int(dump_only=True)
-    ImageWidth = fields.Int(dump_only=True)
-    Duration = fields.Str(dump_only=True)
-    MIMEType = fields.Str(dump_only=True)
-    # dHash = fields.Str(dump_only=True)  # Commented out field for hash
-    md5 = fields.Str(dump_only=True)
+    mediaInfo = fields.Method("get_media_info")
+
+    mediainfo_fields = {
+        "fileSize": "FileSize",
+        "md5": "md5",
+        "mimeType": "MIMEType",
+        "type": "type",
+        "extension": "extension",
+    }
+    mediainfo_optional_fields = {
+        "createDate": "CreateDate",
+        "duration": "Duration",
+        "height": "ImageHeight",
+        "width": "ImageWidth",
+    }
+
+    def get_media_info(self, obj):
+        map = {
+            k: (
+                int(v.timestamp() * 1000)
+                if isinstance(v := obj.__dict__.get(field), datetime)
+                else v
+            )
+            for k, field in chain(
+                self.mediainfo_fields.items(), self.mediainfo_optional_fields.items()
+            )
+        }
+        return {key: value for key, value in map.items() if value}
 
     @validates_schema
     def validate_media_info(self, data, **kwargs):
@@ -69,31 +89,11 @@ class ItemSchema(Schema):
         Validate that media-related fields exist only when isCollection is False.
         If the item is a collection, these fields should not be present.
         """
-        media_fields = [
-            "FileSize",
-            "md5",
-            "MIMEType",
-        ]
-        optional_fields = [
-            "CreateDate",
-            "Duration",
-            "ImageHeight",
-            "ImageWidth",
-            "dHash",
-        ]
 
         is_collection = bool(data.get("isCollection", False))
 
         if is_collection and not "label" in data:
             raise ValidationError(f"label is required for collection")
-
-        if is_collection:
-            # If it's a collection, these fields should not be present
-            for field in media_fields + optional_fields:
-                if field in data:
-                    raise ValidationError(
-                        f"{field} is not allowed for collections", field
-                    )
 
     @pre_load
     def ensure_is_collection(self, data, **kwargs):
@@ -111,9 +111,8 @@ class ItemSchema(Schema):
         """
         Remove fields with values in SKIP_VALUES from the serialized output.
         """
-        return {
-            key: value for key, value in data.items() if value not in self.SKIP_VALUES
-        }
+
+        return {key: value for key, value in data.items() if value}
 
 
 # Schema for querying items with various filters and pagination options
