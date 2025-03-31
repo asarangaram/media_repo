@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from flask import jsonify, request
+from flask import jsonify
 from flask.views import MethodView
 from sqlalchemy_continuum import version_class
 from sqlalchemy import func
@@ -15,10 +15,10 @@ def create_resource_paginated_entities(MediaVersion):
         @entity_bp.arguments(ItemsQuerySchema, location="query")
         @entity_bp.response(200)
         def get(cls, kwargs):
-            current_version = request.args.get("current_version", type=int)
-            last_known_version = request.args.get("last_known_version", type=int)
-            page = request.args.get("page", default=1, type=int)
-            per_page = request.args.get("per_page", None, type=int)
+            current_version = kwargs("current_version", type=int)
+            last_known_version = kwargs("last_known_version", type=int)
+            page = kwargs("page", default=1, type=int)
+            per_page = kwargs("per_page", None, type=int)
 
             if page > 1 and (current_version is None or per_page is None):
                 return (

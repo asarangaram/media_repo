@@ -116,6 +116,11 @@ class ItemsQuerySchema(Schema):
     # dHash = fields.Str()
     md5 = fields.Str()
 
+    current_version = fields.Int()
+    last_known_version = fields.Int()
+    page = fields.Int()
+    per_page = fields.Int()
+
     similar_to = fields.Int()
     any = IntigerizedBool()
 
