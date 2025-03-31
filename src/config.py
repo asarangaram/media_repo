@@ -74,3 +74,9 @@ class ConfigClass(object):
 
     HNSW_IMAGE_LOOKUP_LOCATION = f"{FILE_STORAGE_LOCATION}/image_lookup.idx"
     HNSW_VIDEO_LOOKUP_LOCATION = f"{FILE_STORAGE_LOCATION}/video_lookup.idx"
+
+    # Update after checking the service if its running
+    HAS_CELERY = True
+
+    DEFAULT_COLLECTION_LABEL = "Unclassified"
+    GENERATE_STREAM_TASK = "generate_stream_lq"

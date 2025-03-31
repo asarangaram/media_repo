@@ -1,19 +1,18 @@
 from datetime import datetime
+from typing import Optional, List, Any
 
 import mimetypes
 import os
 import shutil
 import sqlite3
-from sqlalchemy.exc import IntegrityError
+
 import tempfile
 import time
-import traceback
 
 from clmediakit import (
     create_image_thumbnail,
     create_video_thumbnail4x4,
     MediaType,
-    CLMetaData,
     HLSStreamGenerator,
     HLSVariant,
 )
@@ -37,13 +36,18 @@ from ...config import ConfigClass
 
 
 class EntityModelReaderMixin:
+    """
+    A mixin class providing utility methods for reading entity instances from the database.
+    Includes methods to retrieve a single entity or all entities with optional filtering.
+    """
+
     @classmethod
-    def get(cls, **kwargs):
+    def get(cls, **kwargs: Any) -> Optional["EntityModel"]:
         items = cls.get_all(**kwargs)
         return items[0] if items else None
 
     @classmethod
-    def get_all(cls, **kwargs):
+    def get_all(cls, **kwargs: Any) -> List["EntityModel"]:
         """
         Retrieve all entity instances.
         Optionally filter by entity types.
@@ -71,8 +75,8 @@ class EntityModelReaderMixin:
 
 class EntityModel(db.Model, EntityModelReaderMixin):
     """
-    Represents a entity in the database.
-    This model handles metadata, file storage, preview generation, and other entity-related operations.
+    Represents an entity in the database.
+    Handles metadata, file storage, preview generation, and other entity-related operations.
     """
 
     __private_key = object()
@@ -147,8 +151,9 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         "check_type_not_null_if_not_collection": "Failed to determine type for media",
         "check_extension_not_null_if_not_collection": "Failed to determine extensio for media",
     }
+    not_modifiable_columns = ["id", "addedDate", "updatedDate", "isCollection"]
 
-    def __init__(self, private_key=None, **kwargs):
+    def __init__(self, private_key: Optional[object] = None, **kwargs: Any) -> None:
         if private_key != EntityModel.__private_key:
             raise IncorrectUsageError()
         derived = {}
@@ -163,18 +168,19 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             **derived,
         )
 
-    def save_to_db(self):
-        """Save the current entity instance to the database."""
-        db.session.add(self)
-        db.session.commit()
-
-    def delete_from_db(self):
-        """Delete the current entity instance from the database."""
+    def delete_from_db(self) -> None:
+        """
+        Delete the current entity instance from the database.
+        """
         db.session.delete(self)
         db.session.commit()
 
     @classmethod
-    def create(cls, **kwargs):
+    def create(cls, **kwargs: Any) -> "EntityModel":
+        """
+        Create a new entity instance.
+        Handles parent validation, duplicate checks, and default parent creation for media.
+        """
 
         ## check if the parent exists and it is a collection
         parentId = kwargs.get("parentId")
@@ -191,17 +197,16 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         ## if no parent and its a media, try creating a default parent
         parentArg = {}
         if not parent and not kwargs.get("isCollection"):
-            parent = cls.get(label="Unclassified")
+            parent = cls.get(label=ConfigClass.DEFAULT_COLLECTION_LABEL)
             if not parent:
                 parent = EntityModel.create(
-                    **{"isCollection": 1, "label": "Unclassified"}
+                    **{"isCollection": 1, "label": ConfigClass.DEFAULT_COLLECTION_LABEL}
                 )
             if not parent:
                 raise ValidationError(
                     "parentId not specified, unable to create default collection"
                 )
             parentArg = {"parentId": parent.id}
-            pass
 
         ## Check for duplicate
         if kwargs.get("isCollection"):
@@ -240,27 +245,26 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             raise
 
     @classmethod
-    def update(cls, _id, **kwargs):
+    def update(cls, _id: int, **kwargs: Any) -> "EntityModel":
         """
         Update an existing entity instance with new metadata or attributes.
         If the updated entity is a duplicate, raise a DuplicateItemError.
         """
         currentEntity = cls.get(_id)
-        if currentEntity:
+        if not currentEntity:
             raise MissingMediaError()
         updatedEntity = shutil.copy.deepcopy(currentEntity)
 
-        not_modifiable_columns = ["id", "addedDate", "updatedDate", "isCollection"]
-
-        for key, value in kwargs.items():
-            if (
-                key in updatedEntity.__table__.columns
-                and key not in not_modifiable_columns
-            ):
-                if getattr(updatedEntity, key) != value:
-                    setattr(updatedEntity, key, value)
-
+        # update and accept
         try:
+            for key, value in kwargs.items():
+                if (
+                    key in updatedEntity.__table__.columns
+                    and key not in cls.not_modifiable_columns
+                ):
+                    if getattr(updatedEntity, key) != value:
+                        setattr(updatedEntity, key, value)
+
             if cls.acceptEntity(
                 updatedEntity, currentEntity, filepath=kwargs.get("filepath")
             ):
@@ -274,49 +278,48 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         except Exception as e:
             raise
 
-    def __eq__(self, other):  # FIXME
+    def __eq__(self, other: Any) -> bool:
         """
         Compare two entity instances for equality based on their attributes.
+        Excludes addedDate and updatedDate from the comparison.
         """
         if not isinstance(other, self.__class__):
             return False
-        return (
-            self.id == other.id
-            and self.label == other.label
-            and self.collectionId == other.collectionId
-            and self.ref == other.ref
-            and self.isDeleted == other.isDeleted
-            and self.CreateDate == other.CreateDate
-            and self.FileSize == other.FileSize
-            and self.ImageHeight == other.ImageHeight
-            and self.ImageWidth == other.ImageWidth
-            and self.Duration == other.Duration
-            and self.MIMEType == other.MIMEType
-            and self.dHash == other.dHash
-            and self.md5 == other.md5
+        return all(
+            getattr(self, column.name) == getattr(other, column.name)
+            for column in self.__table__.columns
+            if column.name not in ["addedDate", "updatedDate"]
         )
 
     @property
-    def filename(self):
-        """Generate the relative filename for the entity based on its content type and MD5 hash."""
+    def filename(self) -> str:
+        """
+        Generate the relative filename for the entity based on its content type and MD5 hash.
+        """
         return os.path.join(self.MIMEType, f"{str(self.md5)}{self.extension}")
 
     @property
-    def preview_filename(self):
-        """Generate the filename for the entity's preview image."""
+    def preview_filename(self) -> str:
+        """
+        Generate the filename for the entity's preview image.
+        """
         return f"{self.filename}.tn.jpeg"
 
     @property
-    def absolute_filename(self):
-        """Get the absolute path to the entity file in the storage location."""
+    def absolute_filename(self) -> str:
+        """
+        Get the absolute path to the entity file in the storage location.
+        """
         return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.filename)
 
     @property
-    def absolute_preview_filename(self):
-        """Get the absolute path to the entity's preview image in the storage location."""
+    def absolute_preview_filename(self) -> str:
+        """
+        Get the absolute path to the entity's preview image in the storage location.
+        """
         return f"{self.absolute_filename}.tn.jpeg"
 
-    def get_preview(self):
+    def get_preview(self) -> str:
         """
         Retrieve the preview image for the entity.
         Generate the preview if it does not already exist.
@@ -333,18 +336,30 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         else:
             raise PreviewGenerationFailedError()
 
-    def generate_preview(self, path, preview):
+    def generate_preview(self, path: str, preview: str) -> None:
+        """
+        Generate a preview image or video thumbnail for the entity.
+        """
         try:
             if self.type == MediaType.VIDEO:
                 create_video_thumbnail4x4(path, preview)
-            if self.type == MediaType.IMAGE:
+            elif self.type == MediaType.IMAGE:
                 create_image_thumbnail(path, preview)
             return
         except Exception as e:
-            raise PreviewGenerationFailedError()
+            raise PreviewGenerationFailedError() from e
 
     @classmethod
-    def acceptEntity(cls, curr, prev=None, filepath=None):
+    def acceptEntity(
+        cls,
+        curr: "EntityModel",
+        prev: Optional["EntityModel"] = None,
+        filepath: Optional[str] = None,
+    ) -> bool:
+        """
+        Validate and accept changes to an entity instance.
+        Handles database updates, media file management, and error handling.
+        """
         try:
             if curr != prev:
                 timenow = datetime.now()
@@ -367,16 +382,13 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                                 prev.removeMedia()
 
                     db.session.commit()
-                except (IntegrityError, sqlite3.IntegrityError) as e:
-                    raised = False
+                except sqlite3.IntegrityError as e:
                     for key, value in cls.error_translator.items():
                         if key in str(e):
-                            raised = True
-                            raise ValidationError(value)
-                    if not raised:
-                        raise
+                            raise ValidationError(value) from e
+                    raise
                 except Exception as e:
-                    raise Exception("Unexpected error occurred")
+                    raise Exception("Unexpected error occurred") from e
             return curr != prev
         except Exception as e:
             db.session.rollback()
@@ -386,22 +398,31 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                 curr.removeMedia()
             raise
 
-    def acceptMedia(self, overwrite=True, filepath=None):
+    def acceptMedia(
+        self, overwrite: bool = True, filepath: Optional[str] = None
+    ) -> None:
+        """
+        Accept and store the media file associated with the entity.
+        Generates a preview for the media.
+        """
         path = self.absolute_filename
         os.makedirs(os.path.dirname(path), exist_ok=True)
         shutil.copy(filepath, path)
         self.generate_preview(path, self.absolute_preview_filename)
 
-    def removeMedia(self):
+    def removeMedia(self) -> None:
+        """
+        Remove the media file and its preview associated with the entity.
+        """
         if os.path.exists(self.absolute_filename):
             os.remove(self.absolute_filename)
         if os.path.exists(self.absolute_preview_filename):
             os.remove(self.absolute_preview_filename)
 
     @classmethod
-    def delete(cls, _id: int):
+    def delete(cls, _id: int) -> None:
         """
-        Delete a entity instance by its ID.
+        Delete an entity instance by its ID.
         Raise HardDeleteFailedError if the entity is not marked as deleted.
         """
         entity = cls.get(_id)
@@ -420,36 +441,38 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         entity.delete_from_db()
 
     @classmethod
-    def delete_all(cls):
-        """Delete all entity instances from the database."""
+    def delete_all(cls) -> None:
+        """
+        Delete all entity instances from the database.
+        """
         all = cls.query.all()
         for entity in all:
             if not entity.isDeleted:
                 cls.delete(entity.id)
 
     @classmethod
-    def wait_for_m3u8(self, master_pl: str, timeout: int = 60):
+    def wait_for_m3u8(cls, id: int, master_pl: str, timeout: int = 60) -> None:
         """
         Wait for the adaptive.m3u8 file to be created within the specified timeout.
-        Return False if the timeout is exceeded.
+        Raise VideoStreamError if the timeout is exceeded.
         """
         start_time = time.time()
         while not os.path.exists(master_pl):
             elapsed_time = time.time() - start_time
             if elapsed_time > timeout:
                 raise VideoStreamError(
-                    additionalMessage=f"background task not responding for media {self.id}",
+                    additionalMessage=f"background task not responding "
+                    "for media {id}",
                 )
             time.sleep(1)  # Poll every second
         return
 
-    def get_stream_folder(self):
+    def get_stream_folder(self) -> str:
         """
         Retrieve the folder containing the media's video stream.
         If the stream does not exist, initiate its generation.
         """
-        if self.type != "video":  # why MediaType.VIDEO is not working?
-            print(f"can't stream {self.id}. not a video")
+        if self.type != MediaType.VIDEO:
             raise VideoStreamError(
                 additionalMessage=f"Media with id {self.id} is "
                 f"a {self.type} (MIME: {self.MIMEType}), not a video",
@@ -458,22 +481,22 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         output_dir = os.path.join(ConfigClass.STREAM_STORAGE_LOCATION, stream_path)
         master_pl = os.path.join(output_dir, "adaptive.m3u8")
         if not os.path.exists(master_pl):
-            RUN_IN_BACKGROUND = True
-
-            if RUN_IN_BACKGROUND:
-                BackgroundTaskModel.start(self.id, "generate_stream_lq")
-                self.wait_for_m3u8(master_pl=master_pl)
-
+            if ConfigClass.HAS_CELERY:
+                BackgroundTaskModel.start(self.id, ConfigClass.GENERATE_STREAM_TASK)
+                self.wait_for_m3u8(id=self.id, master_pl=master_pl)
             else:
                 EntityModel.exec_generate_stream_lq(self.id)
 
         return output_dir
 
     @classmethod
-    def exec_generate_stream_lq(cls, media_id):
+    def exec_generate_stream_lq(cls, media_id: int) -> str:
+        """
+        Generate a low-quality HLS stream for the specified media ID.
+        """
         media = EntityModel.get(id=media_id)
         if media:
-            if media.type != "video":  # why MediaType.VIDEO is not working?
+            if media.type != MediaType.VIDEO:
                 return (
                     f"Can't stream . media_{media.id}:not a video. type: {media.type}"
                 )
@@ -489,13 +512,12 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                 input_file=input_file,
                 output_dir=output_dir,
             )
-            # HLSVariant(resolution=720, bitrate=900),
-            # HLSVariant(resolution=480, bitrate=400),
+
             try:
                 valid = generator.addVariants([HLSVariant(resolution=240, bitrate=200)])
 
             except Exception as e:
-                # FIXME: WE may consider deleting if ffmpeg fails
+                # FIXME: delete generated files if it fails
                 valid = False
             if not valid:
                 return f"media_{str(media.id)}: failed to generate stream"
@@ -504,7 +526,12 @@ class EntityModel(db.Model, EntityModelReaderMixin):
 
 
 class TempFile:
-    def __init__(self, file):
+    """
+    A utility class for managing temporary files.
+    Ensures unique filenames and provides cleanup functionality.
+    """
+
+    def __init__(self, file: Any) -> None:
         temp_dir = tempfile.gettempdir()
         temp_path = os.path.join(temp_dir, file.filename)
 
@@ -517,6 +544,6 @@ class TempFile:
         file.save(temp_path)
         self.path = temp_path
 
-    def remove(self):
+    def remove(self) -> None:
         if os.path.exists(self.path):
             os.remove(self.path)
