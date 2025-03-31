@@ -27,13 +27,7 @@ from src.db import db
 from src.endpoint.entity.models import EntityModel, TempFile
 
 from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema, MediaFileSchema
-from src.utils.errors import (
-    MissingMediaError,
-    MissingMediaFileError,
-    MissingMediaWhenUploadError,
-    NoFileAcceptedForCollectionError,
-    NoFileForCollectionError,
-)
+
 
 from sqlalchemy import func
 from sqlalchemy_continuum import version_class
@@ -92,12 +86,27 @@ def create_entity_resources(MediaVersion):
             temp_file = None
             if not kwargs.get("isCollection", False):
                 if not files.get("media"):
-                    raise MissingMediaWhenUploadError()
+                    return (
+                        jsonify(
+                            {"error": "Post media with a file.", "status_code": 400}
+                        ),
+                        400,
+                    )
+
                 temp_file = TempFile(files["media"])
                 metadata = CLMetaData.from_media(temp_file.path).to_dict()
             else:
                 if files.get("media"):
-                    raise NoFileAcceptedForCollectionError()
+                    return (
+                        jsonify(
+                            {
+                                "error": "Can't attach file to Collection",
+                                "status_code": 400,
+                            }
+                        ),
+                        400,
+                    )
+
                 metadata = {}
 
             item = EntityModel.create(**kwargs, **metadata)
@@ -267,7 +276,7 @@ def create_entity_resources(MediaVersion):
             """
             entity = EntityModel.get(id=entity_id)
             if not entity:
-                raise MissingMediaFileError()
+                return jsonify({"error": "Media not found", "status_code": 404}), 404
             return entity
 
     @entity_bp.route("/upload")
