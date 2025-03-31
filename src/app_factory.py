@@ -16,7 +16,6 @@ from sqlalchemy_continuum import version_class
 
 from .endpoint.urlmap.resources import URLMapResource
 from .endpoint.background.resources import background_task_bp
-from .celery import celery
 
 
 def create_app(config_object):

@@ -3,12 +3,15 @@ This module defines the routes and handlers for managing media entities in the a
 It includes functionality for creating, retrieving, updating, deleting, and streaming media files.
 """
 
+from functools import wraps
 import os
 import logging
 from collections import OrderedDict
 from typing import Optional
 from flask import (
+    Blueprint,
     jsonify,
+    request,
     send_file,
     send_from_directory,
     render_template,
@@ -17,6 +20,7 @@ from flask import (
 from flask.views import MethodView
 
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import InternalServerError, NotFound
 from clmediakit import CLMetaData
 
 from src.db import db
@@ -33,7 +37,26 @@ from src.utils.errors import (
 
 from sqlalchemy import func
 from sqlalchemy_continuum import version_class
-from .blueprint import entity_bp, mask_errors
+
+
+entity_bp = Blueprint("entity_bp", __name__, url_prefix="/entity")
+enableLogging = False
+
+
+def mask_errors(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if enableLogging:
+            form_data = request.form.to_dict()
+            print(f"Incoming Request Data: {form_data}")
+        try:
+            return func(*args, **kwargs)
+        except NotFound:
+            raise
+        except Exception as e:
+            raise InternalServerError(f"{e.description}")
+
+    return wrapper
 
 
 def create_entity_resources(MediaVersion):
