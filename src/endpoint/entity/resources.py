@@ -9,7 +9,6 @@ import logging
 from collections import OrderedDict
 from typing import Optional
 from flask import (
-    Blueprint,
     jsonify,
     request,
     send_file,
@@ -17,6 +16,7 @@ from flask import (
     render_template,
     make_response,
 )
+from flask_smorest import Blueprint
 from flask.views import MethodView
 
 from werkzeug.utils import secure_filename
@@ -127,10 +127,10 @@ def create_entity_resources(MediaVersion):
             Returns:
                 A JSON response containing the list of media entities and metadata.
             """
-            current_version = kwargs.get("current_version", type=int)
-            last_known_version = kwargs.get("last_known_version", type=int)
-            page = kwargs.get("page", default=1, type=int)
-            per_page = kwargs.get("per_page", None, type=int)
+            current_version = kwargs.get("current_version")
+            last_known_version = kwargs.get("last_known_version")
+            page = kwargs.get("page", 1)
+            per_page = kwargs.get("per_page")
 
             if page > 1 and (current_version is None or per_page is None):
                 return (
@@ -219,7 +219,8 @@ def create_entity_resources(MediaVersion):
                     )
                     paginated = paginated_query.all()
                 else:
-                    paginated = query.all()
+                    orderred_query = query.order_by(VersionModel.id.desc())
+                    paginated = orderred_query.all()
                     total_pages = 1
 
                 items = [ItemSchema().dump(item) for item in paginated]
@@ -230,12 +231,12 @@ def create_entity_resources(MediaVersion):
                     "currentVersion": effective_current_version,
                     "lastSyncedVersion": effective_last_version,
                     "latestVersion": max_version,
+                    "totalItems": total_items,
                 }
                 if per_page:
                     response["metaInfo"]["pagination"] = {
                         "currentPage": page,
                         "perPage": per_page if per_page else total_items,
-                        "totalItems": total_items,
                         "totalPages": total_pages,
                     }
 
