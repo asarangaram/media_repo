@@ -51,7 +51,7 @@ class ItemSchema(Schema):
         error_messages={"invalid": "updatedDate: Invalid date format."},
     )  # Timestamp when the item was last updated
     isDeleted = IntigerizedBool(
-        default=False
+        # default=False
     )  # Boolean indicating if the item is deleted
 
     # Additional metadata fields

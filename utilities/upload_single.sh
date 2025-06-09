@@ -7,7 +7,7 @@ fi
 
 file="$1"
 
-url="http://192.168.0.225:5000/media"
+url="http://192.168.0.220:5001/entity"
 
 if [ -f "$file" ]; then
 
@@ -24,3 +24,4 @@ fi
 
 
 # curl -X POST -H "Content-Type: application/json" -d '{"isCollection": 1, "label": "default4"}'
+
