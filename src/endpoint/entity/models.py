@@ -5,6 +5,7 @@ import mimetypes
 import os
 import shutil
 import sqlite3
+import copy
 
 import tempfile
 import time
@@ -221,11 +222,15 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             if kwargs.get("md5") is None:
                 raise MissingMD5Error()
             if duplicate := cls.get(md5=kwargs.get("md5")):
-                if (
+                # FIXME: when the item is present in another 
+                # collection, for now, we ignore the update 
+                # but what if the user's intention is to move ?
+                # to the recent update? Need to define a mechanism for this
+                """ if (
                     kwargs.get("parentId")
                     and kwargs.get("parentId") != duplicate.parentId
                 ):
-                    raise DuplicateItemError(duplicate, parent=parent)
+                    raise DuplicateItemError(duplicate, parent=parent) """
                 return duplicate
 
         # Create and accept
@@ -250,33 +255,44 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         Update an existing entity instance with new metadata or attributes.
         If the updated entity is a duplicate, raise a DuplicateItemError.
         """
-        currentEntity = cls.get(_id)
-        if not currentEntity:
-            raise MissingMediaError()
-        updatedEntity = shutil.copy.deepcopy(currentEntity)
-
-        # update and accept
         try:
+            duplicate = None
+            if kwargs.get("md5"):
+                if duplicate := cls.get(md5=kwargs.get("md5")):
+                    if duplicate.id != _id:
+                        ## if file is present already in the db with different id
+                        ## we can't update the current item, as its a conflict.
+                        raise DuplicateItemError()
+            if duplicate:
+                currentEntity = duplicate
+            else:
+                currentEntity = cls.get(id=_id)
+            if not currentEntity:
+                raise MissingMediaError()
+            updatedEntity = copy.deepcopy(currentEntity)
+            
             for key, value in kwargs.items():
-                if (
-                    key in updatedEntity.__table__.columns
-                    and key not in cls.not_modifiable_columns
-                ):
-                    if getattr(updatedEntity, key) != value:
-                        setattr(updatedEntity, key, value)
-
+                    if (
+                        key in updatedEntity.__table__.columns
+                        and key not in cls.not_modifiable_columns
+                    ):
+                        if getattr(updatedEntity, key) != value:
+                            setattr(updatedEntity, key, value)
+                            
+            # Nothing changed.
             if cls.acceptEntity(
-                updatedEntity, currentEntity, filepath=kwargs.get("filepath")
-            ):
-                if not updatedEntity.isCollection:
-                    if updatedEntity.type == MediaType.VIDEO:
-                        hnsw_video_lookup.replace(updatedEntity.id, updatedEntity.dHash)
-                    elif updatedEntity.type == MediaType.IMAGE:
-                        hnsw_image_lookup.replace(updatedEntity.id, updatedEntity.dHash)
-                return updatedEntity
+                    updatedEntity, currentEntity, filepath=kwargs.get("filepath")
+                ):
+                    if not updatedEntity.isCollection:
+                        if updatedEntity.type == MediaType.VIDEO:
+                            hnsw_video_lookup.replace(updatedEntity.id, updatedEntity.dHash)
+                        elif updatedEntity.type == MediaType.IMAGE:
+                            hnsw_image_lookup.replace(updatedEntity.id, updatedEntity.dHash)
+                    return updatedEntity
             return currentEntity
         except Exception as e:
             raise
+        
 
     def __eq__(self, other: Any) -> bool:
         """
@@ -365,9 +381,14 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                 timenow = datetime.now()
                 curr.addedDate = prev.addedDate if prev else timenow
                 curr.updatedDate = timenow
+                
+
                 db.session.flush()
                 try:
-                    db.session.add(curr)
+                    if prev is None:
+                        db.session.add(curr)
+                    else:
+                        db.session.merge(curr)
 
                     if not curr.isCollection:
                         prev_media = prev.absolute_filename if prev else None
@@ -425,20 +446,35 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         Delete an entity instance by its ID.
         Raise HardDeleteFailedError if the entity is not marked as deleted.
         """
-        entity = cls.get(_id)
-        if not entity.isDeleted:
-            raise HardDeleteFailedError()
+        result_map  = {"id": _id}
+        try:
+            result_map["status"] =  "not deleted", 
+            entity = cls.get(id=_id)
+            if not entity:
+                result_map["error"] = f"no item found with id {_id}"
+                return result_map, 404
+            if not entity.isDeleted:
+                result_map["error"] = "failed to hard delete the entity, use soft delete first."
+                return result_map, 409
+                
 
-        path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, entity.path)
-        if os.path.exists(path):
-            os.remove(path)
+            path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, entity.path)
+            if os.path.exists(path):
+                os.remove(path)
 
-        if entity.type == MediaType.VIDEO:
-            hnsw_video_lookup.remove(entity.id)
-        elif entity.type == MediaType.IMAGE:
-            hnsw_image_lookup.remove(entity.id)
+            if entity.type == MediaType.VIDEO:
+                hnsw_video_lookup.remove(entity.id)
+            elif entity.type == MediaType.IMAGE:
+                hnsw_image_lookup.remove(entity.id)
 
-        entity.delete_from_db()
+            entity.delete_from_db()
+            print("Deleted successfully")
+            result_map["status"] =  "deleted", 
+            return result_map, 200
+        except Exception as e:
+            result_map["error"] = f"Internal Server Error {e}"
+            return result_map, 500
+            
 
     @classmethod
     def delete_all(cls) -> None:

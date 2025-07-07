@@ -287,6 +287,39 @@ def create_entity_resources(MediaVersion):
                 return jsonify({"error": "Media not found", "status_code": 404}), 404
             return entity
 
+        
+        @entity_bp.arguments(MediaFileSchema, location="files")
+        @entity_bp.arguments(ItemSchema, location="form")
+        @entity_bp.response(201, ItemSchema)
+        def put(cls,  files, kwargs, entity_id):
+            # Collection can't have media file
+            if  kwargs.get("isCollection", False):
+                if files.get("media"):
+                    return (
+                        jsonify(
+                            {
+                                "error": "Can't attach file to Collection",
+                                "status_code": 400,
+                            }
+                        ),
+                        400,
+                    )
+            # process file if given 
+            temp_file = None
+            metadata= {}
+            if files.get("media"):
+                temp_file = TempFile(files["media"])
+                metadata = CLMetaData.from_media(temp_file.path).to_dict()
+            item = EntityModel.update(entity_id, **kwargs, **metadata)
+            if temp_file:
+                temp_file.remove()
+            return item
+        
+        def delete(cls, entity_id):
+            return EntityModel.delete(entity_id)
+
+            
+
     @entity_bp.route("/upload")
     class MediaUploadForm(MethodView):
         """
