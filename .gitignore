@@ -168,3 +168,4 @@ utilities/*.log
 utilities/delete**
 utilities/files_old.sh
 
+data**
