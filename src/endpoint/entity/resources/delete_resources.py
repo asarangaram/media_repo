@@ -6,7 +6,7 @@ from flask.views import MethodView
 
 
 def entity_softrestore_resource(MediaVersion, route):
-    @route.route("/restore/<int:entity_id>")
+    @route.route("/<int:entity_id>/restore")
     class EntityRestore(MethodView):
         @custom_handle_error
         def put(cls, entity_id):
@@ -14,7 +14,7 @@ def entity_softrestore_resource(MediaVersion, route):
 
 
 def entity_softdelete_resource(MediaVersion, route):
-    @route.route("/to_bin/<int:entity_id>")
+    @route.route("/<int:entity_id>/to_bin")
     class EntityToBin(MethodView):
         @custom_handle_error
         def put(cls, entity_id):
@@ -22,7 +22,7 @@ def entity_softdelete_resource(MediaVersion, route):
 
 
 def entity_harddelete_resource(MediaVersion, route):
-    @route.route("/delete/<int:entity_id>")
+    @route.route("/<int:entity_id>/delete")
     class EntityDelete(MethodView):
         @custom_handle_error
         def delete(cls, entity_id):
@@ -30,7 +30,7 @@ def entity_harddelete_resource(MediaVersion, route):
         
 
 def reset(MediaVersion, route):
-    @route.route("/delete_all")
+    @route.route("/reset")
     class Reset(MethodView):
         @custom_handle_error
         def delete(cls):

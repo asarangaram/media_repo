@@ -10,7 +10,7 @@ from src.utils.custom_errors.validation_errors import (
 
 
 def entity_update_resource(MediaVersion, route):
-    @route.route("/update/<int:entity_id>")
+    @route.route("/<int:entity_id>/update")
     class EntityUpdate(MethodView):
         @custom_handle_error
         @route.response(201, ItemSchema)

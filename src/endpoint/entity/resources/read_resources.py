@@ -1,4 +1,3 @@
-from typing import Optional
 from src.db import db
 from src.endpoint.entity.models import EntityModel
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
@@ -16,8 +15,7 @@ from collections import OrderedDict
 
 
 def entity_read_all_resource(MediaVersion, route):
-    @route.route("/")
-    @route.route("")
+    @route.route("/all")
     class EntityList(MethodView):
         """
         Handles operations on the list of media entities, including creation, retrieval, and deletion.

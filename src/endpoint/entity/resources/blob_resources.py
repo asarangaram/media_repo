@@ -12,7 +12,7 @@ import os
 
 
 def blob_download_media(MediaVersion, route):
-    @route.route("download/<int:entity_id>")
+    @route.route("/<int:entity_id>/download/media")
     class EntityMediaFile(MethodView):
         """
         Handles downloading of media files.
@@ -47,7 +47,7 @@ def blob_download_media(MediaVersion, route):
 
 
 def blob_download_preview(MediaVersion, route):
-    @route.route("/<int:entity_id>/preview")
+    @route.route("/<int:entity_id>/download/preview")
     class EntityPreviewFile(MethodView):
         """
         Handles downloading of preview images for media files.
