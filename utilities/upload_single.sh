@@ -7,7 +7,7 @@ fi
 
 file="$1"
 
-url="http://192.168.0.225:5000/media"
+url="http://192.168.0.220:5001/entity"
 
 if [ -f "$file" ]; then
 
@@ -16,8 +16,12 @@ if [ -f "$file" ]; then
     echo "uploading $filename"
     mime_type=$(file --mime-type -b "$file")
 
-    echo curl -X POST -F "media=@${file};type=${mime_type}" -F "collectionLabel=AllImages"  "$url"
-    time curl -v  -F "media=@${file};type=${mime_type}" -F "collectionLabel=AllImages"  "$url"
+    echo curl -v -X POST -F "media=@${file};type=${mime_type}"  -F "isCollection=0" "$url"
+    time curl -v -X POST -F "media=@${file};type=${mime_type}"   -F "isCollection=0" "$url"
     sleep 1
 
 fi
+
+
+# curl -X POST -H "Content-Type: application/json" -d '{"isCollection": 1, "label": "default4"}'
+

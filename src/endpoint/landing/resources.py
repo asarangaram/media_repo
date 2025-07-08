@@ -4,7 +4,7 @@ from flask_smorest import Blueprint, abort
 from .models import LandingPageModel
 from .schemas import LandingPageResultSchema
 
-from ...endpoint.collection.schemas import CollectionSchema
+""" from ...endpoint.collection.schemas import CollectionSchema """
 
 landing_bp = Blueprint("landing_bp", __name__, url_prefix="")
 
@@ -33,8 +33,8 @@ def get_field_details(schema_cls):
     return fields_map
 
 
-@landing_bp.route("/schema")
+""" @landing_bp.route("/schema")
 class CollectionFields(MethodView):
     @landing_bp.response(200)
     def get(self):
-        return {"endpoint": "collection", "fields": get_field_details(CollectionSchema)}
+        return {"endpoint": "collection", "fields": get_field_details(CollectionSchema)} """

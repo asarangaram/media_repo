@@ -1,0 +1,19 @@
+"""
+Create simplar file and keept it under home folder.
+i.e,, ~/.mediarepo
+"""
+FLASK_APP = "src.wsgi"
+FLASK_DEBUG = True
+APP_NAME = "CoLAN server"
+IMAGE_REPO_DB = "/Users/anandasarangaram/Work/github/media_repo/data/colan.db"
+FILE_STORAGE_LOCATION = "/Users/anandasarangaram/Work/github/media_repo/data"
+
+# FLASK_SECRET_KEY1
+
+USE_MYSQL = False # Use SQLite
+FLASK_SECRET_KEY1 = "Secret!"
+
+
+HOST_ADDR = "0.0.0.0"
+# on MAC this should be 5001, as 5000 is conflicting with another service
+HOST_PORT = 5001

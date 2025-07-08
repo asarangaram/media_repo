@@ -5,7 +5,7 @@ from werkzeug.exceptions import InternalServerError, NotFound
 from sqlalchemy.schema import UniqueConstraint
 from celery.result import AsyncResult
 
-from src.celery import CeleryTasks
+from src.celery_app import CeleryTasks
 
 
 from ...db import db
@@ -17,7 +17,7 @@ class BackgroundTaskModel(db.Model):
     __tablename__ = "BackgroundTask"
 
     id = db.Column(db.Integer, primary_key=True)
-    media_id = db.Column(db.Integer, db.ForeignKey("media.id"), nullable=False)
+    media_id = db.Column(db.Integer, db.ForeignKey("entities.id"), nullable=False)
     task_name = db.Column(db.String, nullable=False)
     task_id = db.Column(db.Integer, nullable=False)
     task_status = db.Column(db.String)
@@ -41,7 +41,7 @@ class BackgroundTaskModel(db.Model):
     def update_status(self):
         task_id = self.task_id
         try:
-            task_result = CeleryTasks.exec_generate_preview.AsyncResult(task_id)
+            task_result = CeleryTasks.exec_generate_stream_lq.AsyncResult(task_id)
             print(f"state is {task_result.state}")
             if task_result.state == "PENDING":
                 self.task_status = "pending"
