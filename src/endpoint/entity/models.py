@@ -17,20 +17,12 @@ from clmediakit import (
     HLSStreamGenerator,
     HLSVariant,
 )
-from marshmallow import ValidationError
+
 from src.hnsw_indices import hnsw_image_lookup, hnsw_video_lookup
 from src.endpoint.background.models import BackgroundTaskModel
-from src.utils.errors import (
-    DuplicateItemError,
-    HardDeleteFailedError,
-    IncorrectUsageError,
-    MissingMD5Error,
-    MissingMediaError,
-    MissingMediaFileError,
-    MissingMediaWhenUploadError,
-    PreviewGenerationFailedError,
-    VideoStreamError,
-)
+from src.utils.custom_errors.validation_errors import (MissingMD5Error, DuplicateItemError, HardDeleteFailedError, CannotAttachFileWithCollectionError, ParentIdNotACollectionError, ParentIdNotExistsError, ParentIdNotProvidedError) 
+from src.utils.custom_errors.internal_server_errors import (IncorrectUsageError, PreviewGenerationFailedError, IntegrityError,UnexpectedFailure)
+from src.utils.custom_errors.not_found_errors import (MissingMediaFileError, MissingMediaError,MissingMediaWhenUploadError, VideoStreamError)
 
 from ...db import db
 from ...config import ConfigClass
@@ -144,14 +136,6 @@ class EntityModel(db.Model, EntityModelReaderMixin):
     )
     # remove  uselist=True,?
     task = db.relationship("BackgroundTaskModel", uselist=True, backref="entities")
-    error_translator = {
-        "check_parent_not_null_if_not_collection": "Media must have parentId",
-        "check_file_size_not_null_if_not_collection": "Failed to detect file_size from media",
-        "check_md5_not_null_if_not_collection": "Failed to calculate md5 from media",
-        "check_mime_type_not_null_if_not_collection": "Failed to determine mime type from media",
-        "check_type_not_null_if_not_collection": "Failed to determine type for media",
-        "check_extension_not_null_if_not_collection": "Failed to determine extensio for media",
-    }
     not_modifiable_columns = ["id", "addedDate", "updatedDate", "isCollection"]
 
     def __init__(self, private_key: Optional[object] = None, **kwargs: Any) -> None:
@@ -190,10 +174,10 @@ class EntityModel(db.Model, EntityModelReaderMixin):
 
         if parent:
             if not parent.isCollection:
-                raise ValidationError(f" parentId {parentId} is not a collection")
+                raise ParentIdNotACollectionError(parentId)
 
         if parentId and not parent:
-            raise ValidationError(f" parentId {parentId} does not exists")
+            raise ParentIdNotExistsError(parentId)
 
         ## if no parent and its a media, try creating a default parent
         parentArg = {}
@@ -204,8 +188,8 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                     **{"isCollection": 1, "label": ConfigClass.DEFAULT_COLLECTION_LABEL}
                 )
             if not parent:
-                raise ValidationError(
-                    "parentId not specified, unable to create default collection"
+                raise ParentIdNotProvidedError(
+                    
                 )
             parentArg = {"parentId": parent.id}
 
@@ -243,9 +227,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                     elif entity.type == MediaType.IMAGE:
                         hnsw_image_lookup.add(entity.id, entity.dHash)
                 return entity
-            ## This should not occur in create, as we either return True
-            ## or generate exception
-            raise ValidationError("Entity registration failed")
+            raise UnexpectedFailure()
         except Exception as e:
             raise
 
@@ -404,10 +386,8 @@ class EntityModel(db.Model, EntityModelReaderMixin):
 
                     db.session.commit()
                 except sqlite3.IntegrityError as e:
-                    for key, value in cls.error_translator.items():
-                        if key in str(e):
-                            raise ValidationError(value) from e
-                    raise
+                    raise IntegrityError(e)
+                
                 except Exception as e:
                     raise Exception("Unexpected error occurred") from e
             return curr != prev

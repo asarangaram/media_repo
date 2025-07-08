@@ -1,13 +1,16 @@
 from collections import OrderedDict
 from marshmallow import ValidationError
+
 from src.endpoint.entity.models import EntityModel, TempFile
 from src.endpoint.entity.resources import mask_errors
 from src.endpoint.entity.schema import ItemSchema, MediaFileSchema
+from src.utils.custom_errors.validation_errors import CannotAttachFileWithCollectionError
 
 
 from clmediakit import CLMetaData
 from flask import jsonify, request
 from flask.views import MethodView
+
 
 
 def entity_resource(MediaVersion, route):
@@ -43,7 +46,7 @@ def entity_resource(MediaVersion, route):
             # Collection can't have media file
             if form_data.get("isCollection", False):
                 if files.get("media"):
-                    raise ValidationError("Can't attach file to Collection")
+                    raise CannotAttachFileWithCollectionError()
 
             temp_file = None
             metadata = {}
