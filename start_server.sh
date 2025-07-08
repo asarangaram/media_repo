@@ -60,18 +60,21 @@ check_system_software()
     fi
 }
 
+create_venv
+
 os_name=$(uname)
 if [ "$os_name" == "Darwin" ]; then
     check_system_software
 fi
-create_venv
+# dns-sd on macOS / avahi-publish + avahi-browse on Linux
+bash ./start_service_mac.sh
 
 # avahi is running as a service
 # vi /etc/systemd/system/avahi.service
 # check status by sudo systemctl status avahi
 # if [ "$os_name" == "Linux" ]; then
 #   # avahi-publish-service -s "CL IMAGE REPO" _image_repo_api._tcp 5000 "CL Image Repo Service" &
-#   avahi-publish-service -s "server100@cloudonlapapps" _http._tcp 5000 "CL Image Repo Service" &
+#   
 #fi
 #celery -A src.endpoint.background.models.celery worker --loglevel=info > log.celery.txt 2>&1 &
 # celery is running as a service
