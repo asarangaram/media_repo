@@ -7,7 +7,7 @@ from flask_smorest import Blueprint
 
 from .db import db
 from src.endpoint.entity.models import EntityModel
-from src.endpoint.entity.resources.create_entity_resources import register_resources
+from src.endpoint.entity.resources.register_resources import register_resources
 from src.endpoint.landing.resources import landing_bp
 from src.endpoint.urlmap.resources import URL_map_resouce_bp
 from src import lock

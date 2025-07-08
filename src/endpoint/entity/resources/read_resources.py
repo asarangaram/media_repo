@@ -18,7 +18,7 @@ from collections import OrderedDict
 def entity_read_all_resource(MediaVersion, route):
     @route.route("/")
     @route.route("")
-    class MediaList(MethodView):
+    class EntityList(MethodView):
         """
         Handles operations on the list of media entities, including creation, retrieval, and deletion.
         """
@@ -166,7 +166,7 @@ def entity_read_all_resource(MediaVersion, route):
 
 def entity_read_resource(MediaVersion, route):
     @route.route("/<int:entity_id>")
-    class Media(MethodView):
+    class Entity(MethodView):
         """
         Handles operations on individual media entities.
         """

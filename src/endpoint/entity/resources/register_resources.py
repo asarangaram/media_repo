@@ -1,8 +1,15 @@
-from src.endpoint.entity.resources.blob_resources import blob_download_media, blob_download_preview, blob_download_video_stream
+from src.endpoint.entity.resources.blob_resources import (
+    blob_download_media,
+    blob_download_preview,
+    blob_download_video_stream,
+)
 
 from src.endpoint.entity.resources.create_resources import entity_create_resource
 from src.endpoint.entity.resources.upload_form import entity_upload_form
-from src.endpoint.entity.resources.read_resources import entity_read_all_resource,entity_read_resource
+from src.endpoint.entity.resources.read_resources import (
+    entity_read_all_resource,
+    entity_read_resource,
+)
 from src.endpoint.entity.resources.update_resources import entity_update_resource
 
 from src.endpoint.entity.resources.delete_resources import (
@@ -10,11 +17,6 @@ from src.endpoint.entity.resources.delete_resources import (
     entity_softrestore_resource,
     entity_harddelete_resource,
 )
-
-
-from clmediakit import CLMetaData
-
-
 
 
 def register_resources(MediaVersion, route, canModify=True, canDelete=True):
@@ -32,7 +34,6 @@ def register_resources(MediaVersion, route, canModify=True, canDelete=True):
     blob_download_preview(MediaVersion, route)
     blob_download_video_stream(MediaVersion, route)
 
-
     if canModify:
         entity_create_resource(MediaVersion, route)
         entity_update_resource(MediaVersion, route)
@@ -42,6 +43,3 @@ def register_resources(MediaVersion, route, canModify=True, canDelete=True):
         entity_softdelete_resource(MediaVersion, route)
         entity_softrestore_resource(MediaVersion, route)
         entity_harddelete_resource(MediaVersion, route)
-
-    
-

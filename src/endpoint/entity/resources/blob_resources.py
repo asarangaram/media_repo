@@ -13,7 +13,7 @@ import os
 
 def blob_download_media(MediaVersion, route):
     @route.route("download/<int:entity_id>")
-    class MediaDownload(MethodView):
+    class EntityMediaFile(MethodView):
         """
         Handles downloading of media files.
         """
@@ -48,7 +48,7 @@ def blob_download_media(MediaVersion, route):
 
 def blob_download_preview(MediaVersion, route):
     @route.route("/<int:entity_id>/preview")
-    class PreviewDownload(MethodView):
+    class EntityPreviewFile(MethodView):
         """
         Handles downloading of preview images for media files.
         """
@@ -82,7 +82,7 @@ def blob_download_preview(MediaVersion, route):
 
 def blob_download_video_stream(MediaVersion, route):
     @route.route("/<int:entity_id>/stream/m3u8")
-    class get_m3u8(MethodView):
+    class EntityGetM3U8(MethodView):
         """
         Serves the adaptive streaming manifest file (m3u8) for a media entity.
         """
@@ -112,7 +112,7 @@ def blob_download_video_stream(MediaVersion, route):
             )
 
     @route.route("/<int:entity_id>/stream/<string:filename>")
-    class get_segment(MethodView):
+    class EntityGetSegment(MethodView):
         """
         Serves individual streaming segments or manifest files for a media entity.
         """

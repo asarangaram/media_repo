@@ -1,4 +1,6 @@
 import uuid
+
+from src.config import ConfigClass
 from ...db import db
 from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
 from datetime import datetime
@@ -11,8 +13,8 @@ Consult the API documentation or relevant resources to identify the correct endp
 
 
 class LandingPageModel:
-    def __init__(self, name="colan_server"):
-        self.name = name
+    def __init__(self):
+        self.name = ConfigClass.APP_NAME
         self.info = _info
         self.id = 100  # TODO: FIND A UNIQUE ID FOR EACH SERVER AND REPLACE
 
