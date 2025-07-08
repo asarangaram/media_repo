@@ -20,7 +20,7 @@ from clmediakit import (
 
 from src.hnsw_indices import hnsw_image_lookup, hnsw_video_lookup
 from src.endpoint.background.models import BackgroundTaskModel
-from src.utils.custom_errors.validation_errors import (MissingMD5Error, DuplicateItemError, HardDeleteFailedError, CannotAttachFileWithCollectionError, ParentIdNotACollectionError, ParentIdNotExistsError, ParentIdNotProvidedError) 
+from src.utils.custom_errors.validation_errors import (MD5MissingError, MD5DuplicateItemError, HardDeleteFailedError, CannotAttachFileWithCollectionError, ParentIdNotACollectionError, ParentIdNotExistsError, ParentIdNotProvidedError) 
 from src.utils.custom_errors.internal_server_errors import (IncorrectUsageError, PreviewGenerationFailedError, IntegrityError,UnexpectedFailure)
 from src.utils.custom_errors.not_found_errors import (MissingMediaFileError, MissingMediaError,MissingMediaWhenUploadError, VideoStreamError)
 
@@ -200,11 +200,11 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                     kwargs.get("parentId")
                     and kwargs.get("parentId") != duplicate.parentId
                 ):
-                    raise DuplicateItemError(duplicate, parent=parent)
+                    raise MD5DuplicateItemError(duplicate, parent=parent)
                 return duplicate
         else:
             if kwargs.get("md5") is None:
-                raise MissingMD5Error()
+                raise MD5MissingError()
             if duplicate := cls.get(md5=kwargs.get("md5")):
                 # FIXME: when the item is present in another 
                 # collection, for now, we ignore the update 
@@ -214,7 +214,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                     kwargs.get("parentId")
                     and kwargs.get("parentId") != duplicate.parentId
                 ):
-                    raise DuplicateItemError(duplicate, parent=parent) """
+                    raise MD5DuplicateItemError(duplicate, parent=parent) """
                 return duplicate
 
         # Create and accept
@@ -235,7 +235,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
     def update(cls, _id: int, **kwargs: Any) -> "EntityModel":
         """
         Update an existing entity instance with new metadata or attributes.
-        If the updated entity is a duplicate, raise a DuplicateItemError.
+        If the updated entity is a duplicate, raise a MD5DuplicateItemError.
         """
         try:
             duplicate = None
@@ -244,7 +244,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                     if duplicate.id != _id:
                         ## if file is present already in the db with different id
                         ## we can't update the current item, as its a conflict.
-                        raise DuplicateItemError()
+                        raise MD5DuplicateItemError()
             if duplicate:
                 currentEntity = duplicate
             else:

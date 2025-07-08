@@ -2,7 +2,11 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv(".flaskenv")
+
+dotenv_path = os.path.expanduser("~/.mediarepo")
+
+if not load_dotenv(dotenv_path):
+    raise Exception("failed to load environment")
 
 
 def get_required_env_variable(var_name):
@@ -20,11 +24,8 @@ def check_path(path):
 
 
 def get_db_uri():
-    try:
-        use_mysql = get_required_env_variable("USE_MYSQL")
-    except BaseException:
-        use_mysql = False
-
+    use_mysql = os.getenv("USE_MYSQL", "false").lower() in ("1", "true", "yes")
+    
     repo = get_required_env_variable("IMAGE_REPO_DB")
     if use_mysql:
         user = get_required_env_variable("IMAGE_REPO_DB_ADMIN")
@@ -38,15 +39,15 @@ def get_db_uri():
 
 class ConfigClass(object):
     APP_NAME = get_required_env_variable("APP_NAME")
+    SECRET_KEY = get_required_env_variable("FLASK_SECRET_KEY1")
+    FILE_STORAGE_LOCATION = get_required_env_variable("FILE_STORAGE_LOCATION")
+    HOST_ADDR=get_required_env_variable("HOST_ADDR")
+    HOST_PORT=get_required_env_variable("HOST_PORT")
+    USE_RELOADER=os.environ.get("USE_RELOADER", "false").lower() == "true"
+
     API_TITLE = APP_NAME
     API_VERSION = "v1"
     PROPAGATE_EXCEPTIONS = True
-
-    try:
-        SECRET_KEY = get_required_env_variable("FLASK_SECRET_KEY1")
-    except BaseException:
-        SECRET_KEY = "Secret!"
-
     API_VERSION = "v1"
     OPENAPI_VERSION = "3.0.2"
     OPENAPI_JSON_PATH = "api-spec.json"
@@ -66,7 +67,7 @@ class ConfigClass(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # File Save
-    FILE_STORAGE_LOCATION = get_required_env_variable("FILE_STORAGE_LOCATION")
+    
     STREAM_STORAGE_LOCATION = f"{FILE_STORAGE_LOCATION}/streams"
 
     CELERY_BROKER_URL = "redis://localhost:6379/0"
@@ -80,3 +81,5 @@ class ConfigClass(object):
 
     DEFAULT_COLLECTION_LABEL = "Unclassified"
     GENERATE_STREAM_TASK = "generate_stream_lq"
+
+    

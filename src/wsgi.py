@@ -1,14 +1,9 @@
-from flask import jsonify
-from werkzeug.exceptions import UnprocessableEntity
-from src.celery import CeleryTasks
-
-
-from .app_factory import create_app
-from .config import ConfigClass
+from src.celery_app import CeleryTasks
+from src.app_factory import create_app
+from src.config import ConfigClass
 
 app = create_app(ConfigClass)
 CeleryTasks.init_celery(app)
 
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
+    app.run(host=ConfigClass.HOST_ADDR, port=ConfigClass.HOST_PORT, debug=True, threaded=True, use_reloader = ConfigClass.USE_RELOADER)

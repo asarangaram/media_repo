@@ -5,7 +5,7 @@ from werkzeug.exceptions import InternalServerError, NotFound
 from sqlalchemy.schema import UniqueConstraint
 from celery.result import AsyncResult
 
-from src.celery import CeleryTasks
+from src.celery_app import CeleryTasks
 
 
 from ...db import db
