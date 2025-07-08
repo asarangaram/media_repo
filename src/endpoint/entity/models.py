@@ -7,7 +7,6 @@ import shutil
 import sqlite3
 import copy
 
-import tempfile
 import time
 
 from clmediakit import (
@@ -474,7 +473,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             raise MissingMediaError()
         if not entity.isDeleted:
             raise HardDeleteFailedError()
-        
+
         entity.removeMedia()
         entity.delete_from_db()
         return {"id": _id, "status": "permanently deleted"}
@@ -564,25 +563,3 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         return f"media_{str(media.id)}: media not found"
 
 
-class TempFile:
-    """
-    A utility class for managing temporary files.
-    Ensures unique filenames and provides cleanup functionality.
-    """
-
-    def __init__(self, file: Any) -> None:
-        temp_dir = tempfile.gettempdir()
-        temp_path = os.path.join(temp_dir, file.filename)
-
-        # Avoid overwriting by adding a number if file exists
-        base, ext = os.path.splitext(temp_path)
-        counter = 1
-        while os.path.exists(temp_path):
-            temp_path = f"{base}_{counter}{ext}"
-            counter += 1
-        file.save(temp_path)
-        self.path = temp_path
-
-    def remove(self) -> None:
-        if os.path.exists(self.path):
-            os.remove(self.path)

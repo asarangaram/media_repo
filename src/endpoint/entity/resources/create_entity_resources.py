@@ -1,6 +1,7 @@
 from src.endpoint.entity.resources.blob_resources import blob_download_media, blob_download_preview, blob_download_video_stream
 
-from src.endpoint.entity.resources.create_resources import entity_create_resource, entity_upload_form
+from src.endpoint.entity.resources.create_resources import entity_create_resource
+from src.endpoint.entity.resources.upload_form import entity_upload_form
 from src.endpoint.entity.resources.read_resources import entity_read_all_resource,entity_read_resource
 from src.endpoint.entity.resources.update_resources import entity_update_resource
 
