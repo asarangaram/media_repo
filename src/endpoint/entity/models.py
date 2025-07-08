@@ -20,9 +20,28 @@ from clmediakit import (
 
 from src.hnsw_indices import hnsw_image_lookup, hnsw_video_lookup
 from src.endpoint.background.models import BackgroundTaskModel
-from src.utils.custom_errors.validation_errors import (MD5MissingError, MD5DuplicateItemError, HardDeleteFailedError, CannotAttachFileWithCollectionError, ParentIdNotACollectionError, ParentIdNotExistsError, ParentIdNotProvidedError) 
-from src.utils.custom_errors.internal_server_errors import (IncorrectUsageError, PreviewGenerationFailedError, IntegrityError,UnexpectedFailure)
-from src.utils.custom_errors.not_found_errors import (MissingMediaFileError, MissingMediaError,MissingMediaWhenUploadError, VideoStreamError)
+from src.utils.custom_errors.validation_errors import (
+    MD5MissingError,
+    MD5DuplicateItemError,
+    HardDeleteFailedError,
+    CannotAttachFileWithCollectionError,
+    MediaAlreadyDeleted,
+    ParentIdNotACollectionError,
+    ParentIdNotExistsError,
+    ParentIdNotProvidedError,
+)
+from src.utils.custom_errors.internal_server_errors import (
+    IncorrectUsageError,
+    PreviewGenerationFailedError,
+    IntegrityError,
+    UnexpectedFailure,
+)
+from src.utils.custom_errors.not_found_errors import (
+    MissingMediaFileError,
+    MissingMediaError,
+    MissingMediaWhenUploadError,
+    VideoStreamError,
+)
 
 from ...db import db
 from ...config import ConfigClass
@@ -188,9 +207,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                     **{"isCollection": 1, "label": ConfigClass.DEFAULT_COLLECTION_LABEL}
                 )
             if not parent:
-                raise ParentIdNotProvidedError(
-                    
-                )
+                raise ParentIdNotProvidedError()
             parentArg = {"parentId": parent.id}
 
         ## Check for duplicate
@@ -206,15 +223,15 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             if kwargs.get("md5") is None:
                 raise MD5MissingError()
             if duplicate := cls.get(md5=kwargs.get("md5")):
-                # FIXME: when the item is present in another 
-                # collection, for now, we ignore the update 
+                # FIXME: when the item is present in another
+                # collection, for now, we ignore the update
                 # but what if the user's intention is to move ?
                 # to the recent update? Need to define a mechanism for this
-                """ if (
+                """if (
                     kwargs.get("parentId")
                     and kwargs.get("parentId") != duplicate.parentId
                 ):
-                    raise MD5DuplicateItemError(duplicate, parent=parent) """
+                    raise MD5DuplicateItemError(duplicate, parent=parent)"""
                 return duplicate
 
         # Create and accept
@@ -252,29 +269,28 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             if not currentEntity:
                 raise MissingMediaError()
             updatedEntity = copy.deepcopy(currentEntity)
-            
+
             for key, value in kwargs.items():
-                    if (
-                        key in updatedEntity.__table__.columns
-                        and key not in cls.not_modifiable_columns
-                    ):
-                        if getattr(updatedEntity, key) != value:
-                            setattr(updatedEntity, key, value)
-                            
+                if (
+                    key in updatedEntity.__table__.columns
+                    and key not in cls.not_modifiable_columns
+                ):
+                    if getattr(updatedEntity, key) != value:
+                        setattr(updatedEntity, key, value)
+
             # Nothing changed.
             if cls.acceptEntity(
-                    updatedEntity, currentEntity, filepath=kwargs.get("filepath")
-                ):
-                    if not updatedEntity.isCollection:
-                        if updatedEntity.type == MediaType.VIDEO:
-                            hnsw_video_lookup.replace(updatedEntity.id, updatedEntity.dHash)
-                        elif updatedEntity.type == MediaType.IMAGE:
-                            hnsw_image_lookup.replace(updatedEntity.id, updatedEntity.dHash)
-                    return updatedEntity
+                updatedEntity, currentEntity, filepath=kwargs.get("filepath")
+            ):
+                if not updatedEntity.isCollection:
+                    if updatedEntity.type == MediaType.VIDEO:
+                        hnsw_video_lookup.replace(updatedEntity.id, updatedEntity.dHash)
+                    elif updatedEntity.type == MediaType.IMAGE:
+                        hnsw_image_lookup.replace(updatedEntity.id, updatedEntity.dHash)
+                return updatedEntity
             return currentEntity
         except Exception as e:
             raise
-        
 
     def __eq__(self, other: Any) -> bool:
         """
@@ -363,7 +379,6 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                 timenow = datetime.now()
                 curr.addedDate = prev.addedDate if prev else timenow
                 curr.updatedDate = timenow
-                
 
                 db.session.flush()
                 try:
@@ -387,7 +402,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                     db.session.commit()
                 except sqlite3.IntegrityError as e:
                     raise IntegrityError(e)
-                
+
                 except Exception as e:
                     raise Exception("Unexpected error occurred") from e
             return curr != prev
@@ -419,42 +434,50 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             os.remove(self.absolute_filename)
         if os.path.exists(self.absolute_preview_filename):
             os.remove(self.absolute_preview_filename)
+        if self.type == MediaType.VIDEO:
+            hnsw_video_lookup.remove(self.id)
+        elif self.type == MediaType.IMAGE:
+            hnsw_image_lookup.remove(self.id)
+
+    @classmethod
+    def softdelete(cls, _id: int) -> None:
+        entity = cls.get(id=_id)
+        if not entity:
+            raise MissingMediaError()
+        if entity.isDeleted:
+            raise MediaAlreadyDeleted()
+        entity.isDeleted = True
+        db.session.commit()
+
+        return {"id": _id, "status": "deleted"}
+
+    @classmethod
+    def softrestore(cls, _id: int) -> None:
+        entity = cls.get(id=_id)
+        if not entity:
+            raise MissingMediaError()
+
+        entity.isDeleted = False
+        db.session.commit()
+        return entity
 
     @classmethod
     def delete(cls, _id: int) -> None:
         """
-        Delete an entity instance by its ID.
-        Raise HardDeleteFailedError if the entity is not marked as deleted.
+        Delete an entity instance by  _id.
+            Raise MissingMediaError if _id is invalid
+            Raise HardDeleteFailedError if the entity is not marked as deleted. (soft delete)
+            Delete the media completely, including its indices and files
         """
-        result_map  = {"id": _id}
-        try:
-            result_map["status"] =  "not deleted", 
-            entity = cls.get(id=_id)
-            if not entity:
-                result_map["error"] = f"no item found with id {_id}"
-                return result_map, 404
-            if not entity.isDeleted:
-                result_map["error"] = "failed to hard delete the entity, use soft delete first."
-                return result_map, 409
-                
-
-            path = os.path.join(ConfigClass.FILE_STORAGE_LOCATION, entity.path)
-            if os.path.exists(path):
-                os.remove(path)
-
-            if entity.type == MediaType.VIDEO:
-                hnsw_video_lookup.remove(entity.id)
-            elif entity.type == MediaType.IMAGE:
-                hnsw_image_lookup.remove(entity.id)
-
-            entity.delete_from_db()
-            print("Deleted successfully")
-            result_map["status"] =  "deleted", 
-            return result_map, 200
-        except Exception as e:
-            result_map["error"] = f"Internal Server Error {e}"
-            return result_map, 500
-            
+        entity = cls.get(id=_id)
+        if not entity:
+            raise MissingMediaError()
+        if not entity.isDeleted:
+            raise HardDeleteFailedError()
+        
+        entity.removeMedia()
+        entity.delete_from_db()
+        return {"id": _id, "status": "permanently deleted"}
 
     @classmethod
     def delete_all(cls) -> None:

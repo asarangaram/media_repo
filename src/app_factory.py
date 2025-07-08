@@ -5,7 +5,7 @@ from flask import Flask
 from .db import db
 from .endpoint.entity.models import EntityModel
 from .endpoint.entity.resources import entity_bp
-from .endpoint.entity.create_entity_resources import create_entity_resources
+from .endpoint.entity.resources.create_entity_resources import entity_resources
 
 
 from .endpoint.landing.resources import landing_bp
@@ -32,7 +32,7 @@ def create_app(config_object):
 
     EntityVersion = version_class(EntityModel)
 
-    create_entity_resources(EntityVersion, entity_bp)
+    entity_resources(EntityVersion, entity_bp)
 
     with app.app_context():
         db.create_all()

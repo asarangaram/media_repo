@@ -1,6 +1,3 @@
-from collections import OrderedDict
-from marshmallow import ValidationError
-
 from src.endpoint.entity.models import EntityModel, TempFile
 from src.endpoint.entity.resources import mask_errors
 from src.endpoint.entity.schema import ItemSchema, MediaFileSchema
@@ -8,35 +5,11 @@ from src.utils.custom_errors.validation_errors import CannotAttachFileWithCollec
 
 
 from clmediakit import CLMetaData
-from flask import jsonify, request
-from flask.views import MethodView
+from flask import request
 
 
-
-def entity_resource(MediaVersion, route):
-    @route.route("/<int:entity_id>")
-    class Media(MethodView):
-        """
-        Handles operations on individual media entities.
-        """
-
-        @mask_errors
-        @route.response(200, ItemSchema())
-        def get(cls, entity_id: int):
-            """
-            Retrieves a specific media entity by its ID.
-
-            Args:
-                entity_id: The ID of the media entity.
-
-            Returns:
-                The media entity as a JSON response.
-            """
-            entity = EntityModel.get(id=entity_id)
-            if not entity:
-                return jsonify({"error": "Media not found", "status_code": 404}), 404
-            return entity
-
+def entity_update_resource(MediaVersion, route):
+        @route.route("/update/<int:entity_id>")
         @mask_errors
         @route.response(201, ItemSchema)
         def put(cls, entity_id):
@@ -60,8 +33,3 @@ def entity_resource(MediaVersion, route):
             if temp_file:
                 temp_file.remove()
             return item
-
-        def delete(cls, entity_id):
-            return EntityModel.delete(entity_id)
-
-    pass

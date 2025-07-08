@@ -31,12 +31,28 @@ class HardDeleteFailedError(ValidationError):
             }
         )
 
+class MediaAlreadyDeleted(ValidationError):
+    def __init__(self):
+        super().__init__(
+            {
+                "isDeleted": "media is already deleted. You can either restore or permanently delete",
+            }
+        )
+
+class MediaMustHaveMediaFile(ValidationError):
+    def __init__(self):
+        super().__init__(
+            {
+                "mediaFile": "media can't be created without a valid media file",
+            }
+        )
+
 
 class CannotAttachFileWithCollectionError(ValidationError):
     def __init__(self):
         super().__init__(
             {
-                "media": "Can't attach file to Collection",
+                "mediaFile": "Can't attach media file to Collection",
             }
         )
 

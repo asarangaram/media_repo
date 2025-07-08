@@ -1,0 +1,193 @@
+from typing import Optional
+from src.db import db
+from src.endpoint.entity.models import EntityModel
+from src.endpoint.entity.resources import mask_errors
+from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema
+
+
+from flask import jsonify
+from flask.views import MethodView
+from sqlalchemy import func
+from sqlalchemy_continuum import version_class
+
+
+import logging
+from collections import OrderedDict
+
+
+def entity_read_all_resource(MediaVersion, route):
+    @route.route("/")
+    @route.route("")
+    class MediaList(MethodView):
+        """
+        Handles operations on the list of media entities, including creation, retrieval, and deletion.
+        """
+
+        @mask_errors
+        @route.arguments(ItemsQuerySchema, location="query")
+        @route.response(200)
+        def get(cls, kwargs):
+            """
+            Retrieves a paginated list of media entities.
+
+            Args:
+                kwargs: Query parameters for filtering and pagination.
+
+            Returns:
+                A JSON response containing the list of media entities and metadata.
+            """
+            current_version = kwargs.get("current_version")
+            last_known_version = kwargs.get("last_known_version")
+            page = kwargs.get("page", 1)
+            per_page = kwargs.get("per_page")
+
+            if page > 1 and (current_version is None or per_page is None):
+                return (
+                    jsonify(
+                        {
+                            "error": "current_version and per_page are required to get further pages"
+                        }
+                    ),
+                    400,
+                )
+
+            try:
+                VersionModel = version_class(MediaVersion)
+
+                version_query = db.session.query(
+                    func.min(VersionModel.transaction_id).label("min_version"),
+                    func.max(VersionModel.transaction_id).label("max_version"),
+                ).one()
+
+                min_version = 0  # Force minimum version to 0
+                max_version = version_query.max_version or 0
+
+                effective_current_version = (
+                    current_version if current_version is not None else max_version
+                )
+                effective_last_version = (
+                    last_known_version
+                    if last_known_version is not None
+                    else min_version
+                )
+
+                if effective_current_version < effective_last_version:
+                    return (
+                        jsonify(
+                            {
+                                "error": "Current version must be greater than or equal to last known version"
+                            }
+                        ),
+                        400,
+                    )
+
+                if max_version > 0 and (
+                    effective_current_version > max_version
+                    or effective_last_version < min_version
+                ):
+                    return jsonify({"error": "Version numbers out of range"}), 400
+
+                subquery = (
+                    MediaVersion.query.filter(
+                        VersionModel.transaction_id > effective_last_version,
+                        VersionModel.transaction_id <= effective_current_version,
+                    )
+                    .group_by(MediaVersion.id)
+                    .subquery()
+                )
+
+                query = db.session.query(MediaVersion).join(
+                    subquery,
+                    (MediaVersion.id == subquery.c.id)
+                    & (MediaVersion.transaction_id == subquery.c.transaction_id),
+                )
+
+                # Apply filters from kwargs
+                filters = {
+                    getattr(MediaVersion, key): value
+                    for key, value in kwargs.items()
+                    if key in MediaVersion.__table__.columns
+                }
+
+                if (
+                    MediaVersion.parentId in filters
+                    and filters[MediaVersion.parentId] == 0
+                ):
+                    filters[MediaVersion.parentId] = None
+
+                query_filters = []
+                for col, val in filters.items():
+                    if isinstance(val, (list, tuple)):  # Handle multiple values
+                        query_filters.append(col.in_(val))
+                    else:  # Handle single value
+                        query_filters.append(col == val)
+
+                query = query.filter(*query_filters)
+
+                total_items = query.count()
+
+                if per_page:
+                    total_pages = (total_items + per_page - 1) // per_page
+                    paginated_query = (
+                        query.order_by(VersionModel.id.desc())
+                        .limit(per_page)
+                        .offset((page - 1) * per_page)
+                    )
+                    paginated = paginated_query.all()
+                else:
+                    orderred_query = query.order_by(VersionModel.id.desc())
+                    paginated = orderred_query.all()
+                    total_pages = 1
+
+                items = [ItemSchema().dump(item) for item in paginated]
+
+                response = OrderedDict()
+                response["items"] = items
+                response["metaInfo"] = {
+                    "currentVersion": effective_current_version,
+                    "lastSyncedVersion": effective_last_version,
+                    "latestVersion": max_version,
+                    "totalItems": total_items,
+                }
+                if per_page:
+                    response["metaInfo"]["pagination"] = {
+                        "currentPage": page,
+                        "perPage": per_page if per_page else total_items,
+                        "totalPages": total_pages,
+                    }
+
+                return jsonify(response), 200
+
+            except Exception as e:
+                logging.error(f"Error in MediaList.get: {str(e)}")
+                db.session.rollback()
+                return jsonify({"error": str(e), "status_code": 500}), 500
+
+
+def entity_read_resource(MediaVersion, route):
+    @route.route("/<int:entity_id>")
+    class Media(MethodView):
+        """
+        Handles operations on individual media entities.
+        """
+
+        @mask_errors
+        @route.response(200, ItemSchema())
+        def get(cls, entity_id: int):
+            """
+            Retrieves a specific media entity by its ID.
+
+            Args:
+                entity_id: The ID of the media entity.
+
+            Returns:
+                The media entity as a JSON response.
+            """
+            entity = EntityModel.get(id=entity_id)
+            if not entity:
+                return jsonify({"error": "Media not found", "status_code": 404}), 404
+            return entity
+        
+
+
+        
