@@ -1,6 +1,6 @@
 from typing import Optional
 from src.endpoint.entity.models import EntityModel
-from src.endpoint.entity.resources import mask_errors
+from src.utils.custom_errors.custom_handle_error import custom_handle_error
 
 
 from flask import jsonify, send_file, send_from_directory
@@ -18,7 +18,7 @@ def blob_download_media(MediaVersion, route):
         Handles downloading of media files.
         """
 
-        @mask_errors
+        @custom_handle_error
         def get(cls, entity_id: int):
             """
             Downloads a specific media file.
@@ -53,7 +53,7 @@ def blob_download_preview(MediaVersion, route):
         Handles downloading of preview images for media files.
         """
 
-        @mask_errors
+        @custom_handle_error
         def get(cls, entity_id: int):
             """
             Downloads the preview image for a specific media file.
@@ -87,7 +87,7 @@ def blob_download_video_stream(MediaVersion, route):
         Serves the adaptive streaming manifest file (m3u8) for a media entity.
         """
 
-        @mask_errors
+        @custom_handle_error
         def get(cls, entity_id: int):
             """
             Retrieves the m3u8 manifest file for adaptive streaming.

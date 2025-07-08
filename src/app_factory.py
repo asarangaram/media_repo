@@ -1,22 +1,18 @@
-# app_factory.py
 import os
 from flask import Flask
-
-from .db import db
-from .endpoint.entity.models import EntityModel
-from .endpoint.entity.resources import entity_bp
-from .endpoint.entity.resources.create_entity_resources import entity_resources
-
-
-from .endpoint.landing.resources import landing_bp
-from .endpoint.urlmap.resources import URL_map_resouce_bp
-
-from . import lock
 from flask_migrate import Migrate
 from sqlalchemy_continuum import version_class
+from flask_smorest import Blueprint
 
-from .endpoint.urlmap.resources import URLMapResource
-from .endpoint.background.resources import background_task_bp
+
+from .db import db
+from src.endpoint.entity.models import EntityModel
+from src.endpoint.entity.resources.create_entity_resources import register_resources
+from src.endpoint.landing.resources import landing_bp
+from src.endpoint.urlmap.resources import URL_map_resouce_bp
+from src import lock
+from src.endpoint.urlmap.resources import URLMapResource
+from src.endpoint.background.resources import background_task_bp
 
 
 def create_app(config_object):
@@ -31,8 +27,10 @@ def create_app(config_object):
     db.configure_mappers()
 
     EntityVersion = version_class(EntityModel)
+    
 
-    entity_resources(EntityVersion, entity_bp)
+    entity_bp = Blueprint("entity_bp", __name__, url_prefix="/entity")
+    register_resources(EntityVersion, entity_bp)
 
     with app.app_context():
         db.create_all()
@@ -42,7 +40,7 @@ def create_app(config_object):
     # Landing Page
     app.register_blueprint(landing_bp)
     app.register_blueprint(URL_map_resouce_bp)
-
+    
     app.register_blueprint(entity_bp)
     app.register_blueprint(background_task_bp)
 

@@ -1,4 +1,4 @@
-from src.endpoint.entity.resources import mask_errors
+from src.utils.custom_errors.custom_handle_error import custom_handle_error
 
 
 from flask import make_response, render_template
@@ -12,7 +12,7 @@ def entity_upload_form(MediaVersion, route):
         Provides an HTML form for uploading media files.
         """
 
-        @mask_errors
+        @custom_handle_error
         def get(self):
             """
             Renders the media upload form.

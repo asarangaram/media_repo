@@ -2,7 +2,7 @@ from flask.views import MethodView
 from flask import request
 from src.endpoint.entity.temp_file import TempFile
 from src.endpoint.entity.models import EntityModel
-from src.endpoint.entity.resources import mask_errors
+from src.utils.custom_errors.custom_handle_error import custom_handle_error
 from src.endpoint.entity.schema import ItemSchema, MediaFileSchema
 from src.utils.custom_errors.validation_errors import (
     CannotAttachFileWithCollectionError,
@@ -12,7 +12,7 @@ from src.utils.custom_errors.validation_errors import (
 def entity_update_resource(MediaVersion, route):
     @route.route("/update/<int:entity_id>")
     class EntityUpdate(MethodView):
-        @mask_errors
+        @custom_handle_error
         @route.response(201, ItemSchema)
         def put(cls, entity_id):
             # Validate

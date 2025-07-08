@@ -1,7 +1,7 @@
 from typing import Optional
 from src.db import db
 from src.endpoint.entity.models import EntityModel
-from src.endpoint.entity.resources import mask_errors
+from src.utils.custom_errors.custom_handle_error import custom_handle_error
 from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema
 
 
@@ -23,7 +23,7 @@ def entity_read_all_resource(MediaVersion, route):
         Handles operations on the list of media entities, including creation, retrieval, and deletion.
         """
 
-        @mask_errors
+        @custom_handle_error
         @route.arguments(ItemsQuerySchema, location="query")
         @route.response(200)
         def get(cls, kwargs):
@@ -171,7 +171,7 @@ def entity_read_resource(MediaVersion, route):
         Handles operations on individual media entities.
         """
 
-        @mask_errors
+        @custom_handle_error
         @route.response(200, ItemSchema())
         def get(cls, entity_id: int):
             """
