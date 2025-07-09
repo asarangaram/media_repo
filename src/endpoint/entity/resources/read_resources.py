@@ -23,17 +23,14 @@ def entity_read_all_resource(MediaVersion, route):
             if key in MediaVersion.__table__.columns
         }
 
-        if (
-            MediaVersion.parentId in filters
-            and filters[MediaVersion.parentId] == 0
-        ):
+        if MediaVersion.parentId in filters and filters[MediaVersion.parentId] == 0:
             filters[MediaVersion.parentId] = None
 
         query_filters = []
         for col, val in filters.items():
             if isinstance(val, (list, tuple)):  # Handle multiple values
                 query_filters.append(col.in_(val))
-            if val  == "__null__":
+            if val == "__null__":
                 query_filters.append(col.is_(None))
             if val == "__notnull__":
                 query_filters.append(col.is_not(None))
@@ -83,7 +80,7 @@ def entity_read_all_resource(MediaVersion, route):
                     func.max(VersionModel.transaction_id).label("max_version"),
                 ).one()
 
-                min_version = 0  # Force minimum version to 0
+                min_version = version_query.min_version or 0
                 max_version = version_query.max_version or 0
 
                 effective_current_version = (
@@ -96,14 +93,11 @@ def entity_read_all_resource(MediaVersion, route):
                 )
 
                 if effective_current_version < effective_last_version:
-                    return (
-                        jsonify(
-                            {
-                                "error": "Current version must be greater than or equal to last known version"
-                            }
-                        ),
-                        400,
-                    )
+                    return jsonify(
+                        {
+                            "error": "Current version must be greater than or equal to last known version"
+                        }
+                    ), 400
 
                 if max_version > 0 and (
                     effective_current_version > max_version
@@ -111,8 +105,14 @@ def entity_read_all_resource(MediaVersion, route):
                 ):
                     return jsonify({"error": "Version numbers out of range"}), 400
 
-                subquery = (
-                    MediaVersion.query.filter(
+                latest_subquery = (
+                    db.session.query(
+                        MediaVersion.id.label("id"),
+                        func.max(VersionModel.transaction_id).label(
+                            "max_transaction_id"
+                        ),
+                    )
+                    .filter(
                         VersionModel.transaction_id > effective_last_version,
                         VersionModel.transaction_id <= effective_current_version,
                     )
@@ -121,13 +121,15 @@ def entity_read_all_resource(MediaVersion, route):
                 )
 
                 query = db.session.query(MediaVersion).join(
-                    subquery,
-                    (MediaVersion.id == subquery.c.id)
-                    & (MediaVersion.transaction_id == subquery.c.transaction_id),
+                    latest_subquery,
+                    (MediaVersion.id == latest_subquery.c.id)
+                    & (
+                        MediaVersion.transaction_id
+                        == latest_subquery.c.max_transaction_id
+                    ),
                 )
 
-                
-                query_filters = getFilter (kwargs)
+                query_filters = getFilter(kwargs)
                 query = query.filter(*query_filters)
 
                 total_items = query.count()
@@ -193,7 +195,3 @@ def entity_read_resource(MediaVersion, route):
             if not entity:
                 return jsonify({"error": "Media not found", "status_code": 404}), 404
             return entity
-        
-
-
-        
