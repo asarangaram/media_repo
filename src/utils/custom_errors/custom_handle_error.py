@@ -20,7 +20,7 @@ def custom_handle_error(func):
             response = OrderedDict()
             response["type"] = type(err).__name__  # e.g. "ValueError"
             if isinstance(err, ValidationError):
-                response["error"] = str(err.messages["_schema"])
+                response["error"] = err.messages
                 response["code"] = 422
             else:
                 response["error"] = str(err)

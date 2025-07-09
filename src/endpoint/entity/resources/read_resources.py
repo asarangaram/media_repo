@@ -15,6 +15,32 @@ from collections import OrderedDict
 
 
 def entity_read_all_resource(MediaVersion, route):
+    def getFilter(kwargs):
+        # Apply filters from kwargs
+        filters = {
+            getattr(MediaVersion, key): value
+            for key, value in kwargs.items()
+            if key in MediaVersion.__table__.columns
+        }
+
+        if (
+            MediaVersion.parentId in filters
+            and filters[MediaVersion.parentId] == 0
+        ):
+            filters[MediaVersion.parentId] = None
+
+        query_filters = []
+        for col, val in filters.items():
+            if isinstance(val, (list, tuple)):  # Handle multiple values
+                query_filters.append(col.in_(val))
+            if val  == "__null__":
+                query_filters.append(col.is_(None))
+            if val == "__notnull__":
+                query_filters.append(col.is_not(None))
+            else:  # Handle single value
+                query_filters.append(col == val)
+        return query_filters
+
     @route.route("/all")
     class EntityList(MethodView):
         """
@@ -100,26 +126,8 @@ def entity_read_all_resource(MediaVersion, route):
                     & (MediaVersion.transaction_id == subquery.c.transaction_id),
                 )
 
-                # Apply filters from kwargs
-                filters = {
-                    getattr(MediaVersion, key): value
-                    for key, value in kwargs.items()
-                    if key in MediaVersion.__table__.columns
-                }
-
-                if (
-                    MediaVersion.parentId in filters
-                    and filters[MediaVersion.parentId] == 0
-                ):
-                    filters[MediaVersion.parentId] = None
-
-                query_filters = []
-                for col, val in filters.items():
-                    if isinstance(val, (list, tuple)):  # Handle multiple values
-                        query_filters.append(col.in_(val))
-                    else:  # Handle single value
-                        query_filters.append(col == val)
-
+                
+                query_filters = getFilter (kwargs)
                 query = query.filter(*query_filters)
 
                 total_items = query.count()

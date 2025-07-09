@@ -11,13 +11,12 @@ class MD5MissingError(ValidationError):
 
 
 class MD5DuplicateItemError(ValidationError):
-    def __init__(self, entity, parent=None):
+    def __init__(self, entity):
         super().__init__(
             {
                 "md5": (
-                    f"Duplicate item found with id {entity.id}" f", parent: {parent.id}"
-                    if parent
-                    else ""
+                    f"Duplicate item found with id {entity.id}" f", parent: {entity.parentId}"
+                    
                 ),
             }
         )
@@ -89,4 +88,13 @@ class ParentIdNotProvidedError(ValidationError):
                 "parentId": "parentId not specified, unable to create default collection"
             }
         )
+
+class Failed2GetEntityTypeError(ValidationError):
+    def __init__(self):
+        super().__init__(
+            {
+                "isCollection": "either isCollection should be specified OR a file must be present to know the entity type"
+            }
+        )
+
 

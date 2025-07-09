@@ -1,19 +1,12 @@
-from datetime import datetime
-from itertools import chain
-
 from flask_smorest.fields import Upload
-from marshmallow import post_dump, validates_schema, ValidationError, pre_load, Schema
+from marshmallow import post_dump, validates_schema, Schema
 from clmediakit import (
     IntigerizedBool,
     MediaTypeField,
-    MediaType,
     MillisecondsSinceEpoch,
 )
 from marshmallow import (
-    Schema,
-    post_dump,
     fields,
-    post_load,
 )
 
 
@@ -30,7 +23,7 @@ class ItemSchema(Schema):
     # Fields with their respective types and validation rules
     id = fields.Int(dump_only=True)  # Read-only field
     isCollection = IntigerizedBool(
-        required=True, error_messages={"missing isCollection": "TODO"}
+        required=False
     )  # Boolean field indicating if the item is a collection
     label = fields.Str(
         allow_none=True, required=False, error_messages={"missing label": "TODO"}
@@ -111,16 +104,6 @@ class ItemSchema(Schema):
             if not "md5" in data:
                 raise ValidationError(f"md5 is required for media") """
         pass
-
-    @pre_load
-    def ensure_is_collection(self, data, **kwargs):
-        """
-        Raise a validation error if isCollection is missing.
-        """
-        if "isCollection" not in data:
-            raise ValidationError("isCollection is required")
-        # data["isCollection"] = bool(data["isCollection"])  # Uncomment if needed
-        return data
 
     @post_dump
     def remove_skip_values(self, data, **kwargs):

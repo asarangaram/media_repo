@@ -1,5 +1,5 @@
 from flask.views import MethodView
-from flask_smorest import Blueprint, abort
+from flask_smorest import Blueprint
 
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
 
@@ -15,7 +15,7 @@ landing_bp = Blueprint("landing_bp", __name__, url_prefix="")
 class LandingPage(MethodView):
     @custom_handle_error
     @landing_bp.response(200, LandingPageResultSchema)
-    def get(self, name):
+    def get(self):
         page = LandingPageModel()
         return page
 

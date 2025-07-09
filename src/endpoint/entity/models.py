@@ -23,7 +23,6 @@ from src.utils.custom_errors.validation_errors import (
     MD5MissingError,
     MD5DuplicateItemError,
     HardDeleteFailedError,
-    CannotAttachFileWithCollectionError,
     MediaAlreadyDeleted,
     ParentIdNotACollectionError,
     ParentIdNotExistsError,
@@ -244,7 +243,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                         hnsw_image_lookup.add(entity.id, entity.dHash)
                 return entity
             raise UnexpectedFailure()
-        except Exception as e:
+        except Exception:
             raise
 
     @classmethod
@@ -260,7 +259,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                     if duplicate.id != _id:
                         ## if file is present already in the db with different id
                         ## we can't update the current item, as its a conflict.
-                        raise MD5DuplicateItemError()
+                        raise MD5DuplicateItemError(duplicate)
             if duplicate:
                 currentEntity = duplicate
             else:
@@ -288,7 +287,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                         hnsw_image_lookup.replace(updatedEntity.id, updatedEntity.dHash)
                 return updatedEntity
             return currentEntity
-        except Exception as e:
+        except Exception:
             raise
 
     def __eq__(self, other: Any) -> bool:
@@ -405,7 +404,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                 except Exception as e:
                     raise Exception("Unexpected error occurred") from e
             return curr != prev
-        except Exception as e:
+        except Exception:
             db.session.rollback()
             prev_media = prev.absolute_filename if prev else None
             curr_media = curr.absolute_filename
@@ -436,7 +435,11 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         if self.type == MediaType.VIDEO:
             hnsw_video_lookup.remove(self.id)
         elif self.type == MediaType.IMAGE:
-            hnsw_image_lookup.remove(self.id)
+            pass 
+            # hnsw_image_lookup.remove(self.id)
+            # Its not easy to remove from image lookup, hence 
+            # we should implement this either outside the hnsw or update
+            # in a complex way
 
     @classmethod
     def softdelete(cls, _id: int) -> None:
@@ -474,7 +477,8 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         if not entity.isDeleted:
             raise HardDeleteFailedError()
 
-        entity.removeMedia()
+        if not entity.isCollection:
+            entity.removeMedia()
         entity.delete_from_db()
         return {"id": _id, "status": "permanently deleted"}
 
@@ -499,7 +503,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             elapsed_time = time.time() - start_time
             if elapsed_time > timeout:
                 raise VideoStreamError(
-                    additionalMessage=f"background task not responding "
+                    additionalMessage="background task not responding "
                     "for media {id}",
                 )
             time.sleep(1)  # Poll every second
@@ -554,7 +558,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             try:
                 valid = generator.addVariants([HLSVariant(resolution=240, bitrate=200)])
 
-            except Exception as e:
+            except Exception:
                 # FIXME: delete generated files if it fails
                 valid = False
             if not valid:
