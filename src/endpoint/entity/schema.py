@@ -1,5 +1,5 @@
 from flask_smorest.fields import Upload
-from marshmallow import post_dump, validates_schema, Schema, validate
+from marshmallow import post_dump, validates_schema, Schema
 from clmediakit import (
     IntigerizedBool,
     MediaTypeField,
@@ -9,7 +9,10 @@ from marshmallow import (
     fields,
 )
 
-from src.utils.custom_errors.validation_errors import MissingParametersInMatchQuery
+from src.utils.custom_errors.validation_errors import (
+    MissingParametersInMatchQuery,
+    TooManyParametersinMatchQuery,
+)
 
 
 # Schema for handling media file uploads
@@ -157,8 +160,13 @@ class MatchQuerySchema(Schema):
     label = fields.Str(required=False, allow_none=True)
 
     # Custom validation to ensure only one of id, md5, or label is provided
-    @validate.at_least_one(["id", "md5", "label"])
+    @validates_schema
     def validate_one_param(self, data, **kwargs):
-        present_params = [k for k, v in data.items() if v is not None]
-        if len(present_params) > 1:
-            raise MissingParametersInMatchQuery("Only one of 'id', 'md5', or 'label' can be provided.")
+        present_params = [
+            field for field in ["id", "md5", "label"] if data.get(field) is not None
+        ]
+
+        if not present_params:
+            raise MissingParametersInMatchQuery()
+        elif len(present_params) > 1:
+            raise TooManyParametersinMatchQuery()

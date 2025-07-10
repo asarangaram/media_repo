@@ -1,4 +1,4 @@
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import NotFound
 
 
 class MissingMediaFileError(NotFound):

@@ -1,6 +1,6 @@
 from flask import request
 from marshmallow import ValidationError
-
+from werkzeug.exceptions import InternalServerError, NotFound
 
 from collections import OrderedDict
 from functools import wraps
@@ -22,8 +22,14 @@ def custom_handle_error(func):
             if isinstance(err, ValidationError):
                 response["error"] = err.messages
                 response["code"] = 422
+            if isinstance(err, NotFound):
+                response["error"] = {"error": err}
+                response["code"] = 404
+            if isinstance(err, InternalServerError):
+                response["error"] =  {"error": err}
+                response["code"] = 500
             else:
-                response["error"] = str(err)
+                response["error"] = {"error": str(err)}
                 response["code"] = 500
 
             return response, response["code"]

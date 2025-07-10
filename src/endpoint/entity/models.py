@@ -24,6 +24,7 @@ from src.utils.custom_errors.validation_errors import (
     MD5DuplicateItemError,
     HardDeleteFailedError,
     MediaAlreadyDeleted,
+    MissingParametersInMatchQuery,
     ParentIdNotACollectionError,
     ParentIdNotExistsError,
     ParentIdNotProvidedError,
@@ -53,8 +54,8 @@ class EntityModelReaderMixin:
 
     @classmethod
     def get(cls, **kwargs: Any) -> Optional["EntityModel"]:
-        items = cls.get_all(**kwargs)
-        return items[0] if items else None
+        return cls.query.filter_by(**kwargs).first()
+        
 
     @classmethod
     def get_all(cls, **kwargs: Any) -> List["EntityModel"]:
@@ -573,3 +574,18 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         return f"media_{str(media.id)}: media not found"
 
 
+    @classmethod
+    def match(cls, id=None, md5=None, label=None):
+        if id:
+            media = EntityModel.get(id=id)
+        elif md5:
+            media = EntityModel.get(md5=md5)
+        elif label:
+            media = EntityModel.get(label=label, isCollection=True)
+        else:
+            raise MissingParametersInMatchQuery()
+        
+        if media:
+            return media
+        else:
+            raise MissingMediaError()

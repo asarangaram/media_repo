@@ -1,10 +1,10 @@
 from src.db import db
 from src.endpoint.entity.models import EntityModel
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
-from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema
+from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema, MatchQuerySchema
 
 
-from flask import jsonify
+from flask import jsonify, request
 from flask.views import MethodView
 from sqlalchemy import func
 from sqlalchemy_continuum import version_class
@@ -13,6 +13,40 @@ from sqlalchemy_continuum import version_class
 import logging
 from collections import OrderedDict
 
+from src.utils.custom_errors.not_found_errors import MissingMediaError
+
+
+
+def entity_match_resource(MediaVersion, route):
+    @route.route("/match")
+    @route.response(200, ItemSchema())
+    class MatchEntity(MethodView):
+        """
+        search for a Entity, based on its unique attritube.
+        The order in which search is being performed is fixed.
+        if id is provided,
+            search by id and return.
+        else if md5 is provided
+            search by md5 and return
+        else if label is provided
+            isCollection=True is automatically added and the label is searched for the combination
+            of (isCollection=True, label) and return.
+
+        as per the DB Design, its impossible to have more than one items for these searches, hence
+        we either return or return not found error.
+        """
+
+        @custom_handle_error
+        @route.response(200)
+        def get(cls):
+            query_data = MatchQuerySchema().load(request.args)
+
+            entity_id = query_data.get("id")
+            md5_hash = query_data.get("md5")
+            entity_label = query_data.get("label")
+
+            entity =  EntityModel.match(id=entity_id, md5=md5_hash, label=entity_label,)
+            return entity
 
 def entity_read_all_resource(MediaVersion, route):
     def getFilter(kwargs):
@@ -193,5 +227,5 @@ def entity_read_resource(MediaVersion, route):
             """
             entity = EntityModel.get(id=entity_id)
             if not entity:
-                return jsonify({"error": "Media not found", "status_code": 404}), 404
+                raise MissingMediaError()
             return entity

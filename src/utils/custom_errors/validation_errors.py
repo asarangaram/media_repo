@@ -103,6 +103,22 @@ class MissingParametersInMatchQuery(ValidationError):
     def __init__(self):
         super().__init__(
             {
-                "empty": "One of 'id', 'md5', or 'label' must be provided for the search."
+                "empty": "One of 'id', 'md5', or 'label' must be provided"
+            }
+        )
+class TooManyParametersinMatchQuery(ValidationError):
+    def __init__(self):
+        super().__init__(
+            {
+                "empty": "Only one  of 'id', 'md5', or 'label' must be provided"
+            }
+        )
+
+
+class UnknownParameter(ValidationError):
+    def __init__(self, parameter:str):
+        super().__init__(
+            {
+                parameter: "invalid parameter"
             }
         )
