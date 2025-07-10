@@ -1,5 +1,5 @@
 from flask_smorest.fields import Upload
-from marshmallow import post_dump, validates_schema, Schema
+from marshmallow import post_dump, validates_schema, Schema, validate
 from clmediakit import (
     IntigerizedBool,
     MediaTypeField,
@@ -8,6 +8,8 @@ from clmediakit import (
 from marshmallow import (
     fields,
 )
+
+from src.utils.custom_errors.validation_errors import MissingParametersInMatchQuery
 
 
 # Schema for handling media file uploads
@@ -147,3 +149,16 @@ class ItemsQuerySchema(Schema):
     ## TODO:
     ## Add support for range queries for dates, width, height, and duration
     ## Determine whether to use OR or AND for combining filters
+
+
+class MatchQuerySchema(Schema):
+    id = fields.Int(required=False, allow_none=True)
+    md5 = fields.Str(required=False, allow_none=True)
+    label = fields.Str(required=False, allow_none=True)
+
+    # Custom validation to ensure only one of id, md5, or label is provided
+    @validate.at_least_one(["id", "md5", "label"])
+    def validate_one_param(self, data, **kwargs):
+        present_params = [k for k, v in data.items() if v is not None]
+        if len(present_params) > 1:
+            raise MissingParametersInMatchQuery("Only one of 'id', 'md5', or 'label' can be provided.")

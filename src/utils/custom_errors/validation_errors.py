@@ -98,3 +98,11 @@ class Failed2GetEntityTypeError(ValidationError):
         )
 
 
+
+class MissingParametersInMatchQuery(ValidationError):
+    def __init__(self):
+        super().__init__(
+            {
+                "empty": "One of 'id', 'md5', or 'label' must be provided for the search."
+            }
+        )
