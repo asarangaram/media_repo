@@ -19,7 +19,7 @@ from src.utils.custom_errors.not_found_errors import MissingMediaError
 
 def entity_match_resource(MediaVersion, route):
     @route.route("/match")
-    @route.response(200, ItemSchema())
+    
     class MatchEntity(MethodView):
         """
         search for a Entity, based on its unique attritube.
@@ -37,15 +37,15 @@ def entity_match_resource(MediaVersion, route):
         """
 
         @custom_handle_error
-        @route.response(200)
+        @route.response(200, ItemSchema())
         def get(cls):
             query_data = MatchQuerySchema().load(request.args)
 
-            entity_id = query_data.get("id")
+            
             md5_hash = query_data.get("md5")
             entity_label = query_data.get("label")
 
-            entity =  EntityModel.match(id=entity_id, md5=md5_hash, label=entity_label,)
+            entity =  EntityModel.match( md5=md5_hash, label=entity_label,)
             return entity
 
 def entity_read_all_resource(MediaVersion, route):

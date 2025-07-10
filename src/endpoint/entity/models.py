@@ -575,10 +575,8 @@ class EntityModel(db.Model, EntityModelReaderMixin):
 
 
     @classmethod
-    def match(cls, id=None, md5=None, label=None):
-        if id:
-            media = EntityModel.get(id=id)
-        elif md5:
+    def match(cls,  md5=None, label=None):
+        if md5:
             media = EntityModel.get(md5=md5)
         elif label:
             media = EntityModel.get(label=label, isCollection=True)

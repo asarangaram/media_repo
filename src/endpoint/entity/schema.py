@@ -163,7 +163,7 @@ class MatchQuerySchema(Schema):
     @validates_schema
     def validate_one_param(self, data, **kwargs):
         present_params = [
-            field for field in ["id", "md5", "label"] if data.get(field) is not None
+            field for field in [ "md5", "label"] if data.get(field) is not None
         ]
 
         if not present_params:
