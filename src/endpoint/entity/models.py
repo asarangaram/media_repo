@@ -97,6 +97,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
     addedDate = db.Column(db.DateTime, nullable=False)
     updatedDate = db.Column(db.DateTime, nullable=False)
     isDeleted = db.Column(db.Boolean, default=False, nullable=False)
+    isDeletedPermanently = db.Column(db.Boolean, default=False, nullable=False)
     isCollection = db.Column(db.Boolean)
 
     # Mandatory for Collections, Optional for Files
@@ -479,6 +480,11 @@ class EntityModel(db.Model, EntityModelReaderMixin):
 
         if not entity.isCollection:
             entity.removeMedia()
+        
+        # Create a transaction  to save in Versions table
+        entity.isDeletedPermanently = True
+        db.session.commit()
+        
         entity.delete_from_db()
         return {"id": _id, "status": "permanently deleted"}
 
