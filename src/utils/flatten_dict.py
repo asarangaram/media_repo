@@ -1,0 +1,17 @@
+def flatten_dict(data_map):
+    try:
+        for key in list(data_map.keys()):
+            value = data_map[key]
+
+            if isinstance(value, dict):  # recursive
+                data_map[key] = flatten_dict(value)
+            elif isinstance(value, list):
+                if len(value) == 1:
+                    data_map[key] = value[0]
+                elif len(value) == 0:
+                    del data_map[key]
+    
+        return data_map
+    except Exception :
+        raise
+

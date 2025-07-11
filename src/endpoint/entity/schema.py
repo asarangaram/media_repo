@@ -1,4 +1,3 @@
-
 from flask_smorest.fields import Upload
 from marshmallow import ValidationError, post_dump, validates_schema, Schema
 from clmediakit import (
@@ -120,30 +119,41 @@ class ItemSchema(Schema):
 
         return {key: value for key, value in data.items() if value}
 
+
 def validate_nonzero_uint_search_term(value):
     if value in ("__null__", "__nonnull__"):
         return
-    
+
     if isinstance(value, int):
         if value > 0:
             return
-        raise ValidationError(f"must be a positive non-zero integer. (received: {value})")
+        raise ValidationError(
+            f"must be a positive non-zero integer. (received: {value})"
+        )
     if isinstance(value, list):
         if all(isinstance(v, int) and v > 0 for v in value):
             return
-        raise ValidationError(f"must contain only positive non-zero integers. (received {value})")
-    raise ValidationError('must be a positive non-zero integer, a list of such integers, or "__null__" / "__nonnull__".')
+        raise ValidationError(
+            f"must contain only positive non-zero integers. (received {value})"
+        )
+    raise ValidationError(
+        'must be a positive non-zero integer, a list of such integers, or "__null__" / "__nonnull__".'
+    )
+
 
 def validate_str_search_term(value):
     if value in ("__null__", "__nonnull__"):
         return
     if isinstance(value, str):
-            return
+        return
     if isinstance(value, list):
         if all(isinstance(v, str) for v in value):
             return
         raise ValidationError(f"must contain only strings. (received {value})")
-    raise ValidationError('must be a positive non-zero integer, a list of such integers, or "__null__" / "__nonnull__".')
+    raise ValidationError(
+        'must be a positive non-zero integer, a list of such integers, or "__null__" / "__nonnull__".'
+    )
+
 
 class NonZeroUIntSearchField(fields.Field):
     """
@@ -151,35 +161,33 @@ class NonZeroUIntSearchField(fields.Field):
     - single string like '10'
     - list of strings like ['10', '20']
     - special strings '__null__' or '__nonnull__'
-    
+
     Converts to:
     - int, list of ints, or special strings
     """
 
     def _deserialize(self, value, attr, data, **kwargs):
-        # Special case
-        if value in ("__null__", "__nonnull__"):
-            return value
-        # List of values
-        
         if isinstance(value, list):
+            if len(value) == 1:
+                if value[0] in ("__null__", "__nonnull__"):
+                    return value[0]
+                return self._parse_one(value[0], value, attr)
+
             return [self._parse_one(v, value, attr) for v in value]
-        
+        if value in ("__null__", "__nonnull__"):
+                    return value
         return self._parse_one(value, value, attr)
-    
-        
-        
 
     def _parse_one(self, v, value, attr):
         try:
             num = int(v)
         except (ValueError, TypeError):
-            raise NonZeroUIntSearchFieldError(attr, value )
+            raise NonZeroUIntSearchFieldError(attr, value)
         if num <= 0:
-            raise NonZeroUIntSearchFieldError( attr, value)
+            raise NonZeroUIntSearchFieldError(attr, value)
         return num
-    
-    
+
+
 # Schema for querying items with various filters and pagination options
 class ItemsQuerySchema(Schema):
     # Queryable fields
@@ -202,7 +210,7 @@ class ItemsQuerySchema(Schema):
     ImageHeight = NonZeroUIntSearchField(allow_none=True)
     ImageWidth = NonZeroUIntSearchField(allow_none=True)
     Duration = NonZeroUIntSearchField(allow_none=True)
-    
+
     # non zero uint
     FileSizeMin = fields.Int()
     FileSizeMax = fields.Int()
@@ -214,7 +222,7 @@ class ItemsQuerySchema(Schema):
     addedDate_till = MillisecondsSinceEpoch()
     updatedDate_till = MillisecondsSinceEpoch()
     CreateDate_till = MillisecondsSinceEpoch()
-    
+
     # Additional query parameters
     current_version = fields.Int()  # Current version of the item
     last_known_version = fields.Int()  # Last known version of the item
@@ -223,8 +231,6 @@ class ItemsQuerySchema(Schema):
 
     similar_to = fields.Int()  # ID of an item to find similar items
     any = IntigerizedBool()  # Boolean flag for additional filtering
-
-    
 
 
 class MatchQuerySchema(Schema):
@@ -236,11 +242,10 @@ class MatchQuerySchema(Schema):
     @validates_schema
     def validate_one_param(self, data, **kwargs):
         present_params = [
-            field for field in [ "md5", "label"] if data.get(field) is not None
+            field for field in ["md5", "label"] if data.get(field) is not None
         ]
 
         if not present_params:
             raise MissingParametersInMatchQuery()
         elif len(present_params) > 1:
             raise TooManyParametersinMatchQuery()
-

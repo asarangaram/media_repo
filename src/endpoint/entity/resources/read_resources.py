@@ -1,5 +1,6 @@
 from src.db import db
 from src.endpoint.entity.models import EntityModel
+from src.utils.flatten_dict import flatten_dict
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
 from src.endpoint.entity.schema import (
     ItemSchema,
@@ -54,6 +55,7 @@ def entity_match_resource(MediaVersion, route):
 
 
 def entity_read_all_resource(MediaVersion, route):
+    
     def getFilter(kwargs):
         # Apply filters from kwargs
         filters = {
@@ -80,13 +82,11 @@ def entity_read_all_resource(MediaVersion, route):
     @route.route("/filter/loopback")
     class ValidateQuerySchema(MethodView):
         @custom_handle_error
-        @route.response(200)
         def get(cls, **kwargs):
-            
             query_args = request.args.to_dict(flat=False)
             parsed_query = ItemsQuerySchema().load(query_args)
             print(parsed_query)
-            return parsed_query
+            return flatten_dict(parsed_query)
 
     @route.route("/all")
     class EntityList(MethodView):
