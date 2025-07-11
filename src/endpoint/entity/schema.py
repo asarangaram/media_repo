@@ -1,5 +1,8 @@
+from functools import wraps
+from flask import request
+
 from flask_smorest.fields import Upload
-from marshmallow import post_dump, validates_schema, Schema
+from marshmallow import ValidationError, post_dump, validates_schema, Schema
 from clmediakit import (
     IntigerizedBool,
     MediaTypeField,
@@ -118,28 +121,66 @@ class ItemSchema(Schema):
 
         return {key: value for key, value in data.items() if value}
 
+def validate_nonzero_uint_search_term(value):
+    if value in ("__null__", "__nonnull__"):
+        return
+    if isinstance(value, int):
+        if value > 0:
+            return
+        raise ValidationError(f"must be a positive non-zero integer. (received: {value})")
+    if isinstance(value, list):
+        if all(isinstance(v, int) and v > 0 for v in value):
+            return
+        raise ValidationError(f"must contain only positive non-zero integers. (received {value})")
+    raise ValidationError('must be a positive non-zero integer, a list of such integers, or "__null__" / "__nonnull__".')
+
+def validate_str_search_term(value):
+    if value in ("__null__", "__nonnull__"):
+        return
+    if isinstance(value, str):
+            return
+    if isinstance(value, list):
+        if all(isinstance(v, str) for v in value):
+            return
+        raise ValidationError(f"must contain only strings. (received {value})")
+    raise ValidationError('must be a positive non-zero integer, a list of such integers, or "__null__" / "__nonnull__".')
+
 
 # Schema for querying items with various filters and pagination options
 class ItemsQuerySchema(Schema):
     # Queryable fields
-    id = fields.Int()
-    isCollection = IntigerizedBool()
-    label = fields.Str()
-    parentId = fields.Int(allow_none=True)
-    addedDate = MillisecondsSinceEpoch()
-    updatedDate = MillisecondsSinceEpoch()
-    isDeleted = IntigerizedBool()
-    CreateDate = MillisecondsSinceEpoch()
-    FileSize = fields.Str()
-    ImageHeight = fields.Int()
-    ImageWidth = fields.Int()
-    Duration = fields.Str()
-    MIMEType = fields.Str()
-    # dHash = fields.Str()  # Commented out field for hash
-    md5 = fields.Str()
-    type = fields.List(MediaTypeField())
-    extension = fields.List(fields.Str())
+    # Boolean flags
+    isCollection = IntigerizedBool(allow_none=True,)
+    isDeleted = IntigerizedBool(allow_none=True,)
 
+    # Strings or List of Strings
+    label = fields.Raw(allow_none=True, validate=validate_str_search_term)
+    md5 = fields.Raw(allow_none=True, validate=validate_str_search_term)
+    MIMEType = fields.Raw(allow_none=True, validate=validate_str_search_term)
+    extension = fields.Raw(allow_none=True, validate=validate_str_search_term)
+
+    # only strings
+    label_starts_with = fields.Str(allow_none=True)
+
+    # nonzero uint or list of nonzero uint
+    id = fields.Raw(allow_none=True, validate=validate_nonzero_uint_search_term)
+    parentId = fields.Raw(allow_none=True, validate=validate_nonzero_uint_search_term)
+    ImageHeight = fields.Raw(allow_none=True, validate=validate_nonzero_uint_search_term)
+    ImageWidth = fields.Raw(allow_none=True, validate=validate_nonzero_uint_search_term)
+    Duration = fields.Raw(allow_none=True, validate=validate_nonzero_uint_search_term)
+    
+    # non zero uint
+    FileSizeMin = fields.Int()
+    FileSizeMax = fields.Int()
+
+    # dates
+    addedDate_from = MillisecondsSinceEpoch()
+    updatedDate_from = MillisecondsSinceEpoch()
+    CreateDate_from = MillisecondsSinceEpoch()
+    addedDate_till = MillisecondsSinceEpoch()
+    updatedDate_till = MillisecondsSinceEpoch()
+    CreateDate_till = MillisecondsSinceEpoch()
+    
     # Additional query parameters
     current_version = fields.Int()  # Current version of the item
     last_known_version = fields.Int()  # Last known version of the item
@@ -149,9 +190,7 @@ class ItemsQuerySchema(Schema):
     similar_to = fields.Int()  # ID of an item to find similar items
     any = IntigerizedBool()  # Boolean flag for additional filtering
 
-    ## TODO:
-    ## Add support for range queries for dates, width, height, and duration
-    ## Determine whether to use OR or AND for combining filters
+    
 
 
 class MatchQuerySchema(Schema):
@@ -170,3 +209,13 @@ class MatchQuerySchema(Schema):
             raise MissingParametersInMatchQuery()
         elif len(present_params) > 1:
             raise TooManyParametersinMatchQuery()
+
+def use_query_schema(schema_cls):
+    def decorator(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            query_args = request.args.to_dict(flat=False)
+            data = schema_cls().load(query_args)
+            return f(*args, parsed_query=data, **kwargs)
+        return wrapped
+    return decorator
