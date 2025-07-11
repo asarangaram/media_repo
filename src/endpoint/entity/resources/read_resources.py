@@ -16,10 +16,8 @@ from collections import OrderedDict
 from src.utils.custom_errors.not_found_errors import MissingMediaError
 
 
-
 def entity_match_resource(MediaVersion, route):
     @route.route("/match")
-    
     class MatchEntity(MethodView):
         """
         search for a Entity, based on its unique attritube.
@@ -41,12 +39,15 @@ def entity_match_resource(MediaVersion, route):
         def get(cls):
             query_data = MatchQuerySchema().load(request.args)
 
-            
             md5_hash = query_data.get("md5")
             entity_label = query_data.get("label")
 
-            entity =  EntityModel.match( md5=md5_hash, label=entity_label,)
+            entity = EntityModel.match(
+                md5=md5_hash,
+                label=entity_label,
+            )
             return entity
+
 
 def entity_read_all_resource(MediaVersion, route):
     def getFilter(kwargs):
