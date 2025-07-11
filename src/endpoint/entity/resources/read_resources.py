@@ -1,7 +1,11 @@
 from src.db import db
 from src.endpoint.entity.models import EntityModel
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
-from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema, MatchQuerySchema
+from src.endpoint.entity.schema import (
+    ItemSchema,
+    ItemsQuerySchema,
+    MatchQuerySchema,
+)
 
 
 from flask import jsonify, request
@@ -72,6 +76,17 @@ def entity_read_all_resource(MediaVersion, route):
             else:  # Handle single value
                 query_filters.append(col == val)
         return query_filters
+
+    @route.route("/filter/loopback")
+    class ValidateQuerySchema(MethodView):
+        @custom_handle_error
+        @route.response(200)
+        def get(cls, **kwargs):
+            
+            query_args = request.args.to_dict(flat=False)
+            parsed_query = ItemsQuerySchema().load(query_args)
+            print(parsed_query)
+            return parsed_query
 
     @route.route("/all")
     class EntityList(MethodView):

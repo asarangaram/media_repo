@@ -1,5 +1,3 @@
-from functools import wraps
-from flask import request
 
 from flask_smorest.fields import Upload
 from marshmallow import ValidationError, post_dump, validates_schema, Schema
@@ -14,6 +12,7 @@ from marshmallow import (
 
 from src.utils.custom_errors.validation_errors import (
     MissingParametersInMatchQuery,
+    NonZeroUIntSearchFieldError,
     TooManyParametersinMatchQuery,
 )
 
@@ -124,6 +123,7 @@ class ItemSchema(Schema):
 def validate_nonzero_uint_search_term(value):
     if value in ("__null__", "__nonnull__"):
         return
+    
     if isinstance(value, int):
         if value > 0:
             return
@@ -145,29 +145,63 @@ def validate_str_search_term(value):
         raise ValidationError(f"must contain only strings. (received {value})")
     raise ValidationError('must be a positive non-zero integer, a list of such integers, or "__null__" / "__nonnull__".')
 
+class NonZeroUIntSearchField(fields.Field):
+    """
+    Accepts:
+    - single string like '10'
+    - list of strings like ['10', '20']
+    - special strings '__null__' or '__nonnull__'
+    
+    Converts to:
+    - int, list of ints, or special strings
+    """
 
+    def _deserialize(self, value, attr, data, **kwargs):
+        # Special case
+        if value in ("__null__", "__nonnull__"):
+            return value
+        # List of values
+        
+        if isinstance(value, list):
+            return [self._parse_one(v, value, attr) for v in value]
+        
+        return self._parse_one(value, value, attr)
+    
+        
+        
+
+    def _parse_one(self, v, value, attr):
+        try:
+            num = int(v)
+        except (ValueError, TypeError):
+            raise NonZeroUIntSearchFieldError(attr, value )
+        if num <= 0:
+            raise NonZeroUIntSearchFieldError( attr, value)
+        return num
+    
+    
 # Schema for querying items with various filters and pagination options
 class ItemsQuerySchema(Schema):
     # Queryable fields
     # Boolean flags
-    isCollection = IntigerizedBool(allow_none=True,)
-    isDeleted = IntigerizedBool(allow_none=True,)
+    isCollection = IntigerizedBool(allow_none=True)
+    isDeleted = IntigerizedBool(allow_none=True)
 
     # Strings or List of Strings
-    label = fields.Raw(allow_none=True, validate=validate_str_search_term)
-    md5 = fields.Raw(allow_none=True, validate=validate_str_search_term)
-    MIMEType = fields.Raw(allow_none=True, validate=validate_str_search_term)
-    extension = fields.Raw(allow_none=True, validate=validate_str_search_term)
+    label = NonZeroUIntSearchField(allow_none=True)
+    md5 = NonZeroUIntSearchField(allow_none=True)
+    MIMEType = NonZeroUIntSearchField(allow_none=True)
+    extension = NonZeroUIntSearchField(allow_none=True)
 
     # only strings
     label_starts_with = fields.Str(allow_none=True)
 
     # nonzero uint or list of nonzero uint
-    id = fields.Raw(allow_none=True, validate=validate_nonzero_uint_search_term)
-    parentId = fields.Raw(allow_none=True, validate=validate_nonzero_uint_search_term)
-    ImageHeight = fields.Raw(allow_none=True, validate=validate_nonzero_uint_search_term)
-    ImageWidth = fields.Raw(allow_none=True, validate=validate_nonzero_uint_search_term)
-    Duration = fields.Raw(allow_none=True, validate=validate_nonzero_uint_search_term)
+    id = NonZeroUIntSearchField(allow_none=True)
+    parentId = NonZeroUIntSearchField(allow_none=True)
+    ImageHeight = NonZeroUIntSearchField(allow_none=True)
+    ImageWidth = NonZeroUIntSearchField(allow_none=True)
+    Duration = NonZeroUIntSearchField(allow_none=True)
     
     # non zero uint
     FileSizeMin = fields.Int()
@@ -210,12 +244,3 @@ class MatchQuerySchema(Schema):
         elif len(present_params) > 1:
             raise TooManyParametersinMatchQuery()
 
-def use_query_schema(schema_cls):
-    def decorator(f):
-        @wraps(f)
-        def wrapped(*args, **kwargs):
-            query_args = request.args.to_dict(flat=False)
-            data = schema_cls().load(query_args)
-            return f(*args, parsed_query=data, **kwargs)
-        return wrapped
-    return decorator
