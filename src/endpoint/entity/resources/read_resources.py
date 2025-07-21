@@ -69,7 +69,7 @@ def entity_read_all_resource(MediaVersion, route):
                 dialect=sqlite.dialect(),
                     compile_kwargs={"literal_binds": True}))
             except Exception as err:
-                rawQuery = f"Failed to generate, erro {err}"
+                rawQuery = f"Failed to generate, error {err}"
             return {"loopback": convert_bools_to_int_recursive(parsed_query), "rawQuery": rawQuery}
 
     @route.route("/all")
