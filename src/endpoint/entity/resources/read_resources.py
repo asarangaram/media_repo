@@ -1,5 +1,6 @@
 from src.db import db
 from src.endpoint.entity.models import EntityModel
+from src.endpoint.entity.resources.db_filter import dbFilter
 from src.utils.flatten_dict import flatten_dict
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
 from src.endpoint.entity.schema import (
@@ -13,7 +14,7 @@ from flask import jsonify, request
 from flask.views import MethodView
 from sqlalchemy import func
 from sqlalchemy_continuum import version_class
-
+from sqlalchemy.dialects import sqlite
 
 import logging
 from collections import OrderedDict
@@ -55,30 +56,6 @@ def entity_match_resource(MediaVersion, route):
 
 
 def entity_read_all_resource(MediaVersion, route):
-    
-    def getFilter(kwargs):
-        # Apply filters from kwargs
-        filters = {
-            getattr(MediaVersion, key): value
-            for key, value in kwargs.items()
-            if key in MediaVersion.__table__.columns
-        }
-
-        if MediaVersion.parentId in filters and filters[MediaVersion.parentId] == 0:
-            filters[MediaVersion.parentId] = None
-
-        query_filters = []
-        for col, val in filters.items():
-            if isinstance(val, (list, tuple)):  # Handle multiple values
-                query_filters.append(col.in_(val))
-            if val == "__null__":
-                query_filters.append(col.is_(None))
-            if val == "__notnull__":
-                query_filters.append(col.is_not(None))
-            else:  # Handle single value
-                query_filters.append(col == val)
-        return query_filters
-
     @route.route("/filter/loopback")
     class ValidateQuerySchema(MethodView):
         @custom_handle_error
@@ -86,7 +63,16 @@ def entity_read_all_resource(MediaVersion, route):
             query_args = request.args.to_dict(flat=False)
             parsed_query = ItemsQuerySchema().load(query_args)
             print(parsed_query)
-            return flatten_dict(parsed_query)
+            fDict =  flatten_dict(parsed_query)
+            try:
+                qfilter =dbFilter(fDict)
+                query1 = db.session.query(EntityModel).filter(*qfilter)
+                rawQuery = str(query1.statement.compile(
+                dialect=sqlite.dialect(),
+                    compile_kwargs={"literal_binds": True}))
+            except Exception as err:
+                rawQuery = f"Failed to generate, erro {err}"
+            return {"loopback": fDict, "rawQuery": rawQuery}
 
     @route.route("/all")
     class EntityList(MethodView):
@@ -179,7 +165,7 @@ def entity_read_all_resource(MediaVersion, route):
                     ),
                 )
 
-                query_filters = getFilter(kwargs)
+                query_filters = dbFilter(kwargs)
                 query = query.filter(*query_filters)
 
                 total_items = query.count()

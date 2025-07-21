@@ -10,6 +10,8 @@ def flatten_dict(data_map):
                     data_map[key] = value[0]
                 elif len(value) == 0:
                     del data_map[key]
+            if value is None:
+                del data_map[key]
     
         return data_map
     except Exception :

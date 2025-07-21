@@ -23,7 +23,7 @@ def create_app(config_object):
     app.config.from_object(config_object)
 
     db.init_app(app)
-    migrate = Migrate(app, db)
+    migrate = Migrate(app, db)  # noqa: F841
     db.configure_mappers()
 
     EntityVersion = version_class(EntityModel)
