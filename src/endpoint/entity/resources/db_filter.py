@@ -2,7 +2,7 @@
 
 
 from src.endpoint.entity.models import EntityModel
-
+from sqlalchemy import extract
 
 def dbFilter(kwargs):
     query_filters = []
@@ -102,11 +102,11 @@ def dbFilter(kwargs):
     # --- New Date Component Filters (CreateDate_day, _month, _year) ---
     # These filters apply to the 'CreateDate' column
     if 'CreateDate_day' in kwargs:
-        query_filters.append(EntityModel.CreateDate.day == kwargs['CreateDate_day'])
+        query_filters.append(extract('day', EntityModel.CreateDate) == kwargs['CreateDate_day'])
     if 'CreateDate_month' in kwargs:
-        query_filters.append(EntityModel.CreateDate.month == kwargs['CreateDate_month'])
+        query_filters.append(extract('month', EntityModel.CreateDate) == kwargs['CreateDate_month'])
     if 'CreateDate_year' in kwargs:
-        query_filters.append(EntityModel.CreateDate.year == kwargs['CreateDate_year'])
+        query_filters.append(extract('year', EntityModel.CreateDate) == kwargs['CreateDate_year'])
 
     # --- Duration range filters ---
     if 'duration_min' in kwargs:

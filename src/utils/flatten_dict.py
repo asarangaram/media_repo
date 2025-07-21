@@ -1,3 +1,6 @@
+from datetime import datetime
+
+
 def flatten_dict(data_map):
     try:
         for key in list(data_map.keys()):
@@ -12,8 +15,21 @@ def flatten_dict(data_map):
                     del data_map[key]
             if value is None:
                 del data_map[key]
-    
+
         return data_map
-    except Exception :
+    except Exception:
         raise
 
+
+def convert_bools_to_int_recursive(data):
+    if isinstance(data, bool):
+        return int(data)
+    elif isinstance(data, dict):
+        return {k: convert_bools_to_int_recursive(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [convert_bools_to_int_recursive(item) for item in data]
+    elif isinstance(data, datetime):
+        return int(data.timestamp() * 1000)
+
+    else:
+        return data

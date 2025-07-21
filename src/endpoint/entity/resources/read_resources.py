@@ -1,7 +1,7 @@
 from src.db import db
 from src.endpoint.entity.models import EntityModel
 from src.endpoint.entity.resources.db_filter import dbFilter
-from src.utils.flatten_dict import flatten_dict
+from src.utils.flatten_dict import convert_bools_to_int_recursive, flatten_dict
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
 from src.endpoint.entity.schema import (
     ItemSchema,
@@ -60,19 +60,17 @@ def entity_read_all_resource(MediaVersion, route):
     class ValidateQuerySchema(MethodView):
         @custom_handle_error
         def get(cls, **kwargs):
-            query_args = request.args.to_dict(flat=False)
+            query_args = flatten_dict(request.args.to_dict(flat=False))
             parsed_query = ItemsQuerySchema().load(query_args)
-            print(parsed_query)
-            fDict =  flatten_dict(parsed_query)
             try:
-                qfilter =dbFilter(fDict)
+                qfilter =dbFilter(parsed_query)
                 query1 = db.session.query(EntityModel).filter(*qfilter)
                 rawQuery = str(query1.statement.compile(
                 dialect=sqlite.dialect(),
                     compile_kwargs={"literal_binds": True}))
             except Exception as err:
                 rawQuery = f"Failed to generate, erro {err}"
-            return {"loopback": fDict, "rawQuery": rawQuery}
+            return {"loopback": convert_bools_to_int_recursive(parsed_query), "rawQuery": rawQuery}
 
     @route.route("/all")
     class EntityList(MethodView):

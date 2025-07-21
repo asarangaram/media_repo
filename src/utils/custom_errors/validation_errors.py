@@ -119,6 +119,6 @@ class NonZeroUIntSearchFieldError(ValidationError):
     def __init__(self, key:str, value:str):
         super().__init__(
             {
-                "error": f"must be a positive non-zero integer, a list of such integers, or '__null__' / '__nonnull__'. {value} is invalid."
+                "error": f"must be a positive non-zero integer, a list of such integers, or '__null__' / '__notnull__'. {value} is invalid."
             }
         )
