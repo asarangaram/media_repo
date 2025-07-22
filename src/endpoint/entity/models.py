@@ -55,7 +55,6 @@ class EntityModelReaderMixin:
     @classmethod
     def get(cls, **kwargs: Any) -> Optional["EntityModel"]:
         return cls.query.filter_by(**kwargs).first()
-        
 
     @classmethod
     def get_all(cls, **kwargs: Any) -> List["EntityModel"]:
@@ -99,7 +98,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
     updatedDate = db.Column(db.DateTime, nullable=False)
     isDeleted = db.Column(db.Boolean, default=False, nullable=False)
     isDeletedPermanently = db.Column(db.Boolean, default=False, nullable=False)
-    isCollection = db.Column(db.Boolean)
+    isCollection = db.Column(db.Boolean, nullable=False)
 
     # Mandatory for Collections, Optional for Files
     label = db.Column(db.UnicodeText, nullable=True)
@@ -128,10 +127,10 @@ class EntityModel(db.Model, EntityModelReaderMixin):
 
     __table_args__ = (
         db.UniqueConstraint("label", "isCollection", name="unique_label_Collection"),
-        db.CheckConstraint(
-            "isCollection = 1 OR parentId IS NOT NULL",
-            name="check_parent_not_null_if_not_collection",
-        ),
+        # db.CheckConstraint(
+        #     "isCollection = 1 OR parentId IS NOT NULL",
+        #    name="check_parent_not_null_if_not_collection",
+        # ),
         db.CheckConstraint(
             "isCollection = 1 OR FileSize IS NOT NULL",
             name="check_file_size_not_null_if_not_collection",
@@ -166,7 +165,8 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             derived["extension"] = mimetypes.guess_extension(kwargs.get("MIMEType"))
             if not derived["extension"]:
                 derived["extension"] = ".bin"
-
+        if "isCollection" not in kwargs:
+            derived["isCollection"] = False
         super().__init__(
             **{key: kwargs[key] for key in kwargs if key in self.__table__.columns},
             **derived,
@@ -180,35 +180,47 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         db.session.commit()
 
     @classmethod
+    def determine_parent(cls, **kwargs: Any):
+        ## check if the parent exists and it is a collection
+        parentId = kwargs.get("parentId")
+        parentArg = {}
+        parent = None
+        if parentId != 0:
+            parent = cls.get(id=parentId) if parentId else None
+
+            if parent:
+                if not parent.isCollection:
+                    raise ParentIdNotACollectionError(parentId)
+
+            if parentId and not parent:
+                raise ParentIdNotExistsError(parentId)
+
+            ## if no parent and its a media, try creating a default parent
+
+            if not parent and not kwargs.get("isCollection"):
+                parent = cls.get(label=ConfigClass.DEFAULT_COLLECTION_LABEL)
+                if not parent:
+                    parent = EntityModel.create(
+                        **{
+                            "isCollection": 1,
+                            "label": ConfigClass.DEFAULT_COLLECTION_LABEL,
+                        }
+                    )
+                if not parent:
+                    raise ParentIdNotProvidedError()
+                parentArg = {"parentId": parent.id}
+        merged = {**kwargs, **parentArg}
+        merged = {k: v for k, v in merged.items() if not (k == "parentId" and v == 0)}
+        return parent, merged
+
+    @classmethod
     def create(cls, **kwargs: Any) -> "EntityModel":
         """
         Create a new entity instance.
         Handles parent validation, duplicate checks, and default parent creation for media.
         """
 
-        ## check if the parent exists and it is a collection
-        parentId = kwargs.get("parentId")
-        
-        parent = cls.get(id=parentId) if parentId else None
-
-        if parent:
-            if not parent.isCollection:
-                raise ParentIdNotACollectionError(parentId)
-
-        if parentId and not parent:
-            raise ParentIdNotExistsError(parentId)
-
-        ## if no parent and its a media, try creating a default parent
-        parentArg = {}
-        if not parent and not kwargs.get("isCollection"):
-            parent = cls.get(label=ConfigClass.DEFAULT_COLLECTION_LABEL)
-            if not parent:
-                parent = EntityModel.create(
-                    **{"isCollection": 1, "label": ConfigClass.DEFAULT_COLLECTION_LABEL}
-                )
-            if not parent:
-                raise ParentIdNotProvidedError()
-            parentArg = {"parentId": parent.id}
+        parent, kwargs = cls.determine_parent(**kwargs)
 
         ## Check for duplicate
         if kwargs.get("isCollection"):
@@ -236,7 +248,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
 
         # Create and accept
         try:
-            entity = EntityModel(private_key=cls.__private_key, **kwargs, **parentArg)
+            entity = EntityModel(private_key=cls.__private_key, **kwargs)
             if cls.acceptEntity(entity, filepath=kwargs.get("filepath")):
                 if not entity.isCollection:
                     if entity.type == MediaType.VIDEO:
@@ -437,9 +449,9 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         if self.type == MediaType.VIDEO:
             hnsw_video_lookup.remove(self.id)
         elif self.type == MediaType.IMAGE:
-            pass 
+            pass
             # hnsw_image_lookup.remove(self.id)
-            # Its not easy to remove from image lookup, hence 
+            # Its not easy to remove from image lookup, hence
             # we should implement this either outside the hnsw or update
             # in a complex way
 
@@ -481,11 +493,11 @@ class EntityModel(db.Model, EntityModelReaderMixin):
 
         if not entity.isCollection:
             entity.removeMedia()
-        
+
         # Create a transaction  to save in Versions table
         entity.isDeletedPermanently = True
         db.session.commit()
-        
+
         entity.delete_from_db()
         return {"id": _id, "status": "permanently deleted"}
 
@@ -501,7 +513,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             cls.delete(entity.id)
         shutil.rmtree(ConfigClass.FILE_STORAGE_LOCATION)
         os.makedirs(ConfigClass.FILE_STORAGE_LOCATION, exist_ok=True)
-        return { "status": "entity data is completely wiped out"}
+        return {"status": "entity data is completely wiped out"}
 
     @classmethod
     def wait_for_m3u8(cls, id: int, master_pl: str, timeout: int = 60) -> None:
@@ -514,8 +526,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             elapsed_time = time.time() - start_time
             if elapsed_time > timeout:
                 raise VideoStreamError(
-                    additionalMessage="background task not responding "
-                    "for media {id}",
+                    additionalMessage="background task not responding for media {id}",
                 )
             time.sleep(1)  # Poll every second
         return
@@ -577,16 +588,15 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             return f"media_{str(media.id)}: stream generated"
         return f"media_{str(media.id)}: media not found"
 
-
     @classmethod
-    def match(cls,  md5=None, label=None):
+    def match(cls, md5=None, label=None):
         if md5:
             media = EntityModel.get(md5=md5)
         elif label:
             media = EntityModel.get(label=label, isCollection=True)
         else:
             raise MissingParametersInMatchQuery()
-        
+
         if media:
             return media
         else:
