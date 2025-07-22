@@ -65,9 +65,22 @@ def entity_read_all_resource(MediaVersion, route):
             try:
                 qfilter =dbFilter(parsed_query)
                 query1 = db.session.query(EntityModel).filter(*qfilter)
-                rawQuery = str(query1.statement.compile(
-                dialect=sqlite.dialect(),
-                    compile_kwargs={"literal_binds": True}))
+
+                
+                # Get the statement object (which contains the whereclause)
+                statement = query1.statement
+
+                # Check if a whereclause exists
+                if statement.whereclause is not None:
+                    # Compile *only* the whereclause part
+                    rawQuery = str(statement.whereclause.compile(
+                        dialect=sqlite.dialect(),
+                        compile_kwargs={"literal_binds": True}
+                    ))
+                else:
+                    rawQuery = "" # No WHERE clause
+
+                
             except Exception as err:
                 rawQuery = f"Failed to generate, error {err}"
             return {"loopback": convert_bools_to_int_recursive(parsed_query), "rawQuery": rawQuery}
