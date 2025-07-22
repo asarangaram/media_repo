@@ -251,6 +251,26 @@ class DateTimeSearchField(fields.Field):
             raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
         return dt 
 
+class NotNullableDateTimeSearchField(fields.Field):
+    def _deserialize(self, value, attr, data, **kwargs):
+        if isinstance(value, list):
+            if len(value) == 1:
+                return self._parse_one(value[0], value, attr)
+            return [self._parse_one(v, value, attr) for v in value]
+        return self._parse_one(value, value, attr)
+
+    def _parse_one(self, v, value, attr):
+        try:
+            if isinstance(v, str):
+                dt =  datetime.fromtimestamp(int(v) / 1000.0)
+            elif isinstance(v, int):
+                dt =  datetime.fromtimestamp(v / 1000.0)
+            else:
+                raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
+        except (ValueError, TypeError):
+            raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
+        return dt 
+
 # Schema for querying items with various filters and pagination options
 class ItemsQuerySchema(Schema):
     # Queryable fields
@@ -279,12 +299,14 @@ class ItemsQuerySchema(Schema):
     FileSizeMax = fields.Int(allow_none=True)
 
     # dates
-    addedDate_from = MillisecondsSinceEpoch()
-    updatedDate_from = DateTimeSearchField()
-    CreateDate_from = DateTimeSearchField()
-    addedDate_till = DateTimeSearchField()
-    updatedDate_till = DateTimeSearchField()
-    CreateDate_till = DateTimeSearchField()
+    addedDate_from = NotNullableDateTimeSearchField()
+    updatedDate_from = NotNullableDateTimeSearchField()
+    CreateDate_from = NotNullableDateTimeSearchField()
+    addedDate_till = NotNullableDateTimeSearchField()
+    updatedDate_till = NotNullableDateTimeSearchField()
+    CreateDate_till = NotNullableDateTimeSearchField()
+
+    CreateDate = DateTimeSearchField()
 
     Duration_min = fields.Float()
     Duration_max = fields.Float()
