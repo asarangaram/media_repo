@@ -94,6 +94,18 @@ def dbFilter(kwargs):
     }
 
     for base_name, column in date_fields.items():
+        if base_name in kwargs:
+            value = kwargs[base_name]
+            q = None
+            if isinstance(value, list):
+                q =  column.in_(value)
+            elif value == "__null__":
+                q =  column.is_(None)
+            elif value == "__notnull__":
+                q =  column.is_not(None)
+            else:
+                q =  column == value
+            query_filters.append(q)
         if f'{base_name}_from' in kwargs:
             query_filters.append(column >= kwargs[f'{base_name}_from'])
         if f'{base_name}_till' in kwargs:
