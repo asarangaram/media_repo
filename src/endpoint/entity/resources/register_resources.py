@@ -17,6 +17,7 @@ from src.endpoint.entity.resources.delete_resources import (
     entity_softdelete_resource,
     entity_softrestore_resource,
     entity_harddelete_resource,
+    reset_resource,
 )
 
 
@@ -45,3 +46,5 @@ def register_resources(MediaVersion, route, canModify=True, canDelete=True):
         entity_softdelete_resource(MediaVersion, route)
         entity_softrestore_resource(MediaVersion, route)
         entity_harddelete_resource(MediaVersion, route)
+        #  Only on test Server
+        reset_resource(MediaVersion, route)

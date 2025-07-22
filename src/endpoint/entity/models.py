@@ -188,7 +188,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
 
         ## check if the parent exists and it is a collection
         parentId = kwargs.get("parentId")
-
+        
         parent = cls.get(id=parentId) if parentId else None
 
         if parent:
@@ -497,7 +497,11 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         all = cls.query.all()
         for entity in all:
             if not entity.isDeleted:
-                cls.delete(entity.id)
+                cls.softdelete(entity.id)
+            cls.delete(entity.id)
+        shutil.rmtree(ConfigClass.FILE_STORAGE_LOCATION)
+        os.makedirs(ConfigClass.FILE_STORAGE_LOCATION, exist_ok=True)
+        return { "status": "entity data is completely wiped out"}
 
     @classmethod
     def wait_for_m3u8(cls, id: int, master_pl: str, timeout: int = 60) -> None:

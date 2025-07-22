@@ -34,13 +34,15 @@ def get_db_uri():
     elif check_path(repo):
         return f"sqlite:///{repo}"
     else:
-        raise ValueError(f"DB Parameters are not set properly")
+        raise ValueError("DB Parameters are not set properly")
 
 
 class ConfigClass(object):
     APP_NAME = get_required_env_variable("APP_NAME")
     SECRET_KEY = get_required_env_variable("FLASK_SECRET_KEY1")
     FILE_STORAGE_LOCATION = get_required_env_variable("FILE_STORAGE_LOCATION")
+    # Create folder if not exists
+    os.makedirs(FILE_STORAGE_LOCATION, exist_ok=True)
     HOST_ADDR=get_required_env_variable("HOST_ADDR")
     HOST_PORT=get_required_env_variable("HOST_PORT")
     USE_RELOADER=os.environ.get("USE_RELOADER", "false").lower() == "true"
