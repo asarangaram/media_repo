@@ -1,6 +1,7 @@
 from src.db import db
 from src.endpoint.entity.models import EntityModel
 from src.endpoint.entity.resources.db_filter import dbFilter
+from src.utils.custom_errors.internal_server_errors import UnexpectedFailure
 from src.utils.flatten_dict import convert_bools_to_int_recursive, flatten_dict
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
 from src.endpoint.entity.schema import (
@@ -12,11 +13,8 @@ from src.endpoint.entity.schema import (
 
 from flask import jsonify, request
 from flask.views import MethodView
-from sqlalchemy import func
-from sqlalchemy_continuum import version_class
 from sqlalchemy.dialects import sqlite
 
-import logging
 from collections import OrderedDict
 
 from src.utils.custom_errors.not_found_errors import MissingMediaError
@@ -104,7 +102,29 @@ def entity_read_all_resource(MediaVersion, route):
             Returns:
                 A JSON response containing the list of media entities and metadata.
             """
-            current_version = kwargs.get("current_version")
+            query_args = flatten_dict(request.args.to_dict(flat=False))
+            parsed_query = ItemsQuerySchema().load(query_args)
+            try:
+                qfilter = dbFilter(parsed_query)
+                query1 = db.session.query(EntityModel).filter(*qfilter)
+                result = query1.all()
+                items = [ItemSchema().dump(item) for item in result]
+
+                response = OrderedDict()
+                response["items"] = items
+                response["metaInfo"] = {
+                    "currentVersion": "TBD",
+                    "lastSyncedVersion": "TBD",
+                    "latestVersion": "TBD",
+                    "totalItems": len(items),
+                }
+                return jsonify(response), 200
+
+            except Exception:
+                db.session.rollback()
+                raise UnexpectedFailure()
+            
+            """ current_version = kwargs.get("current_version")
             last_known_version = kwargs.get("last_known_version")
             page = kwargs.get("page", 1)
             per_page = kwargs.get("per_page")
@@ -216,7 +236,7 @@ def entity_read_all_resource(MediaVersion, route):
             except Exception as e:
                 logging.error(f"Error in MediaList.get: {str(e)}")
                 db.session.rollback()
-                return jsonify({"error": str(e), "status_code": 500}), 500
+                return jsonify({"error": str(e), "status_code": 500}), 500 """
 
 
 def entity_read_resource(MediaVersion, route):
