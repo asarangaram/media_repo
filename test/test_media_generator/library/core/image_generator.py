@@ -15,9 +15,12 @@ class ImageGenerator(BaseMedia):
     frame: Optional[FrameGenerator] = None
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls, out_dir:str,  data: dict):
+
+        processedData = data.copy()
+        processedData["out_dir"] = out_dir
         # Process base fields first, get them as a dictionary
-        base_fields_dict = BaseMedia.from_dict(data).__dict__
+        base_fields_dict = BaseMedia.from_dict(processedData).__dict__
 
         # Process frame field
         if "frame" in data and isinstance(data["frame"], dict):
@@ -48,7 +51,8 @@ class ImageGenerator(BaseMedia):
     def generate(self):
         frame = self.frame.generate(self.width, self.height)
         cv2.imwrite(self.temp_filepath, frame)
+        print(f"Image '{self.fileName}' created by OpenCV.")
         self.update_metadata()
         os.rename(self.temp_filepath, self.filepath)
-        print(f"Image '{self.fileName}' created by OpenCV.")
+        
 

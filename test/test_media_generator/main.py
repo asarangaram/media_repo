@@ -5,7 +5,6 @@ import datetime
 from typing import List, Dict, Any, Tuple
 
 from library.utils.errors import JSONValidationError
-from library.utils.configs import Configs
 from library.utils.TimeStamp import toTimeStamp
 from library.media_generator import MediaGenerator
 
@@ -90,7 +89,7 @@ def generate_single_scene_description() -> Dict[str, Any]:
 def generate_single_media_descriptor(media_type: str, index: int) -> Dict[str, Any]:
     available_mime_types = [
         mime_type
-        for mime_type in Configs.MIME_TYPES
+        for mime_type in MediaGenerator.supportedMIME()
         if mime_type.startswith(f"{media_type}/")
     ]
 
@@ -150,7 +149,7 @@ if __name__ == "__main__":
         # print(json.dumps(data, indent=2))
         with open("sampleconfig.json", "w") as f:
             f.write(json.dumps(data, indent=2))
-        mediaGenerator =MediaGenerator.from_dict(data)
+        mediaGenerator =MediaGenerator.from_dict(outdir='generated_media',data=data,  )
         mediaGenerator.generate()
     except json.JSONDecodeError:
         print("Error decoding JSON ")

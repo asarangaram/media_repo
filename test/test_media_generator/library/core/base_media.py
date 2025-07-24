@@ -3,14 +3,35 @@ from datetime import datetime
 import os
 from typing import List, Optional
 
+import cv2
+
 from .exif_metadata import ExifMetadata
 from ..utils.TimeStamp import toTimeStamp, fromTimeStamp
 
-from ..utils.configs import Configs
+
+class SupportedMIME:
+    FOURCC = {
+        "video/mp4": cv2.VideoWriter_fourcc(*"mp4v"),
+        "video/mov": cv2.VideoWriter_fourcc(*"mp4v"),
+        "video/x-msvideo": cv2.VideoWriter_fourcc(*"MJPG"),
+        "video/x-matroska": cv2.VideoWriter_fourcc(*"H264"),
+    }
+    MIME_TYPES = {
+        "image/jpeg": {"extension": "jpg"},
+        "image/png": {"extension": "png"},
+        "image/tiff": {"extension": "tif"},
+        "image/gif": {"extension": "gif"},
+        "image/webp": {"extension": "webp"},
+        "video/mp4": {"extension": "mp4"},
+        "video/mov": {"extension": "mov"},
+        "video/x-msvideo": {"extension": "avi"},
+        "video/x-matroska": {"extension": "mkv"},
+    }
 
 
 @dataclass
 class BaseMedia:
+    out_dir: str
     MIMEType: str
     width: int
     height: int
@@ -18,6 +39,7 @@ class BaseMedia:
     label: Optional[str] = None
     CreateDate: Optional[int] = None
     comments: List[str] = field(default_factory=list)
+    
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -38,24 +60,26 @@ class BaseMedia:
 
     @property
     def media_info(self):
-        if self.MIMEType not in Configs.MIME_TYPES:
+        if self.MIMEType not in SupportedMIME.MIME_TYPES:
             raise Exception(
-                f"Error: Unsupported MIME type '{self.MIMEType}'. Supported types are: {list(Configs.MIME_TYPES.keys())}"
+                f"Error: Unsupported MIME type '{self.MIMEType}'. Supported types are: {list(SupportedMIME.MIME_TYPES.keys())}"
             )
 
-        return Configs.MIME_TYPES[self.MIMEType]
+        return SupportedMIME.MIME_TYPES[self.MIMEType]
 
     @property
     def fourcc_code(self):
-        return Configs.FOURCC.get(self.MIMEType)
-    
+        return SupportedMIME.FOURCC.get(self.MIMEType)
+
     @property
     def fileextension(self):
         return f".{self.media_info['extension']}"
 
     @property
     def filepath(self):
-        path = os.path.join(Configs.OUTPUT_DIR, f"{self.fileName}{self.fileextension}")
+        path = os.path.join(
+            self.out_dir, f"{self.fileName}{self.fileextension}"
+        )
         directory, _ = os.path.split(path)
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -65,7 +89,7 @@ class BaseMedia:
     @property
     def temp_filepath(self):
         path = os.path.join(
-            Configs.OUTPUT_DIR, f"temp_{self.fileName}{self.fileextension}"
+            self.out_dir, f"temp_{self.fileName}{self.fileextension}"
         )
         directory, _ = os.path.split(path)
         if not os.path.exists(directory):

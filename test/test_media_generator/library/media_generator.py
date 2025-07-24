@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import List
 
-from .core.base_media import BaseMedia
+from .core.base_media import BaseMedia, SupportedMIME
 from .core.image_generator import ImageGenerator
 from .core.video_generator import VideoGenerator
 from .utils.errors import JSONValidationError
@@ -13,11 +13,15 @@ from .utils.errors import JSONValidationError
 @dataclass
 class MediaGenerator:
     """A collection of various media descriptions."""
-
+    out_dir: str = None
     media_list: List[BaseMedia] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def supportedMIME(cls) -> list[str]:
+        return SupportedMIME.MIME_TYPES.keys()
+
+    @classmethod
+    def from_dict(cls, outdir:str, data: dict):
         if (
             not isinstance(data, dict)
             or "media_list" not in data
@@ -29,6 +33,7 @@ class MediaGenerator:
 
         parsed_media_list: List[BaseMedia] = []
         for item_data in data["media_list"]:
+
             if not isinstance(item_data, dict):
                 raise JSONValidationError(
                     "Invalid item in media_list. Expected a dictionary."
@@ -36,9 +41,9 @@ class MediaGenerator:
 
             mime_type = item_data.get("MIMEType", "")
             if mime_type.startswith("image/"):
-                parsed_media_list.append(ImageGenerator.from_dict(item_data))
+                parsed_media_list.append(ImageGenerator.from_dict(outdir, item_data))
             elif mime_type.startswith("video/"):
-                parsed_media_list.append(VideoGenerator.from_dict(item_data))
+                parsed_media_list.append(VideoGenerator.from_dict(outdir, item_data))
             else:
                 # Fallback to BaseMediaDescription if type is unknown or not image/video
                 parsed_media_list.append(BaseMedia.from_dict(item_data))

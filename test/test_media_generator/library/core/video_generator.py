@@ -15,9 +15,12 @@ class VideoGenerator(BaseMedia):
     fps: Optional[int] = 30
 
     @classmethod
-    def from_dict(cls, data: dict):
+    def from_dict(cls,out_dir:str,  data: dict):
         
-        base_fields_dict = BaseMedia.from_dict(data).__dict__
+        processedData = data.copy()
+        processedData["out_dir"] = out_dir
+        # Process base fields first, get them as a dictionary
+        base_fields_dict = BaseMedia.from_dict(processedData).__dict__
         scenes_list = []
         if "scenes" in data and isinstance(data["scenes"], list):
             scenes_list = [
@@ -57,6 +60,7 @@ class VideoGenerator(BaseMedia):
             scene.generate(out=out, fps=self.fps, width=self.width, height=self.height)
 
         out.release()
+        print(f"Video '{self.fileName}' created by OpenCV.")
         self.update_metadata()
         os.rename(self.temp_filepath, self.filepath)
-        print(f"Video '{self.fileName}' created by OpenCV.")
+       
