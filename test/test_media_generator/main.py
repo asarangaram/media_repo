@@ -9,8 +9,15 @@ from library.utils.configs import Configs
 from library.utils.TimeStamp import toTimeStamp
 from library.media_generator import MediaGenerator
 
-# --- Constants for Random Generation ---
+PossibleEnhancements = """
+# 
+1. Add Text Object and include text.
+2. Fix the position of the text
+3. Investigate why exiftool fails for few formats
+4. Add more Metadata, location, face id, etc
+5. Embed properties in the file name.
 
+"""
 MIN_WIDTH = 640
 MAX_WIDTH = 3840
 MIN_HEIGHT = 480
@@ -138,7 +145,7 @@ def generate_media_list_dict(
 if __name__ == "__main__":
     random.seed(42)
     try:
-        data = generate_media_list_dict(image_count=20, video_count=10)
+        data = generate_media_list_dict(image_count=300, video_count=50)
         print("Generated Sample JSON Data:")
         # print(json.dumps(data, indent=2))
         with open("sampleconfig.json", "w") as f:
