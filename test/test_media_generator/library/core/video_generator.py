@@ -42,9 +42,8 @@ class VideoGenerator(BaseMedia):
         data["fps"] = self.fps
         return data
 
-    @property
-    def fourcc_code(self):
-        return self.media_info["fourcc"]
+    
+    
 
     def generate(self):
         out = cv2.VideoWriter(

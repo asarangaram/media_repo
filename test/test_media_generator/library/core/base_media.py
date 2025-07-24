@@ -46,6 +46,10 @@ class BaseMedia:
         return Configs.MIME_TYPES[self.MIMEType]
 
     @property
+    def fourcc_code(self):
+        return Configs.FOURCC.get(self.MIMEType)
+    
+    @property
     def fileextension(self):
         return f".{self.media_info['extension']}"
 

@@ -1,43 +1,30 @@
-# --- 1. _Constants.py ---
 import cv2
+
+# OpenCV: FFMPEG: tag 0x30385056/'VP80' is not supported with codec id 139 and format 'webm / WebM'
+# "video/webm": {
+#    "extension": "webm",
+#
+#    "fourcc": cv2.VideoWriter_fourcc(*"VP80"),
+# },  # VP8 for WebM
 
 
 class Configs:
     OUTPUT_DIR = "generated_media"
+    
+    FOURCC = {
+        "video/mp4": cv2.VideoWriter_fourcc(*"mp4v"),
+        "video/mov": cv2.VideoWriter_fourcc(*"mp4v"),
+        "video/x-msvideo": cv2.VideoWriter_fourcc(*"MJPG"),
+        "video/x-matroska": cv2.VideoWriter_fourcc(*"H264"),
+    }
     MIME_TYPES = {
-        "image/jpeg": {"extension": "jpg",  "fourcc": None},
-        "image/png": {"extension": "png",  "fourcc": None},
-        "image/tiff": {"extension": "tif",  "fourcc": None},
-        "image/gif": {
-            "extension": "gif",
-            
-            "fourcc": None,
-        },  # Note: OpenCV saves static GIF
-        "image/webp": {"extension": "webp",  "fourcc": None},
-        "video/mp4": {
-            "extension": "mp4",
-            
-            "fourcc": cv2.VideoWriter_fourcc(*"mp4v"),
-        },  # H.264/MPEG-4 AVC
-        "video/mov": {
-            "extension": "mov",
-            
-            "fourcc": cv2.VideoWriter_fourcc(*"mp4v"),
-        },  # Often same as MP4
-        "video/x-msvideo": {
-            "extension": "avi",
-            
-            "fourcc": cv2.VideoWriter_fourcc(*"MJPG"),
-        },  # Motion JPEG for AVI
-        "video/x-matroska": {
-            "extension": "mkv",
-            
-            "fourcc": cv2.VideoWriter_fourcc(*"H264"),
-        },  # H.264 for MKV
-        # OpenCV: FFMPEG: tag 0x30385056/'VP80' is not supported with codec id 139 and format 'webm / WebM'
-        #"video/webm": {
-        #    "extension": "webm",
-        #    
-        #    "fourcc": cv2.VideoWriter_fourcc(*"VP80"),
-        #},  # VP8 for WebM
+        "image/jpeg": {"extension": "jpg"},
+        "image/png": {"extension": "png"},
+        "image/tiff": {"extension": "tif"},
+        "image/gif": {"extension": "gif"},
+        "image/webp": {"extension": "webp"},
+        "video/mp4": {"extension": "mp4"},
+        "video/mov": {"extension": "mov"},
+        "video/x-msvideo": {"extension": "avi"},
+        "video/x-matroska": {"extension": "mkv"},
     }
