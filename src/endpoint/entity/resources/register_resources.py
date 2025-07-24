@@ -7,6 +7,7 @@ from src.endpoint.entity.resources.blob_resources import (
 from src.endpoint.entity.resources.create_resources import entity_create_resource
 from src.endpoint.entity.resources.upload_form import entity_upload_form
 from src.endpoint.entity.resources.read_resources import (
+    entity_match_resource,
     entity_read_all_resource,
     entity_read_resource,
 )
@@ -16,6 +17,7 @@ from src.endpoint.entity.resources.delete_resources import (
     entity_softdelete_resource,
     entity_softrestore_resource,
     entity_harddelete_resource,
+    reset_resource,
 )
 
 
@@ -29,6 +31,7 @@ def register_resources(MediaVersion, route, canModify=True, canDelete=True):
 
     entity_read_all_resource(MediaVersion, route)
     entity_read_resource(MediaVersion, route)
+    entity_match_resource(MediaVersion, route)
 
     blob_download_media(MediaVersion, route)
     blob_download_preview(MediaVersion, route)
@@ -43,3 +46,5 @@ def register_resources(MediaVersion, route, canModify=True, canDelete=True):
         entity_softdelete_resource(MediaVersion, route)
         entity_softrestore_resource(MediaVersion, route)
         entity_harddelete_resource(MediaVersion, route)
+        #  Only on test Server
+        reset_resource(MediaVersion, route)

@@ -98,3 +98,27 @@ class Failed2GetEntityTypeError(ValidationError):
         )
 
 
+
+class MissingParametersInMatchQuery(ValidationError):
+    def __init__(self):
+        super().__init__(
+            {
+                "empty": "One of 'id', 'md5', or 'label' must be provided"
+            }
+        )
+class TooManyParametersinMatchQuery(ValidationError):
+    def __init__(self):
+        super().__init__(
+            {
+                "empty": "Only one  of 'id', 'md5', or 'label' must be provided"
+            }
+        )
+
+
+class NonZeroUIntSearchFieldError(ValidationError):
+    def __init__(self, key:str, value:str):
+        super().__init__(
+            {
+                "error": f"must be a positive non-zero integer, a list of such integers, or '__null__' / '__notnull__'. {value} is invalid."
+            }
+        )

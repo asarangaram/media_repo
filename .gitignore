@@ -169,3 +169,7 @@ utilities/delete**
 utilities/files_old.sh
 
 data**
+test/old_test_media_generator/**
+generated_media/**
+
+sampleconfig.json

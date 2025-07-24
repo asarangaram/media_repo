@@ -1,3 +1,5 @@
+import sys
+from marshmallow import ValidationError
 from src.endpoint.entity.models import EntityModel
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
 
@@ -29,12 +31,15 @@ def entity_harddelete_resource(MediaVersion, route):
             return EntityModel.delete(entity_id)
         
 
-def reset(MediaVersion, route):
+def reset_resource(MediaVersion, route):
     @route.route("/reset")
     class Reset(MethodView):
         @custom_handle_error
         def delete(cls):
-            raise Exception("reset is disabled; ")
-            return EntityModel.delete_all()      
+            if sys.platform == 'darwin':
+                return EntityModel.delete_all()      
+            else:
+                raise ValidationError({'error':"reset is disabled; "})
+            
 
     

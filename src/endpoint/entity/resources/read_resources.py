@@ -1,45 +1,87 @@
 from src.db import db
 from src.endpoint.entity.models import EntityModel
+from src.endpoint.entity.resources.db_filter import dbFilter
+from src.utils.custom_errors.internal_server_errors import UnexpectedFailure
+from src.utils.flatten_dict import convert_bools_to_int_recursive, flatten_dict
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
-from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema
+from src.endpoint.entity.schema import (
+    ItemSchema,
+    ItemsQuerySchema,
+    MatchQuerySchema,
+)
 
 
-from flask import jsonify
+from flask import jsonify, request
 from flask.views import MethodView
-from sqlalchemy import func
-from sqlalchemy_continuum import version_class
+from sqlalchemy.dialects import sqlite
 
-
-import logging
 from collections import OrderedDict
+
+from src.utils.custom_errors.not_found_errors import MissingMediaError
+
+
+def entity_match_resource(MediaVersion, route):
+    @route.route("/match")
+    class MatchEntity(MethodView):
+        """
+        search for a Entity, based on its unique attritube.
+        The order in which search is being performed is fixed.
+        if id is provided,
+            search by id and return.
+        else if md5 is provided
+            search by md5 and return
+        else if label is provided
+            isCollection=True is automatically added and the label is searched for the combination
+            of (isCollection=True, label) and return.
+
+        as per the DB Design, its impossible to have more than one items for these searches, hence
+        we either return or return not found error.
+        """
+
+        @custom_handle_error
+        @route.response(200, ItemSchema())
+        def get(cls):
+            query_data = MatchQuerySchema().load(request.args)
+
+            md5_hash = query_data.get("md5")
+            entity_label = query_data.get("label")
+
+            entity = EntityModel.match(
+                md5=md5_hash,
+                label=entity_label,
+            )
+            return entity
 
 
 def entity_read_all_resource(MediaVersion, route):
-    def getFilter(kwargs):
-        # Apply filters from kwargs
-        filters = {
-            getattr(MediaVersion, key): value
-            for key, value in kwargs.items()
-            if key in MediaVersion.__table__.columns
-        }
+    @route.route("/filter/loopback")
+    class ValidateQuerySchema(MethodView):
+        @custom_handle_error
+        def get(cls, **kwargs):
+            query_args = flatten_dict(request.args.to_dict(flat=False))
+            parsed_query = ItemsQuerySchema().load(query_args)
+            try:
+                qfilter =dbFilter(parsed_query)
+                query1 = db.session.query(EntityModel).filter(*qfilter)
 
-        if (
-            MediaVersion.parentId in filters
-            and filters[MediaVersion.parentId] == 0
-        ):
-            filters[MediaVersion.parentId] = None
+                
+                # Get the statement object (which contains the whereclause)
+                statement = query1.statement
 
-        query_filters = []
-        for col, val in filters.items():
-            if isinstance(val, (list, tuple)):  # Handle multiple values
-                query_filters.append(col.in_(val))
-            if val  == "__null__":
-                query_filters.append(col.is_(None))
-            if val == "__notnull__":
-                query_filters.append(col.is_not(None))
-            else:  # Handle single value
-                query_filters.append(col == val)
-        return query_filters
+                # Check if a whereclause exists
+                if statement.whereclause is not None:
+                    # Compile *only* the whereclause part
+                    rawQuery = str(statement.whereclause.compile(
+                        dialect=sqlite.dialect(),
+                        compile_kwargs={"literal_binds": True}
+                    ))
+                else:
+                    rawQuery = "" # No WHERE clause
+
+                
+            except Exception as err:
+                rawQuery = f"Failed to generate, error {err}"
+            return {"loopback": convert_bools_to_int_recursive(parsed_query), "rawQuery": rawQuery}
 
     @route.route("/all")
     class EntityList(MethodView):
@@ -60,7 +102,29 @@ def entity_read_all_resource(MediaVersion, route):
             Returns:
                 A JSON response containing the list of media entities and metadata.
             """
-            current_version = kwargs.get("current_version")
+            query_args = flatten_dict(request.args.to_dict(flat=False))
+            parsed_query = ItemsQuerySchema().load(query_args)
+            try:
+                qfilter = dbFilter(parsed_query)
+                query1 = db.session.query(EntityModel).filter(*qfilter)
+                result = query1.all()
+                items = [ItemSchema().dump(item) for item in result]
+
+                response = OrderedDict()
+                response["items"] = items
+                response["metaInfo"] = {
+                    "currentVersion": "TBD",
+                    "lastSyncedVersion": "TBD",
+                    "latestVersion": "TBD",
+                    "totalItems": len(items),
+                }
+                return jsonify(response), 200
+
+            except Exception:
+                db.session.rollback()
+                raise UnexpectedFailure()
+            
+            """ current_version = kwargs.get("current_version")
             last_known_version = kwargs.get("last_known_version")
             page = kwargs.get("page", 1)
             per_page = kwargs.get("per_page")
@@ -83,7 +147,7 @@ def entity_read_all_resource(MediaVersion, route):
                     func.max(VersionModel.transaction_id).label("max_version"),
                 ).one()
 
-                min_version = 0  # Force minimum version to 0
+                min_version = version_query.min_version or 0
                 max_version = version_query.max_version or 0
 
                 effective_current_version = (
@@ -96,14 +160,11 @@ def entity_read_all_resource(MediaVersion, route):
                 )
 
                 if effective_current_version < effective_last_version:
-                    return (
-                        jsonify(
-                            {
-                                "error": "Current version must be greater than or equal to last known version"
-                            }
-                        ),
-                        400,
-                    )
+                    return jsonify(
+                        {
+                            "error": "Current version must be greater than or equal to last known version"
+                        }
+                    ), 400
 
                 if max_version > 0 and (
                     effective_current_version > max_version
@@ -111,8 +172,14 @@ def entity_read_all_resource(MediaVersion, route):
                 ):
                     return jsonify({"error": "Version numbers out of range"}), 400
 
-                subquery = (
-                    MediaVersion.query.filter(
+                latest_subquery = (
+                    db.session.query(
+                        MediaVersion.id.label("id"),
+                        func.max(VersionModel.transaction_id).label(
+                            "max_transaction_id"
+                        ),
+                    )
+                    .filter(
                         VersionModel.transaction_id > effective_last_version,
                         VersionModel.transaction_id <= effective_current_version,
                     )
@@ -121,13 +188,15 @@ def entity_read_all_resource(MediaVersion, route):
                 )
 
                 query = db.session.query(MediaVersion).join(
-                    subquery,
-                    (MediaVersion.id == subquery.c.id)
-                    & (MediaVersion.transaction_id == subquery.c.transaction_id),
+                    latest_subquery,
+                    (MediaVersion.id == latest_subquery.c.id)
+                    & (
+                        MediaVersion.transaction_id
+                        == latest_subquery.c.max_transaction_id
+                    ),
                 )
 
-                
-                query_filters = getFilter (kwargs)
+                query_filters = dbFilter(kwargs)
                 query = query.filter(*query_filters)
 
                 total_items = query.count()
@@ -167,7 +236,7 @@ def entity_read_all_resource(MediaVersion, route):
             except Exception as e:
                 logging.error(f"Error in MediaList.get: {str(e)}")
                 db.session.rollback()
-                return jsonify({"error": str(e), "status_code": 500}), 500
+                return jsonify({"error": str(e), "status_code": 500}), 500 """
 
 
 def entity_read_resource(MediaVersion, route):
@@ -191,9 +260,5 @@ def entity_read_resource(MediaVersion, route):
             """
             entity = EntityModel.get(id=entity_id)
             if not entity:
-                return jsonify({"error": "Media not found", "status_code": 404}), 404
+                raise MissingMediaError()
             return entity
-        
-
-
-        
