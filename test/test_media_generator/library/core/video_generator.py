@@ -58,5 +58,6 @@ class VideoGenerator(BaseMedia):
             scene.generate(out=out, fps=self.fps, width=self.width, height=self.height)
 
         out.release()
+        self.update_metadata()
         os.rename(self.temp_filepath, self.filepath)
         print(f"Video '{self.fileName}' created by OpenCV.")

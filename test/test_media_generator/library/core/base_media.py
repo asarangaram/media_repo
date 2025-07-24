@@ -3,8 +3,9 @@ from datetime import datetime
 import os
 from typing import List, Optional
 
-from ..utils.TimeStamp import toTimeStamp
-from ..utils.Helpers import Helpers
+from .exif_metadata import ExifMetadata
+from ..utils.TimeStamp import toTimeStamp, fromTimeStamp
+
 from ..utils.configs import Configs
 
 
@@ -22,9 +23,7 @@ class BaseMedia:
     def from_dict(cls, data: dict):
         processed_data = data.copy()
         if "CreateDate" in processed_data and processed_data["CreateDate"] is not None:
-            processed_data["CreateDate"] = Helpers._convert_ms_to_datetime(
-                processed_data["CreateDate"]
-            )
+            processed_data["CreateDate"] = fromTimeStamp(processed_data["CreateDate"])
         valid_keys = {f.name for f in cls.__dataclass_fields__.values()}
         filtered_data = {k: v for k, v in processed_data.items() if k in valid_keys}
         return cls(**filtered_data)
@@ -72,3 +71,13 @@ class BaseMedia:
 
     def generate(self):
         raise Exception("Implement in subclass")
+
+    def update_metadata(self):
+        if not os.path.exists(self.temp_filepath):
+            raise Exception(f"Error: failed to read {self.temp_filepath}")
+
+        ExifMetadata(
+            MIMEType=self.MIMEType,
+            CreateDate=self.CreateDate,
+            UserComments=self.comments,
+        ).write(self.temp_filepath)

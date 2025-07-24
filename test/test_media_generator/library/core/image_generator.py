@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import os
 from typing import Optional
 
 import cv2
@@ -46,5 +47,8 @@ class ImageGenerator(BaseMedia):
 
     def generate(self):
         frame = self.frame.generate(self.width, self.height)
-        cv2.imwrite(self.filepath, frame)
+        cv2.imwrite(self.temp_filepath, frame)
+        self.update_metadata()
+        os.rename(self.temp_filepath, self.filepath)
         print(f"Image '{self.fileName}' created by OpenCV.")
+

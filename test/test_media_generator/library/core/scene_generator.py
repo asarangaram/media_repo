@@ -7,7 +7,7 @@ import cv2
 
 from .basic_shapes import Shapes, AnimatedShape
 from .frame_generator import FrameGenerator
-from ..utils.Helpers import Helpers
+
 
 
 @dataclass
@@ -63,7 +63,7 @@ class SceneGenerator(FrameGenerator):
         return self.duration * fps
 
     def get_next_frame(self, width: int, height: int):
-        frame = Helpers.create_base_frame(width, height, self.background_color)
+        frame = self.create_base_frame(width, height, self.background_color)
 
         if self.shapes:
             for shape in self.shapes:
