@@ -25,46 +25,8 @@ class Helpers:
             )
         return np.full((height, width, 3), background_color, dtype=np.uint8)
 
-    @staticmethod
-    def draw_random_shape(frame: np.ndarray):
-        """Draws a single random shape on the given frame."""
-        height, width, _ = frame.shape
-        shape_color = (
-            random.randint(0, 255),
-            random.randint(0, 255),
-            random.randint(0, 255),
-        )
-        shape_type = random.choice(["circle", "rectangle", "line", "triangle"])
-
-        if shape_type == "circle":
-            center = (random.randint(0, width), random.randint(0, height))
-            radius = random.randint(10, min(width, height) // 8)
-            thickness = random.randint(-1, 3)
-            cv2.circle(frame, center, radius, shape_color, thickness)
-        elif shape_type == "rectangle":
-            x1, y1 = random.randint(0, width), random.randint(0, height)
-            x2, y2 = random.randint(0, width), random.randint(0, height)
-            pt1 = (min(x1, x2), min(y1, y2))
-            pt2 = (max(x1, x2), max(y1, y2))
-            thickness = random.randint(-1, 3)
-            cv2.rectangle(frame, pt1, pt2, shape_color, thickness)
-        elif shape_type == "line":
-            pt1 = (random.randint(0, width), random.randint(0, height))
-            pt2 = (random.randint(0, width), random.randint(0, height))
-            thickness = random.randint(1, 3)
-            cv2.line(frame, pt1, pt2, shape_color, thickness)
-        elif shape_type == "triangle":
-            pt1 = (random.randint(0, width), random.randint(0, height))
-            pt2 = (random.randint(0, width), random.randint(0, height))
-            pt3 = (random.randint(0, width), random.randint(0, height))
-            pts = np.array([[pt1, pt2, pt3]], np.int32)
-            thickness = random.randint(-1, 3)
-            if thickness == -1:
-                cv2.fillPoly(frame, pts, shape_color)
-            else:
-                cv2.polylines(
-                    frame, pts, isClosed=True, color=shape_color, thickness=thickness
-                )
+    
+    
 
     @staticmethod
     def rgb_to_bgr(color_rgb: list[int]) -> tuple[int, int, int]:

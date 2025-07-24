@@ -1,11 +1,12 @@
-
-
 from dataclasses import dataclass, field
 from datetime import datetime
+import os
 from typing import List, Optional
 
 from ..utils.TimeStamp import toTimeStamp
 from ..utils.Helpers import Helpers
+from ..utils.configs import Configs
+
 
 @dataclass
 class BaseMedia:
@@ -16,8 +17,6 @@ class BaseMedia:
     label: Optional[str] = None
     CreateDate: Optional[int] = None
     comments: List[str] = field(default_factory=list)
-
-    
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -38,6 +37,38 @@ class BaseMedia:
             data["CreateDate"] = toTimeStamp(data["CreateDate"])
         return data
 
+    @property
+    def media_info(self):
+        if self.MIMEType not in Configs.MIME_TYPES:
+            raise Exception(
+                f"Error: Unsupported MIME type '{self.MIMEType}'. Supported types are: {list(Configs.MIME_TYPES.keys())}"
+            )
+
+        return Configs.MIME_TYPES[self.MIMEType]
+
+    @property
+    def fileextension(self):
+        return f".{self.media_info['extension']}"
+
+    @property
+    def filepath(self):
+        path = os.path.join(Configs.OUTPUT_DIR, f"{self.fileName}{self.fileextension}")
+        directory, _ = os.path.split(path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"Created directory: {directory}")
+        return path
+
+    @property
+    def temp_filepath(self):
+        path = os.path.join(
+            Configs.OUTPUT_DIR, f"temp_{self.fileName}{self.fileextension}"
+        )
+        directory, _ = os.path.split(path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"Created directory: {directory}")
+        return path
+
     def generate(self):
         raise Exception("Implement in subclass")
-    

@@ -38,9 +38,9 @@ MAX_COMMENTS_PER_ITEM = 3
 MIN_SHAPES = 3
 MAX_SHAPES = 10
 
-MIN_SCENE_DURATION = 5
-MAX_SCENE_DURATION = 60
-MIN_SCENES_PER_VIDEO = 1
+MIN_SCENE_DURATION = 2
+MAX_SCENE_DURATION = 8
+MIN_SCENES_PER_VIDEO = 2
 MAX_SCENES_PER_VIDEO = 5
 
 FPS_OPTIONS = [24, 25, 30, 60]
@@ -80,7 +80,7 @@ def generate_single_scene_description() -> Dict[str, Any]:
     return scene_data
 
 
-def generate_single_media_descriptor(media_type: str) -> Dict[str, Any]:
+def generate_single_media_descriptor(media_type: str, index: int) -> Dict[str, Any]:
     available_mime_types = [
         mime_type
         for mime_type in Configs.MIME_TYPES
@@ -93,8 +93,8 @@ def generate_single_media_descriptor(media_type: str) -> Dict[str, Any]:
     mime_type = random.choice(available_mime_types)
 
     descriptor: Dict[str, Any] = {
-        "fileName": f"file_{random.randint(1000, 9999)}.{mime_type.split('/')[-1]}",
-        "label": f"Random {mime_type.split('/')[0].capitalize()} {random.randint(1, 100)}",
+        "fileName": f"{media_type}_{index:04d}",
+        "label": f"Random {mime_type.split('/')[0].capitalize()} {index:04d}",
         "MIMEType": mime_type,
         "width": random.randint(MIN_WIDTH, MAX_WIDTH),
         "height": random.randint(MIN_HEIGHT, MAX_HEIGHT),
@@ -126,11 +126,11 @@ def generate_media_list_dict(
     media_list = []
     if image_count > 0:
         media_list.extend(
-            [generate_single_media_descriptor("image") for _ in range(image_count)]
+            [generate_single_media_descriptor("image", index) for index in range(image_count)]
         )
     if video_count > 0:
         media_list.extend(
-            [generate_single_media_descriptor("video") for _ in range(video_count)]
+            [generate_single_media_descriptor("video", index) for index in range(video_count)]
         )
     return {"media_list": media_list}
 
@@ -138,7 +138,7 @@ def generate_media_list_dict(
 if __name__ == "__main__":
     random.seed(42)
     try:
-        data = generate_media_list_dict(image_count=10, video_count=0)
+        data = generate_media_list_dict(image_count=20, video_count=10)
         print("Generated Sample JSON Data:")
         # print(json.dumps(data, indent=2))
         with open("sampleconfig.json", "w") as f:
