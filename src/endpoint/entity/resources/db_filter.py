@@ -2,7 +2,7 @@
 
 
 from src.endpoint.entity.models import EntityModel
-from sqlalchemy import extract
+from src.endpoint.entity.resources.db_filter_date import date_query_filters
 
 def dbFilter(kwargs):
     query_filters = []
@@ -94,33 +94,7 @@ def dbFilter(kwargs):
         'updatedDate': EntityModel.updatedDate,
         'CreateDate': EntityModel.CreateDate
     }
-
-    for base_name, column in date_fields.items():
-        if base_name in kwargs:
-            value = kwargs[base_name]
-            q = None
-            if isinstance(value, list):
-                q =  column.in_(value)
-            elif value == "__null__":
-                q =  column.is_(None)
-            elif value == "__notnull__":
-                q =  column.is_not(None)
-            else:
-                q =  column == value
-            query_filters.append(q)
-        if f'{base_name}_from' in kwargs:
-            query_filters.append(column >= kwargs[f'{base_name}_from'])
-        if f'{base_name}_till' in kwargs:
-            query_filters.append(column <= kwargs[f'{base_name}_till'])
-
-    # --- New Date Component Filters (CreateDate_day, _month, _year) ---
-    # These filters apply to the 'CreateDate' column
-    if 'CreateDate_day' in kwargs:
-        query_filters.append(extract('day', EntityModel.CreateDate) == kwargs['CreateDate_day'])
-    if 'CreateDate_month' in kwargs:
-        query_filters.append(extract('month', EntityModel.CreateDate) == kwargs['CreateDate_month'])
-    if 'CreateDate_year' in kwargs:
-        query_filters.append(extract('year', EntityModel.CreateDate) == kwargs['CreateDate_year'])
+    query_filters.extend(date_fields, date_query_filters(kwargs))
 
     # --- Duration range filters ---
     if 'duration_min' in kwargs:
