@@ -1,9 +1,5 @@
-import uuid
 
 from src.config import ConfigClass
-from ...db import db
-from werkzeug.exceptions import UnsupportedMediaType, InternalServerError, NotFound
-from datetime import datetime
 
 _info = """
 This API service offers microservices through a RESTful interface. \
@@ -45,7 +41,7 @@ class LandingPageModel:
         db.session.commit()
 
     def to_json(self):
-        return {self.name: int(self.updatedDate.timestamp() * 1000)}
+        return {self.name: int(toTimeStamp(self.updatedDate))}
 
     @classmethod
     def find_by_name(cls, name):

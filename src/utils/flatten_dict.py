@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from clmediakit import toTimeStamp
 
 def flatten_dict(data_map):
     try:
@@ -29,7 +29,7 @@ def convert_bools_to_int_recursive(data):
     elif isinstance(data, list):
         return [convert_bools_to_int_recursive(item) for item in data]
     elif isinstance(data, datetime):
-        return int(data.timestamp() * 1000)
+        return int(toTimeStamp(data))
 
     else:
         return data
