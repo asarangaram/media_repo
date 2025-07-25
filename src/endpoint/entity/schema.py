@@ -1,4 +1,3 @@
-from datetime import datetime
 import re
 from flask_smorest.fields import Upload
 from marshmallow import ValidationError, post_dump, validates_schema, Schema
@@ -10,6 +9,8 @@ from clmediakit import (
 from marshmallow import (
     fields,
 )
+from clmediakit import fromTimeStamp
+
 
 from src.utils.custom_errors.validation_errors import (
     MissingParametersInMatchQuery,
@@ -177,7 +178,7 @@ class NonZeroUIntSearchField(fields.Field):
 
             return [self._parse_one(v, value, attr) for v in value]
         if value in ("__null__", "__notnull__"):
-                    return value
+            return value
         return self._parse_one(value, value, attr)
 
     def _parse_one(self, v, value, attr):
@@ -197,112 +198,81 @@ class StringSearchField(fields.Field):
                 if value[0] in ("__null__", "__notnull__"):
                     return value[0]
                 return value[0]
-        
+
             return value
         elif isinstance(value, str):
             return value
         else:
-            raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
+            raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
 
 
-class BoolSearchField(fields.Field):
-    def _deserialize(self, value, attr, data, **kwargs):
-        if isinstance(value, list):
-            if len(value) == 1:
-                if value[0] in ("__null__", "__notnull__"):
-                    return value[0]
-                return self._parse_one(value[0], value, attr)
+class DateKeyField(fields.Field):
+    # Regex to match only valid suffix part
+    rangePattern = re.compile(r"^(YY(MM(DD)?)?)?(From|Till)$")
+    datePattern = re.compile(r"^(YY)?(MM)?(DD)?(HH)?$")
 
-            return [self._parse_one(v, value, attr) for v in value]
-        if value in ("__null__", "__notnull__"):
-                    return value
-        return self._parse_one(value, value, attr)
-
-    def _parse_one(self, v, value, attr):
-        try:
-            num = int(v)
-        except (ValueError, TypeError):
-            raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
-        if num != 0  and num != 1:
-            raise NonZeroUIntSearchFieldError(attr, value) #   FIX Error code
-        return num == 1
-        
-class DateTimeSearchField(fields.Field):
-    def _deserialize(self, value, attr, data, **kwargs):
-        if isinstance(value, list):
-            if len(value) == 1:
-                if value[0] in ("__null__", "__notnull__"):
-                    return value[0]
-                return self._parse_one(value[0], value, attr)
-
-            return [self._parse_one(v, value, attr) for v in value]
-        if value in ("__null__", "__notnull__"):
-                    return value
-        return self._parse_one(value, value, attr)
-
-    def _parse_one(self, v, value, attr):
-        try:
-            if isinstance(v, str):
-                dt =  datetime.fromtimestamp(int(v) / 1000.0)
-            elif isinstance(v, int):
-                dt =  datetime.fromtimestamp(v / 1000.0)
-            else:
-                raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
-        except (ValueError, TypeError):
-            raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
-        return dt 
-
-class NotNullableDateTimeSearchField(fields.Field):
-    def _deserialize(self, value, attr, data, **kwargs):
-        if isinstance(value, list):
-            if len(value) == 1:
-                return self._parse_one(value[0], value, attr)
-            return [self._parse_one(v, value, attr) for v in value]
-        return self._parse_one(value, value, attr)
-
-    def _parse_one(self, v, value, attr):
-        try:
-            if isinstance(v, str):
-                dt =  datetime.fromtimestamp(int(v) / 1000.0)
-            elif isinstance(v, int):
-                dt =  datetime.fromtimestamp(v / 1000.0)
-            else:
-                raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
-        except (ValueError, TypeError):
-            raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
-        return dt 
-
-
-class DateKeyField(fields.String):
     def __init__(self, *args, **kwargs):
-        # Suffixes must be in order
-        self.suffix_pattern = r"(YY(MM(DD(HH)?)?)?|MM(DD(HH)?)?|DD(HH)?|HH)"
-        self.from_till_pattern = r"(From|Till)"
         super().__init__(*args, **kwargs)
+        self.prefix = None
+
+    def _bind_to_schema(self, field_name, schema):
+        # Save the prefix when the field is bound to schema
+        self.prefix = field_name
+        super()._bind_to_schema(field_name, schema)
 
     def _deserialize(self, value, attr, data, **kwargs):
-        if not isinstance(value, str):
-            raise ValidationError("Must be a string")
+        if not isinstance(value, (int, float)):
+            raise ValidationError("Value must be timestamp (int or float)")
+        if self.prefix is None:
+            raise ValidationError("Prefix not set")
+        if not attr.startswith(self.prefix):
+            raise ValidationError(
+                f"Field name {attr} does not start with prefix {self.prefix}"
+            )
+        suffix = attr[len(self.prefix) :]
+        if not suffix:
+            return self.translate_to_dt(value, attr, nulSupported=True)
+        else:
+            m = self.rangePattern.fullmatch(suffix)
+            if not m:
+                raise ValidationError(f"Invalid date key suffix: {suffix}")
+            m = self.datePattern.fullmatch(suffix)
+            if not m:
+                raise ValidationError(f"Invalid date key suffix: {suffix}")
+            return self.translate_to_dt(value, attr, nulSupported=False)
 
-        field_name = attr
+    def translate_to_dt(self, value, attr, nulSupported: bool):
+        if isinstance(value, list):
+            if len(value) == 1:
+                if value[0] in ("__null__", "__notnull__"):
+                    if nulSupported:
+                        return value[0]
+                    else:
+                        raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
+                return self.translate_value(value[0], value, attr)
 
-        # allow exact field name
-        if value == field_name:
-            return value
+            return [self.translate_value(v, value, attr) for v in value]
+        if value in ("__null__", "__notnull__"):
+            if nulSupported:
+                return value
+            else:
+                raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
 
-        # Regex: field_name + optional suffixes in order + optional From/Till
-        pattern = f"^{field_name}({self.suffix_pattern})?({self.from_till_pattern})?$"
+        return self._parse_one(value, value, attr)
 
-        if re.fullmatch(pattern, value):
-            return value
+    def translate_value(self, v, value, attr):
+        try:
+            if isinstance(v, str) or isinstance(v, float):
+                dt = fromTimeStamp(int(v))
+            elif isinstance(v, int):
+                dt = fromTimeStamp(v)
+            else:
+                raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
+        except (ValueError, TypeError):
+            raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
+        return dt
 
-        raise ValidationError(
-            f"Invalid value '{value}' for field '{field_name}'. "
-            f"Allowed: field name itself, field name + suffixes (YY,MM,DD,HH in order), "
-            f"field name + From|Till, or field name + suffixes + From|Till."
-        )
-        
-    
+
 # Schema for querying items with various filters and pagination options
 class ItemsQuerySchema(Schema):
     # Queryable fields
@@ -314,8 +284,7 @@ class ItemsQuerySchema(Schema):
     label = StringSearchField(allow_none=True)
     label_starts_with = fields.Str(allow_none=True)
     label_contains = fields.Str(allow_none=True)
-    
-    
+
     md5 = StringSearchField(allow_none=True)
     MIMEType = StringSearchField(allow_none=True)
     extension = StringSearchField(allow_none=True)
@@ -341,8 +310,7 @@ class ItemsQuerySchema(Schema):
 
     Duration_min = fields.Float()
     Duration_max = fields.Float()
-    
-    
+
     # Additional query parameters
     current_version = fields.Int()  # Current version of the item
     last_known_version = fields.Int()  # Last known version of the item
