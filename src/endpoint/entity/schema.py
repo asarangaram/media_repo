@@ -1,4 +1,3 @@
-from datetime import datetime
 from flask_smorest.fields import Upload
 from marshmallow import ValidationError, post_dump, validates_schema, Schema
 from clmediakit import (
@@ -176,7 +175,7 @@ class NonZeroUIntSearchField(fields.Field):
 
             return [self._parse_one(v, value, attr) for v in value]
         if value in ("__null__", "__notnull__"):
-                    return value
+            return value
         return self._parse_one(value, value, attr)
 
     def _parse_one(self, v, value, attr):
@@ -196,12 +195,12 @@ class StringSearchField(fields.Field):
                 if value[0] in ("__null__", "__notnull__"):
                     return value[0]
                 return value[0]
-        
+
             return value
         elif isinstance(value, str):
             return value
         else:
-            raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
+            raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
 
 
 class BoolSearchField(fields.Field):
@@ -214,62 +213,18 @@ class BoolSearchField(fields.Field):
 
             return [self._parse_one(v, value, attr) for v in value]
         if value in ("__null__", "__notnull__"):
-                    return value
+            return value
         return self._parse_one(value, value, attr)
 
     def _parse_one(self, v, value, attr):
         try:
             num = int(v)
         except (ValueError, TypeError):
-            raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
-        if num != 0  and num != 1:
-            raise NonZeroUIntSearchFieldError(attr, value) #   FIX Error code
+            raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
+        if num != 0 and num != 1:
+            raise NonZeroUIntSearchFieldError(attr, value)  #   FIX Error code
         return num == 1
-        
-class DateTimeSearchField(fields.Field):
-    def _deserialize(self, value, attr, data, **kwargs):
-        if isinstance(value, list):
-            if len(value) == 1:
-                if value[0] in ("__null__", "__notnull__"):
-                    return value[0]
-                return self._parse_one(value[0], value, attr)
 
-            return [self._parse_one(v, value, attr) for v in value]
-        if value in ("__null__", "__notnull__"):
-                    return value
-        return self._parse_one(value, value, attr)
-
-    def _parse_one(self, v, value, attr):
-        try:
-            if isinstance(v, str):
-                dt =  datetime.fromtimestamp(int(v) / 1000.0)
-            elif isinstance(v, int):
-                dt =  datetime.fromtimestamp(v / 1000.0)
-            else:
-                raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
-        except (ValueError, TypeError):
-            raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
-        return dt 
-
-class NotNullableDateTimeSearchField(fields.Field):
-    def _deserialize(self, value, attr, data, **kwargs):
-        if isinstance(value, list):
-            if len(value) == 1:
-                return self._parse_one(value[0], value, attr)
-            return [self._parse_one(v, value, attr) for v in value]
-        return self._parse_one(value, value, attr)
-
-    def _parse_one(self, v, value, attr):
-        try:
-            if isinstance(v, str):
-                dt =  datetime.fromtimestamp(int(v) / 1000.0)
-            elif isinstance(v, int):
-                dt =  datetime.fromtimestamp(v / 1000.0)
-            else:
-                raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
-        except (ValueError, TypeError):
-            raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
-        return dt 
 
 # Schema for querying items with various filters and pagination options
 class ItemsQuerySchema(Schema):
@@ -282,8 +237,7 @@ class ItemsQuerySchema(Schema):
     label = StringSearchField(allow_none=True)
     label_starts_with = fields.Str(allow_none=True)
     label_contains = fields.Str(allow_none=True)
-    
-    
+
     md5 = StringSearchField(allow_none=True)
     MIMEType = StringSearchField(allow_none=True)
     extension = StringSearchField(allow_none=True)
@@ -302,22 +256,8 @@ class ItemsQuerySchema(Schema):
     FileSizeMin = fields.Int(allow_none=True)
     FileSizeMax = fields.Int(allow_none=True)
 
-    # dates
-    addedDate_from = NotNullableDateTimeSearchField()
-    updatedDate_from = NotNullableDateTimeSearchField()
-    CreateDate_from = NotNullableDateTimeSearchField()
-    addedDate_till = NotNullableDateTimeSearchField()
-    updatedDate_till = NotNullableDateTimeSearchField()
-    CreateDate_till = NotNullableDateTimeSearchField()
-
-    CreateDate = DateTimeSearchField()
-
     Duration_min = fields.Float()
     Duration_max = fields.Float()
-    
-    CreateDate_day = fields.Int()
-    CreateDate_month = fields.Int()
-    CreateDate_year = fields.Int()
 
     # Additional query parameters
     current_version = fields.Int()  # Current version of the item
