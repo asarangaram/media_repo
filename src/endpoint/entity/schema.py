@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from flask_smorest.fields import Upload
 from marshmallow import ValidationError, post_dump, validates_schema, Schema
 from clmediakit import (
@@ -271,6 +272,37 @@ class NotNullableDateTimeSearchField(fields.Field):
             raise NonZeroUIntSearchFieldError(attr, value) # FIX Error code
         return dt 
 
+
+class DateKeyField(fields.String):
+    def __init__(self, *args, **kwargs):
+        # Suffixes must be in order
+        self.suffix_pattern = r"(YY(MM(DD(HH)?)?)?|MM(DD(HH)?)?|DD(HH)?|HH)"
+        self.from_till_pattern = r"(From|Till)"
+        super().__init__(*args, **kwargs)
+
+    def _deserialize(self, value, attr, data, **kwargs):
+        if not isinstance(value, str):
+            raise ValidationError("Must be a string")
+
+        field_name = attr
+
+        # allow exact field name
+        if value == field_name:
+            return value
+
+        # Regex: field_name + optional suffixes in order + optional From/Till
+        pattern = f"^{field_name}({self.suffix_pattern})?({self.from_till_pattern})?$"
+
+        if re.fullmatch(pattern, value):
+            return value
+
+        raise ValidationError(
+            f"Invalid value '{value}' for field '{field_name}'. "
+            f"Allowed: field name itself, field name + suffixes (YY,MM,DD,HH in order), "
+            f"field name + From|Till, or field name + suffixes + From|Till."
+        )
+        
+    
 # Schema for querying items with various filters and pagination options
 class ItemsQuerySchema(Schema):
     # Queryable fields
@@ -303,22 +335,14 @@ class ItemsQuerySchema(Schema):
     FileSizeMax = fields.Int(allow_none=True)
 
     # dates
-    addedDate_from = NotNullableDateTimeSearchField()
-    updatedDate_from = NotNullableDateTimeSearchField()
-    CreateDate_from = NotNullableDateTimeSearchField()
-    addedDate_till = NotNullableDateTimeSearchField()
-    updatedDate_till = NotNullableDateTimeSearchField()
-    CreateDate_till = NotNullableDateTimeSearchField()
-
-    CreateDate = DateTimeSearchField()
+    CreateDate = DateKeyField()
+    addedDate = DateKeyField()
+    updatedDate = DateKeyField()
 
     Duration_min = fields.Float()
     Duration_max = fields.Float()
     
-    CreateDate_day = fields.Int()
-    CreateDate_month = fields.Int()
-    CreateDate_year = fields.Int()
-
+    
     # Additional query parameters
     current_version = fields.Int()  # Current version of the item
     last_known_version = fields.Int()  # Last known version of the item
