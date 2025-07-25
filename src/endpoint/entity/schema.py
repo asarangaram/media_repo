@@ -280,12 +280,16 @@ class ItemsQuerySchema(Schema):
 
     # Strings or List of Strings
     label = StringSearchField(allow_none=True)
+    label_starts_with = fields.Str(allow_none=True)
+    label_contains = fields.Str(allow_none=True)
+    
+    
     md5 = StringSearchField(allow_none=True)
     MIMEType = StringSearchField(allow_none=True)
     extension = StringSearchField(allow_none=True)
 
     # only strings
-    label_starts_with = fields.Str(allow_none=True)
+    description_contains = fields.Str(allow_none=True)
 
     # nonzero uint or list of nonzero uint
     id = NonZeroUIntSearchField(allow_none=True)
