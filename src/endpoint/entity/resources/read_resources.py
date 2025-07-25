@@ -1,6 +1,6 @@
 from src.db import db
 from src.endpoint.entity.models import EntityModel
-from src.endpoint.entity.resources.db_filter import dbFilter
+from src.endpoint.entity.resources.db_filter import QueryHandler
 from src.utils.custom_errors.internal_server_errors import UnexpectedFailure
 from src.utils.flatten_dict import convert_bools_to_int_recursive, flatten_dict
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
@@ -59,9 +59,9 @@ def entity_read_all_resource(MediaVersion, route):
         @custom_handle_error
         def get(cls, **kwargs):
             query_args = flatten_dict(request.args.to_dict(flat=False))
-            parsed_query = ItemsQuerySchema().load(query_args)
+            parsed_query = QueryHandler.parser(query_args)
             try:
-                qfilter =dbFilter(parsed_query)
+                qfilter =QueryHandler.dbFilter(query_args)
                 query1 = db.session.query(EntityModel).filter(*qfilter)
 
                 
@@ -103,9 +103,9 @@ def entity_read_all_resource(MediaVersion, route):
                 A JSON response containing the list of media entities and metadata.
             """
             query_args = flatten_dict(request.args.to_dict(flat=False))
-            parsed_query = ItemsQuerySchema().load(query_args)
+            parsed_query = QueryHandler.parser(query_args)
             try:
-                qfilter = dbFilter(parsed_query)
+                qfilter = QueryHandler.dbFilter(parsed_query)
                 query1 = db.session.query(EntityModel).filter(*qfilter)
                 result = query1.all()
                 items = [ItemSchema().dump(item) for item in result]

@@ -1,6 +1,5 @@
-import re
 from flask_smorest.fields import Upload
-from marshmallow import ValidationError, post_dump, validates_schema, Schema
+from marshmallow import INCLUDE, ValidationError, post_dump, validates_schema, Schema
 from clmediakit import (
     IntigerizedBool,
     MediaTypeField,
@@ -9,7 +8,6 @@ from clmediakit import (
 from marshmallow import (
     fields,
 )
-from clmediakit import fromTimeStamp
 
 
 from src.utils.custom_errors.validation_errors import (
@@ -205,76 +203,11 @@ class StringSearchField(fields.Field):
         else:
             raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
 
-
-class DateKeyField(fields.Field):
-    # Regex to match only valid suffix part
-    rangePattern = re.compile(r"^(YY(MM(DD)?)?)?(From|Till)$")
-    datePattern = re.compile(r"^(YY)?(MM)?(DD)?(HH)?$")
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.prefix = None
-
-    def _bind_to_schema(self, field_name, schema):
-        # Save the prefix when the field is bound to schema
-        self.prefix = field_name
-        super()._bind_to_schema(field_name, schema)
-
-    def _deserialize(self, value, attr, data, **kwargs):
-        if not isinstance(value, (int, float)):
-            raise ValidationError("Value must be timestamp (int or float)")
-        if self.prefix is None:
-            raise ValidationError("Prefix not set")
-        if not attr.startswith(self.prefix):
-            raise ValidationError(
-                f"Field name {attr} does not start with prefix {self.prefix}"
-            )
-        suffix = attr[len(self.prefix) :]
-        if not suffix:
-            return self.translate_to_dt(value, attr, nulSupported=True)
-        else:
-            m = self.rangePattern.fullmatch(suffix)
-            if not m:
-                raise ValidationError(f"Invalid date key suffix: {suffix}")
-            m = self.datePattern.fullmatch(suffix)
-            if not m:
-                raise ValidationError(f"Invalid date key suffix: {suffix}")
-            return self.translate_to_dt(value, attr, nulSupported=False)
-
-    def translate_to_dt(self, value, attr, nulSupported: bool):
-        if isinstance(value, list):
-            if len(value) == 1:
-                if value[0] in ("__null__", "__notnull__"):
-                    if nulSupported:
-                        return value[0]
-                    else:
-                        raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
-                return self.translate_value(value[0], value, attr)
-
-            return [self.translate_value(v, value, attr) for v in value]
-        if value in ("__null__", "__notnull__"):
-            if nulSupported:
-                return value
-            else:
-                raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
-
-        return self._parse_one(value, value, attr)
-
-    def translate_value(self, v, value, attr):
-        try:
-            if isinstance(v, str) or isinstance(v, float):
-                dt = fromTimeStamp(int(v))
-            elif isinstance(v, int):
-                dt = fromTimeStamp(v)
-            else:
-                raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
-        except (ValueError, TypeError):
-            raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
-        return dt
-
-
 # Schema for querying items with various filters and pagination options
 class ItemsQuerySchema(Schema):
+    class Meta:
+        unknown = INCLUDE  # so unknown fields stay in data
+
     # Queryable fields
     # Boolean flags
     isCollection = fields.Bool(allow_none=True)
@@ -302,11 +235,6 @@ class ItemsQuerySchema(Schema):
     # non zero uint
     FileSizeMin = fields.Int(allow_none=True)
     FileSizeMax = fields.Int(allow_none=True)
-
-    # dates
-    CreateDate = DateKeyField()
-    addedDate = DateKeyField()
-    updatedDate = DateKeyField()
 
     Duration_min = fields.Float()
     Duration_max = fields.Float()
