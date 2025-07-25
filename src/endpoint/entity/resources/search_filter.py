@@ -1,4 +1,5 @@
 from flask import request
+from marshmallow import ValidationError
 from sqlalchemy import func
 from sqlalchemy.dialects import sqlite
 from sqlalchemy_continuum import version_class
@@ -36,13 +37,18 @@ class SearchFilters:
         query_args = flatten_dict(request.args.to_dict(flat=False))
         self.parsed_queries_internal = ItemsQuerySchema().load(query_args)
         self.dateQueries = {}
+
+        known_fields = set(ItemsQuerySchema().fields.keys())
         for date_field in DateTimeQuerySchema.allowed_date_fields.keys():
             self.dateQueries[date_field] = DateTimeQuerySchema(
                 date_field, **self.parsed_queries_internal
             )
-            self.parsed_queries_internal.update(
-                self.dateQueries[date_field].translate()
-            )
+            translated = self.dateQueries[date_field].translate()
+            self.parsed_queries_internal.update(translated)
+            known_fields.update(translated.keys())
+        unused_keys = self.parsed_queries_internal.keys() - known_fields
+        if len(unused_keys) > 0:
+            raise ValidationError({key: "unknown field" for key in unused_keys})
 
     @property
     def parsed_queries(self):
