@@ -53,11 +53,13 @@ def dbFilter(kwargs):
 
     # --- String Search Fields (Looped) ---
     string_search_field_map = {
-        'label': {'column': EntityModel.label, 'match_type': 'ilike_partial'},
+        'label': {'column': EntityModel.label, 'match_type': 'exact'},
         'md5': {'column': EntityModel.md5, 'match_type': 'exact'},
         'MIMEType': {'column': EntityModel.MIMEType, 'match_type': 'exact'},
         'extension': {'column': EntityModel.extension, 'match_type': 'exact'},
         'label_starts_with': {'column': EntityModel.label, 'match_type': 'ilike_starts_with'},
+        'label_contains': {'column': EntityModel.label, 'match_type': 'ilike_partial'},
+        'description_contains': {'column': EntityModel.description, 'match_type':"ilike_partial"}
     }
 
     for field_name, config in string_search_field_map.items():
