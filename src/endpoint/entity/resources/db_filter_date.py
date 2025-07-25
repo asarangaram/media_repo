@@ -14,7 +14,7 @@ from src.endpoint.entity.models import EntityModel
 #       Range Query: one From Query and one Till Query
 
 
-def validate_date_keys(matching_keys, field):
+def validate_date_keys(field, matching_keys):
     if len(matching_keys) > 2:
         return False
     if len(matching_keys) == 0 or len(matching_keys) == 1:
@@ -47,7 +47,7 @@ def date_query_filter(
     Till: bool = False,
 ):
     date_query_filters = []
-    datetime()
+
     if From or Till:
         if yy or mm or dd:
             year = value.year
@@ -76,35 +76,35 @@ def date_query_filter(
         """Match query"""
         if yy or mm or dd or hh:
             if yy:
-                return date_query_filters.append(
-                    extract("year", EntityModel.CreateDate) == value
+                date_query_filters.append(
+                    extract("year", EntityModel.CreateDate) == value.year
                 )
             if mm:
-                return date_query_filters.append(
-                    extract("month", EntityModel.CreateDate) == value
+                date_query_filters.append(
+                    extract("month", EntityModel.CreateDate) == value.month
                 )
             if dd:
-                return date_query_filters.append(
-                    extract("year", EntityModel.CreateDate) == value
+                date_query_filters.append(
+                    extract("year", EntityModel.CreateDate) == value.day
                 )
             if hh:
-                return date_query_filters.append(
-                    extract("hour", EntityModel.CreateDate) == value
+                date_query_filters.append(
+                    extract("hour", EntityModel.CreateDate) == value.hour
                 )
         else:
             if isinstance(value, list):
-                return date_query_filters.append(dbColumn.in_(value))
+                date_query_filters.append(dbColumn.in_(value))
             elif value == "__null__":
-                return date_query_filters.append(dbColumn.is_(None))
+                date_query_filters.append(dbColumn.is_(None))
             elif value == "__notnull__":
-                return date_query_filters.append(dbColumn.is_not(None))
+                date_query_filters.append(dbColumn.is_not(None))
             else:
-                return date_query_filters.append(dbColumn == value)
+                date_query_filters.append(dbColumn == value)
 
     return date_query_filters
 
 
-def date_query_filters(date_fields, **kwargs):
+def date_query_filters(date_fields, kwargs):
     rangePattern = re.compile(r"^(YY(MM(DD)?)?)?(From|Till)$")
     datePattern = re.compile(r"^(YY)?(MM)?(DD)?(HH)?$")
 
@@ -115,7 +115,7 @@ def date_query_filters(date_fields, **kwargs):
             key: value for key, value in kwargs.items() if key.startswith(field)
         }
         matching_keys = matching_map.keys()
-        if not validate_date_keys(matching_keys):
+        if not validate_date_keys(field, matching_keys):
             raise Exception(f"Invalid Date Search: {matching_keys} ")
         for key in matching_keys:
             prefix_len = len(field)
@@ -129,10 +129,10 @@ def date_query_filters(date_fields, **kwargs):
             if m1:
                 YY, MM, DD, HH = m1.groups()
                 args = dict(
-                    yy=YY.group(1) is not None,
-                    mm=MM.group(2) is not None,
-                    dd=DD.group(3) is not None,
-                    hh=HH.group(4) is not None,
+                    yy=YY is not None,
+                    mm=MM is not None,
+                    dd=DD is not None,
+                    hh=HH is not None,
                 )
                 date_query_filters.extend(
                     date_query_filter(field, column, matching_map[key], **args)
