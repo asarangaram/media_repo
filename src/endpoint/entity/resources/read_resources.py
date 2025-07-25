@@ -56,8 +56,8 @@ def entity_read_all_resource(MediaVersion, route):
     class ValidateQuerySchema(MethodView):
         @custom_handle_error
         def get(cls, **kwargs):
-            media_query = SearchFilters(**kwargs)
-            return {"loopback": media_query.parsed_queries, "rawQuery": media_query.rawQuery}
+            media_query = SearchFilters(MediaVersion, **kwargs)
+            return {"loopback": media_query.parsed_queries, "rawQuery": media_query.rawQuery(db)}
 
     @route.route("/all")
     class EntityList(MethodView):
@@ -78,18 +78,18 @@ def entity_read_all_resource(MediaVersion, route):
             Returns:
                 A JSON response containing the list of media entities and metadata.
             """
-            media_query = SearchFilters(**kwargs)
+            media_query = SearchFilters(MediaVersion, **kwargs)
             try:
-                query1 = db.session.query(EntityModel).filter(*media_query.queries)
-                result = query1.all()
-                items = [ItemSchema().dump(item) for item in result]
 
+                items = media_query.readFromDB( db.session.query(EntityModel))
+                max_version, _ = media_query.get_latest_version(db)
+                
                 response = OrderedDict()
+
                 response["items"] = items
                 response["metaInfo"] = {
-                    "currentVersion": "TBD",
-                    "lastSyncedVersion": "TBD",
-                    "latestVersion": "TBD",
+                    "currentVersion": max_version,
+                    "latestVersion": max_version,
                     "totalItems": len(items),
                 }
                 return jsonify(response), 200

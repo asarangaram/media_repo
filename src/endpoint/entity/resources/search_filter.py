@@ -1,10 +1,11 @@
 from flask import request
-from src import db
+from sqlalchemy import func
+from sqlalchemy.dialects import sqlite
+from sqlalchemy_continuum import version_class
 from src.endpoint.entity.models import EntityModel
 from src.endpoint.entity.resources.datetime_query_schema import DateTimeQuerySchema
-from src.endpoint.entity.schema import ItemsQuerySchema
+from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema
 from src.utils.flatten_dict import convert_bools_to_int_recursive, flatten_dict
-from sqlalchemy.dialects import sqlite
 
 class SearchFilters:
     string_search_field_map = {
@@ -30,19 +31,23 @@ class SearchFilters:
         "Duration": EntityModel.Duration,
     }
 
-    def __init__(self, **kwargs):
+    def __init__(self, MediaVersion, **kwargs):
+        self.MediaVersion = MediaVersion
         query_args = flatten_dict(request.args.to_dict(flat=False))
         self.parsed_queries_internal = ItemsQuerySchema().load(query_args)
+        self.dateQueries = {}
         for date_field in DateTimeQuerySchema.allowed_date_fields.keys():
             self.dateQueries[date_field] = DateTimeQuerySchema(
                 date_field, **self.parsed_queries_internal
             )
-            self.parsed_queries_internal.update(self.dateQueries[date_field].translate())
+            self.parsed_queries_internal.update(
+                self.dateQueries[date_field].translate()
+            )
 
     @property
     def parsed_queries(self):
         return convert_bools_to_int_recursive(self.parsed_queries_internal)
-    
+
     @staticmethod
     def _apply_string_filter(column, value, match_type="exact"):
         """
@@ -89,7 +94,8 @@ class SearchFilters:
 
         if "isCollection" in self.parsed_queries_internal:
             db_queries.append(
-                EntityModel.isCollection == bool(self.parsed_queries_internal["isCollection"])
+                EntityModel.isCollection
+                == bool(self.parsed_queries_internal["isCollection"])
             )
         if "isDeleted" in self.parsed_queries_internal:
             db_queries.append(
@@ -109,7 +115,9 @@ class SearchFilters:
         for field_name, column in self.numeric_search_field_map.items():
             if field_name in self.parsed_queries_internal:
                 db_queries.append(
-                    self._apply_numeric_filter(column, self.parsed_queries_internal[field_name])
+                    self._apply_numeric_filter(
+                        column, self.parsed_queries_internal[field_name]
+                    )
                 )
 
         if "FileSizeMin" in self.parsed_queries_internal:
@@ -131,10 +139,7 @@ class SearchFilters:
             )
         return db_queries
 
-
-
-    @property
-    def rawQuery(self) -> str:
+    def rawQuery(self, db) -> str:
         try:
             query1 = db.session.query(EntityModel).filter(*self.queries)
 
@@ -153,4 +158,20 @@ class SearchFilters:
 
         except Exception as err:
             return f"Failed to generate, error {err}"
-        
+
+    def get_latest_version(self, db):
+        VersionModel = version_class(self.MediaVersion)
+
+        version_query = db.session.query(
+            func.min(VersionModel.transaction_id).label("min_version"),
+            func.max(VersionModel.transaction_id).label("max_version"),
+        ).one()
+
+        min_version = version_query.min_version or 0
+        max_version = version_query.max_version or 0
+        return max_version, min_version
+
+    def readFromDB(self, query):
+        query1 = query.filter(*self.queries)
+        result = query1.all()
+        return [ItemSchema().dump(item) for item in result]
