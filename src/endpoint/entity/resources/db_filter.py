@@ -1,11 +1,13 @@
 from src.endpoint.entity.models import EntityModel
+from src.endpoint.entity.resources.datetime_query_schema import DateTimeQuerySchema
 from src.endpoint.entity.schema import ItemsQuerySchema
 
 
 def dbFilter(query_args):
+    print(f"query_args {query_args}")
     kwargs = ItemsQuerySchema().load(query_args)
 
-    query_filters = []
+    db_queries = []
 
     # --- Helper function for string-based filters ---
     def _apply_string_filter(column, value, match_type="exact"):
@@ -47,9 +49,9 @@ def dbFilter(query_args):
 
     # --- Boolean flags ---
     if "isCollection" in kwargs:
-        query_filters.append(EntityModel.isCollection == bool(kwargs["isCollection"]))
+        db_queries.append(EntityModel.isCollection == bool(kwargs["isCollection"]))
     if "isDeleted" in kwargs:
-        query_filters.append(EntityModel.isDeleted == bool(kwargs["isDeleted"]))
+        db_queries.append(EntityModel.isDeleted == bool(kwargs["isDeleted"]))
 
     # --- String Search Fields (Looped) ---
     string_search_field_map = {
@@ -70,7 +72,7 @@ def dbFilter(query_args):
 
     for field_name, config in string_search_field_map.items():
         if field_name in kwargs:
-            query_filters.append(
+            db_queries.append(
                 _apply_string_filter(
                     config["column"],
                     kwargs[field_name],
@@ -89,18 +91,24 @@ def dbFilter(query_args):
 
     for field_name, column in numeric_search_field_map.items():
         if field_name in kwargs:
-            query_filters.append(_apply_numeric_filter(column, kwargs[field_name]))
+            db_queries.append(_apply_numeric_filter(column, kwargs[field_name]))
 
     # --- FileSize range filters ---
     if "FileSizeMin" in kwargs:
-        query_filters.append(EntityModel.FileSize >= kwargs["FileSizeMin"])
+        db_queries.append(EntityModel.FileSize >= kwargs["FileSizeMin"])
     if "FileSizeMax" in kwargs:
-        query_filters.append(EntityModel.FileSize <= kwargs["FileSizeMax"])
+        db_queries.append(EntityModel.FileSize <= kwargs["FileSizeMax"])
 
     # --- Duration range filters ---
     if "duration_min" in kwargs:
-        query_filters.append(EntityModel.Duration >= kwargs["duration_min"])
+        db_queries.append(EntityModel.Duration >= kwargs["duration_min"])
     if "duration_max" in kwargs:
-        query_filters.append(EntityModel.Duration <= kwargs["duration_max"])
+        db_queries.append(EntityModel.Duration <= kwargs["duration_max"])
 
-    return kwargs, query_filters
+
+    for date_field in DateTimeQuerySchema.allowed_date_fields.keys():
+        data = DateTimeQuerySchema(date_field, **kwargs)
+        kwargs.update(data.translate())
+        db_queries.extend(data.queries)
+                             
+    return kwargs, db_queries

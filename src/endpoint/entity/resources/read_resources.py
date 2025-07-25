@@ -58,6 +58,7 @@ def entity_read_all_resource(MediaVersion, route):
     class ValidateQuerySchema(MethodView):
         @custom_handle_error
         def get(cls, **kwargs):
+            print("/filter/loopback")
             query_args = flatten_dict(request.args.to_dict(flat=False))
             parsed_query, db_query = dbFilter(query_args)
             try:
@@ -103,7 +104,7 @@ def entity_read_all_resource(MediaVersion, route):
                 A JSON response containing the list of media entities and metadata.
             """
             query_args = flatten_dict(request.args.to_dict(flat=False))
-            parsed_query, db_query = dbFilter(query_args)
+            _, db_query = dbFilter(query_args)
             try:
                 query1 = db.session.query(EntityModel).filter(*db_query)
                 result = query1.all()

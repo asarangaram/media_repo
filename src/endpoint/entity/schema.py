@@ -1,5 +1,5 @@
 from flask_smorest.fields import Upload
-from marshmallow import ValidationError, post_dump, validates_schema, Schema
+from marshmallow import INCLUDE, ValidationError, post_dump, validates_schema, Schema
 from clmediakit import (
     IntigerizedBool,
     MediaTypeField,
@@ -228,6 +228,9 @@ class BoolSearchField(fields.Field):
 
 # Schema for querying items with various filters and pagination options
 class ItemsQuerySchema(Schema):
+    class Meta:
+        unknown = INCLUDE  # so unknown fields stay in data
+
     # Queryable fields
     # Boolean flags
     isCollection = fields.Bool(allow_none=True)
