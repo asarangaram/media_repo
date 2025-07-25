@@ -59,29 +59,29 @@ def entity_read_all_resource(MediaVersion, route):
         @custom_handle_error
         def get(cls, **kwargs):
             query_args = flatten_dict(request.args.to_dict(flat=False))
-            parsed_query = ItemsQuerySchema().load(query_args)
+            parsed_query, db_query = dbFilter(query_args)
             try:
-                qfilter =dbFilter(parsed_query)
-                query1 = db.session.query(EntityModel).filter(*qfilter)
+                query1 = db.session.query(EntityModel).filter(*db_query)
 
-                
-                # Get the statement object (which contains the whereclause)
+                # get the where clause as rawQuery
                 statement = query1.statement
-
-                # Check if a whereclause exists
                 if statement.whereclause is not None:
                     # Compile *only* the whereclause part
-                    rawQuery = str(statement.whereclause.compile(
-                        dialect=sqlite.dialect(),
-                        compile_kwargs={"literal_binds": True}
-                    ))
+                    rawQuery = str(
+                        statement.whereclause.compile(
+                            dialect=sqlite.dialect(),
+                            compile_kwargs={"literal_binds": True},
+                        )
+                    )
                 else:
-                    rawQuery = "" # No WHERE clause
+                    rawQuery = ""  # No WHERE clause
 
-                
             except Exception as err:
                 rawQuery = f"Failed to generate, error {err}"
-            return {"loopback": convert_bools_to_int_recursive(parsed_query), "rawQuery": rawQuery}
+            return {
+                "loopback": convert_bools_to_int_recursive(parsed_query),
+                "rawQuery": rawQuery,
+            }
 
     @route.route("/all")
     class EntityList(MethodView):
@@ -103,10 +103,9 @@ def entity_read_all_resource(MediaVersion, route):
                 A JSON response containing the list of media entities and metadata.
             """
             query_args = flatten_dict(request.args.to_dict(flat=False))
-            parsed_query = ItemsQuerySchema().load(query_args)
+            parsed_query, db_query = dbFilter(query_args)
             try:
-                qfilter = dbFilter(parsed_query)
-                query1 = db.session.query(EntityModel).filter(*qfilter)
+                query1 = db.session.query(EntityModel).filter(*db_query)
                 result = query1.all()
                 items = [ItemSchema().dump(item) for item in result]
 
@@ -123,7 +122,7 @@ def entity_read_all_resource(MediaVersion, route):
             except Exception:
                 db.session.rollback()
                 raise UnexpectedFailure()
-            
+
             """ current_version = kwargs.get("current_version")
             last_known_version = kwargs.get("last_known_version")
             page = kwargs.get("page", 1)

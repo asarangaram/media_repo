@@ -1,7 +1,10 @@
 from src.endpoint.entity.models import EntityModel
+from src.endpoint.entity.schema import ItemsQuerySchema
 
 
-def dbFilter(kwargs):
+def dbFilter(query_args):
+    kwargs = ItemsQuerySchema().load(query_args)
+
     query_filters = []
 
     # --- Helper function for string-based filters ---
@@ -100,4 +103,4 @@ def dbFilter(kwargs):
     if "duration_max" in kwargs:
         query_filters.append(EntityModel.Duration <= kwargs["duration_max"])
 
-    return query_filters
+    return kwargs, query_filters
