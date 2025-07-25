@@ -1,8 +1,7 @@
 from src.db import db
 from src.endpoint.entity.models import EntityModel
-from src.endpoint.entity.resources.db_filter import dbFilter
+from src.endpoint.entity.resources.search_filter import SearchFilters
 from src.utils.custom_errors.internal_server_errors import UnexpectedFailure
-from src.utils.flatten_dict import convert_bools_to_int_recursive, flatten_dict
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
 from src.endpoint.entity.schema import (
     ItemSchema,
@@ -13,7 +12,6 @@ from src.endpoint.entity.schema import (
 
 from flask import jsonify, request
 from flask.views import MethodView
-from sqlalchemy.dialects import sqlite
 
 from collections import OrderedDict
 
@@ -58,31 +56,8 @@ def entity_read_all_resource(MediaVersion, route):
     class ValidateQuerySchema(MethodView):
         @custom_handle_error
         def get(cls, **kwargs):
-            print("/filter/loopback")
-            query_args = flatten_dict(request.args.to_dict(flat=False))
-            parsed_query, db_query = dbFilter(query_args)
-            try:
-                query1 = db.session.query(EntityModel).filter(*db_query)
-
-                # get the where clause as rawQuery
-                statement = query1.statement
-                if statement.whereclause is not None:
-                    # Compile *only* the whereclause part
-                    rawQuery = str(
-                        statement.whereclause.compile(
-                            dialect=sqlite.dialect(),
-                            compile_kwargs={"literal_binds": True},
-                        )
-                    )
-                else:
-                    rawQuery = ""  # No WHERE clause
-
-            except Exception as err:
-                rawQuery = f"Failed to generate, error {err}"
-            return {
-                "loopback": convert_bools_to_int_recursive(parsed_query),
-                "rawQuery": rawQuery,
-            }
+            media_query = SearchFilters(**kwargs)
+            return {"loopback": media_query.parsed_queries, "rawQuery": media_query.rawQuery}
 
     @route.route("/all")
     class EntityList(MethodView):
@@ -103,10 +78,9 @@ def entity_read_all_resource(MediaVersion, route):
             Returns:
                 A JSON response containing the list of media entities and metadata.
             """
-            query_args = flatten_dict(request.args.to_dict(flat=False))
-            _, db_query = dbFilter(query_args)
+            media_query = SearchFilters(**kwargs)
             try:
-                query1 = db.session.query(EntityModel).filter(*db_query)
+                query1 = db.session.query(EntityModel).filter(*media_query.queries)
                 result = query1.all()
                 items = [ItemSchema().dump(item) for item in result]
 

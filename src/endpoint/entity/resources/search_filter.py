@@ -1,0 +1,156 @@
+from flask import request
+from src import db
+from src.endpoint.entity.models import EntityModel
+from src.endpoint.entity.resources.datetime_query_schema import DateTimeQuerySchema
+from src.endpoint.entity.schema import ItemsQuerySchema
+from src.utils.flatten_dict import convert_bools_to_int_recursive, flatten_dict
+from sqlalchemy.dialects import sqlite
+
+class SearchFilters:
+    string_search_field_map = {
+        "label": {"column": EntityModel.label, "match_type": "exact"},
+        "md5": {"column": EntityModel.md5, "match_type": "exact"},
+        "MIMEType": {"column": EntityModel.MIMEType, "match_type": "exact"},
+        "extension": {"column": EntityModel.extension, "match_type": "exact"},
+        "label_starts_with": {
+            "column": EntityModel.label,
+            "match_type": "ilike_starts_with",
+        },
+        "label_contains": {"column": EntityModel.label, "match_type": "ilike_partial"},
+        "description_contains": {
+            "column": EntityModel.description,
+            "match_type": "ilike_partial",
+        },
+    }
+    numeric_search_field_map = {
+        "id": EntityModel.id,
+        "parentId": EntityModel.parentId,
+        "ImageHeight": EntityModel.ImageHeight,
+        "ImageWidth": EntityModel.ImageWidth,
+        "Duration": EntityModel.Duration,
+    }
+
+    def __init__(self, **kwargs):
+        query_args = flatten_dict(request.args.to_dict(flat=False))
+        self.parsed_queries_internal = ItemsQuerySchema().load(query_args)
+        for date_field in DateTimeQuerySchema.allowed_date_fields.keys():
+            self.dateQueries[date_field] = DateTimeQuerySchema(
+                date_field, **self.parsed_queries_internal
+            )
+            self.parsed_queries_internal.update(self.dateQueries[date_field].translate())
+
+    @property
+    def parsed_queries(self):
+        return convert_bools_to_int_recursive(self.parsed_queries_internal)
+    
+    @staticmethod
+    def _apply_string_filter(column, value, match_type="exact"):
+        """
+        Applies filtering logic for string fields based on match_type.
+        'exact': column == value
+        'ilike_partial': column.ilike(f"%{value}%")
+        'ilike_starts_with': column.ilike(f"{value}%")
+        Handles list of values, __null__, and __notnull__.
+        """
+        if isinstance(value, list):
+            return column.in_(value)
+        elif value == "__null__":
+            return column.is_(None)
+        elif value == "__notnull__":
+            return column.is_not(None)
+        else:
+            if match_type == "ilike_partial":
+                return column.ilike(f"%{value}%")
+            elif match_type == "ilike_starts_with":
+                return column.ilike(f"{value}%")
+            else:  # default to exact
+                return column == value
+
+    @staticmethod
+    def _apply_numeric_filter(column, value):
+        """
+        Applies filtering logic for numeric fields.
+        Handles list of values, __null__, and __notnull__.
+        """
+        if isinstance(value, list):
+            return column.in_(value)
+        elif value == "__null__":
+            return column.is_(None)
+        elif value == "__notnull__":
+            return column.is_not(None)
+        else:
+            return column == value
+
+    @property
+    def queries(self):
+        db_queries = []
+        for date_field in DateTimeQuerySchema.allowed_date_fields.keys():
+            db_queries.extend(self.dateQueries[date_field].queries)
+
+        if "isCollection" in self.parsed_queries_internal:
+            db_queries.append(
+                EntityModel.isCollection == bool(self.parsed_queries_internal["isCollection"])
+            )
+        if "isDeleted" in self.parsed_queries_internal:
+            db_queries.append(
+                EntityModel.isDeleted == bool(self.parsed_queries_internal["isDeleted"])
+            )
+
+        for field_name, config in self.string_search_field_map.items():
+            if field_name in self.parsed_queries_internal:
+                db_queries.append(
+                    self._apply_string_filter(
+                        config["column"],
+                        self.parsed_queries_internal[field_name],
+                        match_type=config["match_type"],
+                    )
+                )
+
+        for field_name, column in self.numeric_search_field_map.items():
+            if field_name in self.parsed_queries_internal:
+                db_queries.append(
+                    self._apply_numeric_filter(column, self.parsed_queries_internal[field_name])
+                )
+
+        if "FileSizeMin" in self.parsed_queries_internal:
+            db_queries.append(
+                EntityModel.FileSize >= self.parsed_queries_internal["FileSizeMin"]
+            )
+        if "FileSizeMax" in self.parsed_queries_internal:
+            db_queries.append(
+                EntityModel.FileSize <= self.parsed_queries_internal["FileSizeMax"]
+            )
+
+        if "duration_min" in self.parsed_queries_internal:
+            db_queries.append(
+                EntityModel.Duration >= self.parsed_queries_internal["duration_min"]
+            )
+        if "duration_max" in self.parsed_queries_internal:
+            db_queries.append(
+                EntityModel.Duration <= self.parsed_queries_internal["duration_max"]
+            )
+        return db_queries
+
+
+
+    @property
+    def rawQuery(self) -> str:
+        try:
+            query1 = db.session.query(EntityModel).filter(*self.queries)
+
+            # get the where clause as rawQuery
+            statement = query1.statement
+            if statement.whereclause is not None:
+                # Compile *only* the whereclause part
+                return str(
+                    statement.whereclause.compile(
+                        dialect=sqlite.dialect(),
+                        compile_kwargs={"literal_binds": True},
+                    )
+                )
+            else:
+                return ""  # No WHERE clause
+
+        except Exception as err:
+            return f"Failed to generate, error {err}"
+        
