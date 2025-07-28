@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects import sqlite
 from sqlalchemy_continuum import version_class
 from src.endpoint.entity.models import EntityModel
+from src.endpoint.entity.resources.num_query_schema import NumberQuerySchema
 from src.endpoint.entity.resources.datetime_query_schema import DateTimeQuerySchema
 from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema
 from src.utils.flatten_dict import convert_bools_to_int_recursive, flatten_dict
@@ -12,6 +13,7 @@ class SearchFilters:
     string_search_field_map = {
         "label": {"column": EntityModel.label, "match_type": "exact"},
         "md5": {"column": EntityModel.md5, "match_type": "exact"},
+        "type": {"column": EntityModel.type, "match_type": "exact"},
         "MIMEType": {"column": EntityModel.MIMEType, "match_type": "exact"},
         "extension": {"column": EntityModel.extension, "match_type": "exact"},
         "label_starts_with": {
@@ -36,7 +38,9 @@ class SearchFilters:
         self.MediaVersion = MediaVersion
         query_args = flatten_dict(request.args.to_dict(flat=False))
         self.parsed_queries_internal = ItemsQuerySchema().load(query_args)
+        
         self.dateQueries = {}
+        self.numQueries = {}
 
         known_fields = set(ItemsQuerySchema().fields.keys())
         for date_field in DateTimeQuerySchema.allowed_date_fields.keys():
@@ -44,6 +48,13 @@ class SearchFilters:
                 date_field, **self.parsed_queries_internal
             )
             translated = self.dateQueries[date_field].translate()
+            self.parsed_queries_internal.update(translated)
+            known_fields.update(translated.keys())
+        for num_field in NumberQuerySchema.allowed_number_fields.keys():
+            self.numQueries[num_field] = NumberQuerySchema(
+                num_field, **self.parsed_queries_internal
+            )
+            translated = self.numQueries[num_field].translate()
             self.parsed_queries_internal.update(translated)
             known_fields.update(translated.keys())
         unused_keys = self.parsed_queries_internal.keys() - known_fields
@@ -77,26 +88,16 @@ class SearchFilters:
             else:  # default to exact
                 return column == value
 
-    @staticmethod
-    def _apply_numeric_filter(column, value):
-        """
-        Applies filtering logic for numeric fields.
-        Handles list of values, __null__, and __notnull__.
-        """
-        if isinstance(value, list):
-            return column.in_(value)
-        elif value == "__null__":
-            return column.is_(None)
-        elif value == "__notnull__":
-            return column.is_not(None)
-        else:
-            return column == value
+   
 
     @property
     def queries(self):
         db_queries = []
         for date_field in DateTimeQuerySchema.allowed_date_fields.keys():
             db_queries.extend(self.dateQueries[date_field].queries)
+        
+        for num_field in NumberQuerySchema.allowed_number_fields.keys():
+            db_queries.extend(self.numQueries[num_field].queries)
 
         if "isCollection" in self.parsed_queries_internal:
             db_queries.append(
@@ -118,31 +119,7 @@ class SearchFilters:
                     )
                 )
 
-        for field_name, column in self.numeric_search_field_map.items():
-            if field_name in self.parsed_queries_internal:
-                db_queries.append(
-                    self._apply_numeric_filter(
-                        column, self.parsed_queries_internal[field_name]
-                    )
-                )
-
-        if "FileSizeMin" in self.parsed_queries_internal:
-            db_queries.append(
-                EntityModel.FileSize >= self.parsed_queries_internal["FileSizeMin"]
-            )
-        if "FileSizeMax" in self.parsed_queries_internal:
-            db_queries.append(
-                EntityModel.FileSize <= self.parsed_queries_internal["FileSizeMax"]
-            )
-
-        if "duration_min" in self.parsed_queries_internal:
-            db_queries.append(
-                EntityModel.Duration >= self.parsed_queries_internal["duration_min"]
-            )
-        if "duration_max" in self.parsed_queries_internal:
-            db_queries.append(
-                EntityModel.Duration <= self.parsed_queries_internal["duration_max"]
-            )
+        
         return db_queries
 
     def rawQuery(self, db) -> str:

@@ -240,27 +240,22 @@ class ItemsQuerySchema(Schema):
     label = StringSearchField(allow_none=True)
     label_starts_with = fields.Str(allow_none=True)
     label_contains = fields.Str(allow_none=True)
-
-    md5 = StringSearchField(allow_none=True)
-    MIMEType = StringSearchField(allow_none=True)
-    extension = StringSearchField(allow_none=True)
-
-    # only strings
     description_contains = fields.Str(allow_none=True)
 
+    MIMEType = StringSearchField(allow_none=True)
+    type = StringSearchField(allow_none=True)
+    extension = StringSearchField(allow_none=True)
+
+    
+    
+
     # nonzero uint or list of nonzero uint
-    id = NonZeroUIntSearchField(allow_none=True)
+   
     parentId = NonZeroUIntSearchField(allow_none=True)
-    ImageHeight = NonZeroUIntSearchField(allow_none=True)
-    ImageWidth = NonZeroUIntSearchField(allow_none=True)
-    Duration = NonZeroUIntSearchField(allow_none=True)
+    id = NonZeroUIntSearchField(allow_none=True)
+    
 
-    # non zero uint
-    FileSizeMin = fields.Int(allow_none=True)
-    FileSizeMax = fields.Int(allow_none=True)
-
-    Duration_min = fields.Float()
-    Duration_max = fields.Float()
+    
 
     # Additional query parameters
     current_version = fields.Int()  # Current version of the item
