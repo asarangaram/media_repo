@@ -12,16 +12,6 @@ from src.utils.flatten_dict import convert_bools_to_int_recursive, flatten_dict
 
 
 class SearchFilters:
-    string_search_field_map = {
-        "type": {"column": EntityModel.type, "match_type": "exact"},
-        "MIMEType": {"column": EntityModel.MIMEType, "match_type": "exact"},
-        "extension": {"column": EntityModel.extension, "match_type": "exact"},
-    }
-    numeric_search_field_map = {
-        "id": EntityModel.id,
-        "parentId": EntityModel.parentId,
-    }
-
     def __init__(self, MediaVersion, **kwargs):
         self.MediaVersion = MediaVersion
         query_args = flatten_dict(request.args.to_dict(flat=False))
@@ -109,7 +99,7 @@ class SearchFilters:
                 EntityModel.isDeleted == bool(self.parsed_queries_internal["isDeleted"])
             )
 
-        for field_name, config in self.string_search_field_map.items():
+        """ for field_name, config in self.string_search_field_map.items():
             if field_name in self.parsed_queries_internal:
                 db_queries.append(
                     self._apply_string_filter(
@@ -117,7 +107,7 @@ class SearchFilters:
                         self.parsed_queries_internal[field_name],
                         match_type=config["match_type"],
                     )
-                )
+                ) """
 
         return db_queries
 

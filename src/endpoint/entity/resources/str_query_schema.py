@@ -9,6 +9,14 @@ class StringQuerySchema:
     allowed_string_fields = {
         "label": EntityModel.label,
         "description": EntityModel.description,
+         "MIMEType": EntityModel.MIMEType,
+        "type": EntityModel.type,
+        "extension": EntityModel.extension,
+    }
+    match_only = {
+        "MIMEType": True,
+        "type": True,
+        "extension": True,
     }
     pattern = re.compile(r"^(StartsWith|Contains)$")
 
@@ -41,24 +49,28 @@ class StringQuerySchema:
                     self.matching_map[key],
                     key,
                     nulSupported=True,
-                  
                 )
                 continue
-            m1 = self.pattern.fullmatch(suffix)
-            if m1:
-                translatedMap[key] = self.translate_to_str(
-                    self.matching_map[key],
-                    key,
-                    nulSupported=False,
-                   
-                )
-                continue
+            if not self.match_only.get(self.str_field, False):
+                m1 = self.pattern.fullmatch(suffix)
+                if m1:
+                    translatedMap[key] = self.translate_to_str(
+                        self.matching_map[key],
+                        key,
+                        nulSupported=False,
+                    )
+                    continue
 
             raise Exception(f"Invalid argument {key}={self.matching_map[key]}")
         self.translatedMap = translatedMap
         return self.translatedMap
 
-    def translate_to_str(self, value, attr, nulSupported: bool, ):
+    def translate_to_str(
+        self,
+        value,
+        attr,
+        nulSupported: bool,
+    ):
         if isinstance(value, list):
             if len(value) == 1 and value[0] in ("__null__", "__notnull__"):
                 if nulSupported:
@@ -68,16 +80,18 @@ class StringQuerySchema:
                     raise NonZeroUIntSearchFieldError(
                         attr, value[0]
                     )  # Point to specific item
-            return [
-                self.translate_value(v, value, attr) for v in value
-            ]
+            return [self.translate_value(v, value, attr) for v in value]
         if value in ("__null__", "__notnull__"):
             if nulSupported:
                 return value
             else:
                 raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
 
-        return self.translate_value(value, value, attr, )
+        return self.translate_value(
+            value,
+            value,
+            attr,
+        )
 
     def translate_value(self, v, value, attr):
         try:
@@ -94,10 +108,11 @@ class StringQuerySchema:
     ):
         dbColumn = self.allowed_string_fields[self.str_field]
         str_query_filters = []
-        if startsWith:
-            str_query_filters.append(dbColumn.ilike(f"{value}%"))
-        elif contains:
-            str_query_filters.append(dbColumn.ilike(f"%{value}%"))
+        if not self.match_only.get(self.str_field, False):
+            if startsWith:
+                str_query_filters.append(dbColumn.ilike(f"{value}%"))
+            elif contains:
+                str_query_filters.append(dbColumn.ilike(f"%{value}%"))
         else:
             if isinstance(value, list):
                 str_query_filters.append(dbColumn.in_(value))
@@ -120,13 +135,13 @@ class StringQuerySchema:
             if not suffix:
                 str_query_filters.extend(self.query(value))
                 continue
-            m = self.pattern.fullmatch(suffix)
-            if suffix == "StartsWith":
-                str_query_filters.extend(self.query(value, startsWith=True))
-                continue
-            elif suffix == "Contains":
-                str_query_filters.extend(self.query(value, contains=True))
-                continue
+            if not self.match_only.get(self.str_field, False):
+                if suffix == "StartsWith":
+                    str_query_filters.extend(self.query(value, startsWith=True))
+                    continue
+                elif suffix == "Contains":
+                    str_query_filters.extend(self.query(value, contains=True))
+                    continue
             raise Exception("Invalid strField")
 
         return str_query_filters

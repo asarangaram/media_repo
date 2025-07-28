@@ -240,13 +240,6 @@ class ItemsQuerySchema(Schema):
     parentId = NonZeroUIntSearchField(allow_none=True)
     id = NonZeroUIntSearchField(allow_none=True)
 
-
-    
-
-    MIMEType = StringSearchField(allow_none=True)
-    type = StringSearchField(allow_none=True)
-    extension = StringSearchField(allow_none=True)
-
     # Additional query parameters
     current_version = fields.Int()  # Current version of the item
     last_known_version = fields.Int()  # Last known version of the item
