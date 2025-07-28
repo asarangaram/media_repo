@@ -236,26 +236,16 @@ class ItemsQuerySchema(Schema):
     isCollection = fields.Bool(allow_none=True)
     isDeleted = fields.Bool(allow_none=True)
 
-    # Strings or List of Strings
-    label = StringSearchField(allow_none=True)
-    label_starts_with = fields.Str(allow_none=True)
-    label_contains = fields.Str(allow_none=True)
-    description_contains = fields.Str(allow_none=True)
+    # nonzero uint or list of nonzero uint
+    parentId = NonZeroUIntSearchField(allow_none=True)
+    id = NonZeroUIntSearchField(allow_none=True)
+
+
+    
 
     MIMEType = StringSearchField(allow_none=True)
     type = StringSearchField(allow_none=True)
     extension = StringSearchField(allow_none=True)
-
-    
-    
-
-    # nonzero uint or list of nonzero uint
-   
-    parentId = NonZeroUIntSearchField(allow_none=True)
-    id = NonZeroUIntSearchField(allow_none=True)
-    
-
-    
 
     # Additional query parameters
     current_version = fields.Int()  # Current version of the item

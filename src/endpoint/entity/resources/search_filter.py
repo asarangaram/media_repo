@@ -6,41 +6,30 @@ from sqlalchemy_continuum import version_class
 from src.endpoint.entity.models import EntityModel
 from src.endpoint.entity.resources.num_query_schema import NumberQuerySchema
 from src.endpoint.entity.resources.datetime_query_schema import DateTimeQuerySchema
+from src.endpoint.entity.resources.str_query_schema import StringQuerySchema
 from src.endpoint.entity.schema import ItemSchema, ItemsQuerySchema
 from src.utils.flatten_dict import convert_bools_to_int_recursive, flatten_dict
 
+
 class SearchFilters:
     string_search_field_map = {
-        "label": {"column": EntityModel.label, "match_type": "exact"},
-        "md5": {"column": EntityModel.md5, "match_type": "exact"},
         "type": {"column": EntityModel.type, "match_type": "exact"},
         "MIMEType": {"column": EntityModel.MIMEType, "match_type": "exact"},
         "extension": {"column": EntityModel.extension, "match_type": "exact"},
-        "label_starts_with": {
-            "column": EntityModel.label,
-            "match_type": "ilike_starts_with",
-        },
-        "label_contains": {"column": EntityModel.label, "match_type": "ilike_partial"},
-        "description_contains": {
-            "column": EntityModel.description,
-            "match_type": "ilike_partial",
-        },
     }
     numeric_search_field_map = {
         "id": EntityModel.id,
         "parentId": EntityModel.parentId,
-        "ImageHeight": EntityModel.ImageHeight,
-        "ImageWidth": EntityModel.ImageWidth,
-        "Duration": EntityModel.Duration,
     }
 
     def __init__(self, MediaVersion, **kwargs):
         self.MediaVersion = MediaVersion
         query_args = flatten_dict(request.args.to_dict(flat=False))
         self.parsed_queries_internal = ItemsQuerySchema().load(query_args)
-        
+
         self.dateQueries = {}
         self.numQueries = {}
+        self.strQueries = {}
 
         known_fields = set(ItemsQuerySchema().fields.keys())
         for date_field in DateTimeQuerySchema.allowed_date_fields.keys():
@@ -50,6 +39,7 @@ class SearchFilters:
             translated = self.dateQueries[date_field].translate()
             self.parsed_queries_internal.update(translated)
             known_fields.update(translated.keys())
+
         for num_field in NumberQuerySchema.allowed_number_fields.keys():
             self.numQueries[num_field] = NumberQuerySchema(
                 num_field, **self.parsed_queries_internal
@@ -57,6 +47,15 @@ class SearchFilters:
             translated = self.numQueries[num_field].translate()
             self.parsed_queries_internal.update(translated)
             known_fields.update(translated.keys())
+
+        for str_field in StringQuerySchema.allowed_string_fields.keys():
+            self.strQueries[str_field] = StringQuerySchema(
+                str_field, **self.parsed_queries_internal
+            )
+            translated = self.strQueries[str_field].translate()
+            self.parsed_queries_internal.update(translated)
+            known_fields.update(translated.keys())
+
         unused_keys = self.parsed_queries_internal.keys() - known_fields
         if len(unused_keys) > 0:
             raise ValidationError({key: "unknown field" for key in unused_keys})
@@ -88,16 +87,17 @@ class SearchFilters:
             else:  # default to exact
                 return column == value
 
-   
-
     @property
     def queries(self):
         db_queries = []
         for date_field in DateTimeQuerySchema.allowed_date_fields.keys():
             db_queries.extend(self.dateQueries[date_field].queries)
-        
+
         for num_field in NumberQuerySchema.allowed_number_fields.keys():
             db_queries.extend(self.numQueries[num_field].queries)
+
+        for str_field in StringQuerySchema.allowed_string_fields.keys():
+            db_queries.extend(self.strQueries[str_field].queries)
 
         if "isCollection" in self.parsed_queries_internal:
             db_queries.append(
@@ -119,7 +119,6 @@ class SearchFilters:
                     )
                 )
 
-        
         return db_queries
 
     def rawQuery(self, db) -> str:
