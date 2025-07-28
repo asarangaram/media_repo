@@ -389,6 +389,8 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         try:
             if curr != prev:
                 timenow = datetime.now()
+                # Store only millisecond accurate time
+                timenow = timenow.replace(microsecond=(timenow.microsecond // 1000) * 1000)
                 curr.addedDate = prev.addedDate if prev else timenow
                 curr.updatedDate = timenow
 
