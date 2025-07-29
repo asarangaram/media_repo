@@ -3,11 +3,7 @@ from src.endpoint.entity.models import EntityModel
 from src.endpoint.entity.resources.search_filter import SearchFilters
 from src.utils.custom_errors.internal_server_errors import UnexpectedFailure
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
-from src.endpoint.entity.schema import (
-    ItemSchema,
-    ItemsQuerySchema,
-    MatchQuerySchema,
-)
+from src.endpoint.entity.schema import ItemSchema, MatchQuerySchema
 
 
 from flask import jsonify, request
@@ -57,7 +53,10 @@ def entity_read_all_resource(MediaVersion, route):
         @custom_handle_error
         def get(cls, **kwargs):
             media_query = SearchFilters(MediaVersion, **kwargs)
-            return {"loopback": media_query.parsed_queries, "rawQuery": media_query.rawQuery(db)}
+            return {
+                "loopback": media_query.parsed_queries,
+                "rawQuery": media_query.rawQuery(db),
+            }
 
     @route.route("/all")
     class EntityList(MethodView):
@@ -66,9 +65,8 @@ def entity_read_all_resource(MediaVersion, route):
         """
 
         @custom_handle_error
-        @route.arguments(ItemsQuerySchema, location="query")
         @route.response(200)
-        def get(cls, kwargs):
+        def get(cls):
             """
             Retrieves a paginated list of media entities.
 
@@ -78,12 +76,11 @@ def entity_read_all_resource(MediaVersion, route):
             Returns:
                 A JSON response containing the list of media entities and metadata.
             """
-            media_query = SearchFilters(MediaVersion, **kwargs)
+            media_query = SearchFilters(MediaVersion)
             try:
-
-                items = media_query.readFromDB( db.session.query(EntityModel))
+                items = media_query.readFromDB(db.session.query(EntityModel))
                 max_version, _ = media_query.get_latest_version(db)
-                
+
                 response = OrderedDict()
 
                 response["items"] = items

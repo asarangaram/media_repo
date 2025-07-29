@@ -1,5 +1,5 @@
 from flask_smorest.fields import Upload
-from marshmallow import INCLUDE, ValidationError, post_dump, validates_schema, Schema
+from marshmallow import post_dump, validates_schema, Schema
 from clmediakit import (
     IntigerizedBool,
     MediaTypeField,
@@ -11,7 +11,6 @@ from marshmallow import (
 
 from src.utils.custom_errors.validation_errors import (
     MissingParametersInMatchQuery,
-    NonZeroUIntSearchFieldError,
     TooManyParametersinMatchQuery,
 )
 
@@ -118,136 +117,6 @@ class ItemSchema(Schema):
         """
 
         return {key: value for key, value in data.items() if value}
-
-
-def validate_nonzero_uint_search_term(value):
-    if value in ("__null__", "__notnull__"):
-        return
-
-    if isinstance(value, int):
-        if value > 0:
-            return
-        raise ValidationError(
-            f"must be a positive non-zero integer. (received: {value})"
-        )
-    if isinstance(value, list):
-        if all(isinstance(v, int) and v > 0 for v in value):
-            return
-        raise ValidationError(
-            f"must contain only positive non-zero integers. (received {value})"
-        )
-    raise ValidationError(
-        'must be a positive non-zero integer, a list of such integers, or "__null__" / "__notnull__".'
-    )
-
-
-def validate_str_search_term(value):
-    if value in ("__null__", "__notnull__"):
-        return
-    if isinstance(value, str):
-        return
-    if isinstance(value, list):
-        if all(isinstance(v, str) for v in value):
-            return
-        raise ValidationError(f"must contain only strings. (received {value})")
-    raise ValidationError(
-        'must be a positive non-zero integer, a list of such integers, or "__null__" / "__notnull__".'
-    )
-
-
-class NonZeroUIntSearchField(fields.Field):
-    """
-    Accepts:
-    - single string like '10'
-    - list of strings like ['10', '20']
-    - special strings '__null__' or '__notnull__'
-
-    Converts to:
-    - int, list of ints, or special strings
-    """
-
-    def _deserialize(self, value, attr, data, **kwargs):
-        if isinstance(value, list):
-            if len(value) == 1:
-                if value[0] in ("__null__", "__notnull__"):
-                    return value[0]
-                return self._parse_one(value[0], value, attr)
-
-            return [self._parse_one(v, value, attr) for v in value]
-        if value in ("__null__", "__notnull__"):
-            return value
-        return self._parse_one(value, value, attr)
-
-    def _parse_one(self, v, value, attr):
-        try:
-            num = int(v)
-        except (ValueError, TypeError):
-            raise NonZeroUIntSearchFieldError(attr, value)
-        if num <= 0:
-            raise NonZeroUIntSearchFieldError(attr, value)
-        return num
-
-
-class StringSearchField(fields.Field):
-    def _deserialize(self, value, attr, data, **kwargs):
-        if isinstance(value, list):
-            if len(value) == 1:
-                if value[0] in ("__null__", "__notnull__"):
-                    return value[0]
-                return value[0]
-
-            return value
-        elif isinstance(value, str):
-            return value
-        else:
-            raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
-
-
-class BoolSearchField(fields.Field):
-    def _deserialize(self, value, attr, data, **kwargs):
-        if isinstance(value, list):
-            if len(value) == 1:
-                if value[0] in ("__null__", "__notnull__"):
-                    return value[0]
-                return self._parse_one(value[0], value, attr)
-
-            return [self._parse_one(v, value, attr) for v in value]
-        if value in ("__null__", "__notnull__"):
-            return value
-        return self._parse_one(value, value, attr)
-
-    def _parse_one(self, v, value, attr):
-        try:
-            num = int(v)
-        except (ValueError, TypeError):
-            raise NonZeroUIntSearchFieldError(attr, value)  # FIX Error code
-        if num != 0 and num != 1:
-            raise NonZeroUIntSearchFieldError(attr, value)  #   FIX Error code
-        return num == 1
-
-
-# Schema for querying items with various filters and pagination options
-class ItemsQuerySchema(Schema):
-    class Meta:
-        unknown = INCLUDE  # so unknown fields stay in data
-
-    # Queryable fields
-    # Boolean flags
-    isCollection = fields.Bool(allow_none=True)
-    isDeleted = fields.Bool(allow_none=True)
-
-    # nonzero uint or list of nonzero uint
-    parentId = NonZeroUIntSearchField(allow_none=True)
-    id = NonZeroUIntSearchField(allow_none=True)
-
-    # Additional query parameters
-    current_version = fields.Int()  # Current version of the item
-    last_known_version = fields.Int()  # Last known version of the item
-    page = fields.Int()  # Pagination: page number
-    per_page = fields.Int()  # Pagination: items per page
-
-    similar_to = fields.Int()  # ID of an item to find similar items
-    any = IntigerizedBool()  # Boolean flag for additional filtering
 
 
 class MatchQuerySchema(Schema):
