@@ -37,7 +37,7 @@ class UnexpectedFailure(InternalServerError):
     """
 
     def __init__(self):
-        super().__init__("DEVERR: Entity registration failed")
+        super().__init__("DEVERR: This should not have happened. Fix it")
 
 class DataNotLoadedError(InternalServerError):
     """

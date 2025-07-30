@@ -6,10 +6,10 @@ from marshmallow import ValidationError
 from clmediakit import toTimeStamp
 from src.endpoint.entity.models import EntityModel
 
-from src.endpoint.entity.resources.cust_fields import (
-    NumParam,
-    StrParam,
-    DateTimeParam,
+from src.endpoint.entity.resources.search_schema.param_datetime import DateTimeParam
+from src.endpoint.entity.resources.search_schema.param_num import NumParam
+from src.endpoint.entity.resources.search_schema.param_str import StrParam
+from src.endpoint.entity.resources.search_schema.param_bool import (
     BoolParam,
 )
 
@@ -51,8 +51,6 @@ class SearchSchema:
 
     @property
     def fields(self):
-        if not self._fields:
-            return {}
         return SearchSchema.convert(self._fields)
 
     @property
@@ -82,6 +80,7 @@ class SearchSchema:
         except Exception:
             raise
 
+    @staticmethod
     def convert(data):
         if isinstance(data, bool):
             return int(data)

@@ -3,7 +3,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects import sqlite
 from sqlalchemy_continuum import version_class
 from src.endpoint.entity.models import EntityModel
-from src.endpoint.entity.resources.query_schema import SearchSchema
+from src.endpoint.entity.resources.search_schema.search_schema import SearchSchema
 from src.endpoint.entity.schema import ItemSchema
 
 
