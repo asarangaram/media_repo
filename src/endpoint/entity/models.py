@@ -16,6 +16,7 @@ from clmediakit import (
     HLSStreamGenerator,
     HLSVariant,
 )
+from sqlalchemy import true
 
 from src.hnsw_indices import hnsw_image_lookup, hnsw_video_lookup
 from src.endpoint.background.models import BackgroundTaskModel
@@ -126,7 +127,14 @@ class EntityModel(db.Model, EntityModelReaderMixin):
     Duration = db.Column(db.Float, nullable=True)
 
     __table_args__ = (
-        db.UniqueConstraint("label", "isCollection", name="unique_label_Collection"),
+        db.Index(
+            "unique_label_Collection",
+            label,
+            unique=True,
+            sqlite_where="isCollection" == true(),  # SQLite specific
+        ),
+        
+        # db.UniqueConstraint("label", "isCollection", name="unique_label_Collection"),
         # db.CheckConstraint(
         #     "isCollection = 1 OR parentId IS NOT NULL",
         #    name="check_parent_not_null_if_not_collection",
@@ -390,7 +398,9 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             if curr != prev:
                 timenow = datetime.now()
                 # Store only millisecond accurate time
-                timenow = timenow.replace(microsecond=(timenow.microsecond // 1000) * 1000)
+                timenow = timenow.replace(
+                    microsecond=(timenow.microsecond // 1000) * 1000
+                )
                 curr.addedDate = prev.addedDate if prev else timenow
                 curr.updatedDate = timenow
 
