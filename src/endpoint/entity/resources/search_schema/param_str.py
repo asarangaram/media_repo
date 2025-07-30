@@ -9,8 +9,8 @@ import re
 
 
 class StrParam(Param):
-    def __init__(self, field_name: str, dbColumn, data, no_variant: bool = False):
-        super().__init__(field_name, dbColumn, data, no_variant=no_variant)
+    def __init__(self, field_name: str, dbColumn, data, no_variant: bool = False, is_null_supported: bool = True, ):
+        super().__init__(field_name, dbColumn, data, no_variant=no_variant,is_null_supported=is_null_supported)
         self.patterns = [re.compile(r"^(StartsWith|Contains)$")]
 
     def load(self):

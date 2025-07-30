@@ -12,8 +12,8 @@ from datetime import datetime
 
 
 class DateTimeParam(Param):
-    def __init__(self, field_name: str, dbColumn, data, no_variant: bool = False):
-        super().__init__(field_name, dbColumn, data, no_variant=no_variant)
+    def __init__(self, field_name: str, dbColumn, data, no_variant: bool = False, is_null_supported: bool = True, ):
+        super().__init__(field_name, dbColumn, data, no_variant=no_variant,is_null_supported=is_null_supported)
         self.patterns = [
             re.compile(r"^(YY(MM(DD)?)?)?(From|Till)$"),
             re.compile(r"^(YY)?(MM)?(DD)?(HH)?$"),
@@ -166,18 +166,7 @@ class DateTimeParam(Param):
                 if not self.no_variant:
                     m1 = self.patterns[0].fullmatch(suffix)
                     if m1:
-                        YY, MM, DD, HH = m1.groups()
-                        args = dict(
-                            yy=YY is not None,
-                            mm=MM is not None,
-                            dd=DD is not None,
-                            hh=HH is not None,
-                        )
-                        date_query_filters.append(self.datetime_query(value, **args))
-                        continue
-                    m2 = self.patterns[1].fullmatch(suffix)
-                    if m2:
-                        whole_suffix, MM, DD, from_till = m2.groups()
+                        whole_suffix, MM, DD, from_till = m1.groups()
                         args = dict(
                             yy=1 if whole_suffix and whole_suffix.startswith("YY") else None,
                             mm=1 if MM else None,
@@ -187,6 +176,19 @@ class DateTimeParam(Param):
                         )
                         date_query_filters.append(self.datetime_query(value, **args))
                         continue
+                        
+                    m2 = self.patterns[1].fullmatch(suffix)
+                    if m2:
+                        YY, MM, DD, HH = m2.groups()
+                        args = dict(
+                            yy=YY is not None,
+                            mm=MM is not None,
+                            dd=DD is not None,
+                            hh=HH is not None,
+                        )
+                        date_query_filters.append(self.datetime_query(value, **args))
+                        continue
+                       
                 raise UnexpectedFailure()
 
         return date_query_filters

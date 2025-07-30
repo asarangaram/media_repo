@@ -10,14 +10,14 @@ import re
 
 class NumParam(Param):
     def __init__(
-        self, field_name: str, dbColumn, data, no_variant: bool = False, is_float=False
+        self, field_name: str, dbColumn, data, no_variant: bool = False, is_null_supported: bool = True,  is_float=False
     ):
-        super().__init__(field_name, dbColumn, data, no_variant=no_variant)
+        super().__init__(field_name, dbColumn, data, no_variant=no_variant, is_null_supported=is_null_supported)
         self.is_float = is_float
         self.patterns = [re.compile(r"^(Min|Max)$")]
 
     def load(self) -> bool:
-        return super().load(lambda key, value: self.to_int(key, value))
+        return super().load(lambda key, value: self.to_float(key, value) if  self.is_float  else self.to_int(key, value))
 
     def validate(self):
         if not super().validate():

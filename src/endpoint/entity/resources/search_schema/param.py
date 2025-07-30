@@ -9,8 +9,8 @@ class Param:
         field_name: str,
         dbColumn,
         data,
-        no_variant: bool = False,
-        is_null_supported: bool = False,
+        no_variant: bool ,
+        is_null_supported: bool ,
     ):
         self.field_name = field_name
         self.raw_fields = {
@@ -22,15 +22,13 @@ class Param:
 
     def load(self, fn_valid_value):
         self.fields = {}
-        if self.validate():
+        if self.validate() and len(self.raw_fields) > 0:
             for key, value in self.raw_fields.items():
                 v1 = value[0] if isinstance(value, list) and len(value) == 1 else value
-                if isinstance(v1, list):
-                    self.fields[key] = [fn_valid_value(key, value) for v in v1]
-                elif self.is_null_supported and v1 in ("__null__", "__notnull__"):
+                if self.is_null_supported and v1 in ("__null__", "__notnull__"):
                     self.fields[key] = v1
                 else:
-                    self.fields[key] = fn_valid_value(key, value)
+                    self.fields[key] = fn_valid_value(key, v1)
         return self.fields
 
     def validate(self):
