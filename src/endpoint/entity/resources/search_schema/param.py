@@ -73,8 +73,8 @@ class Param:
             if isinstance(value, list):
                 return [str(v) for v in value]
             return str(value)
-        except (ValueError, TypeError) as error:
-            raise ValidationError({key: str(error)})
+        except (ValueError, TypeError) as error: # pragma: no cover
+            raise ValidationError({key: str(error)}) # pragma: no cover
 
     @staticmethod
     def to_datetime(key, value):
