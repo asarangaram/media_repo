@@ -38,13 +38,11 @@ class Param:
             if not suffix:
                 continue
             if not self.no_variant:
-                m0 = self.patterns[0].fullmatch(suffix)
-                if m0:
-                    continue
-                m1 = self.patterns[1].fullmatch(suffix)
-                if m1:
-                    continue
 
+                mList = [pattern.fullmatch(suffix) for pattern in self.patterns]
+                if any(item is not None for item in mList):
+                    continue
+                
             return self.unknownField(key)
         return True
 
