@@ -11,7 +11,7 @@ click==8.2.1
 click-didyoumean==0.3.1
 click-plugins==1.1.1
 click-repl==0.3.0
-clmediakit @ git+https://github.com/asarangaram/clmediakit.git@9086b5437b061685e440a9fa9bfb38c6a1ce3805
+clmediakit @ git+https://github.com/asarangaram/clmediakit.git@44eae6f34fba6db2584e75953ca71633a348ea0a
 cryptography==44.0.2
 defusedxml==0.7.1
 Flask==3.1.1
