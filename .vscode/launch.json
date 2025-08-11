@@ -13,6 +13,16 @@
           "env": {
             "PYTHONPATH": "${workspaceFolder}"
           },
+        },
+        {
+          "name": "Coverage",
+          "type": "debugpy",
+          "request": "launch",
+          "program": "src/coverage_runner.py",
+          "console": "integratedTerminal",
+          "env": {
+            "PYTHONPATH": "${workspaceFolder}"
+          },
         }
     ]
 }

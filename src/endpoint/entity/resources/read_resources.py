@@ -1,19 +1,13 @@
 from src.db import db
 from src.endpoint.entity.models import EntityModel
-from src.endpoint.entity.resources.db_filter import dbFilter
+from src.endpoint.entity.resources.search_filter import SearchFilters
 from src.utils.custom_errors.internal_server_errors import UnexpectedFailure
-from src.utils.flatten_dict import convert_bools_to_int_recursive, flatten_dict
 from src.utils.custom_errors.custom_handle_error import custom_handle_error
-from src.endpoint.entity.schema import (
-    ItemSchema,
-    ItemsQuerySchema,
-    MatchQuerySchema,
-)
+from src.endpoint.entity.schema import ItemSchema, MatchQuerySchema
 
 
 from flask import jsonify, request
 from flask.views import MethodView
-from sqlalchemy.dialects import sqlite
 
 from collections import OrderedDict
 
@@ -58,30 +52,11 @@ def entity_read_all_resource(MediaVersion, route):
     class ValidateQuerySchema(MethodView):
         @custom_handle_error
         def get(cls, **kwargs):
-            query_args = flatten_dict(request.args.to_dict(flat=False))
-            parsed_query = ItemsQuerySchema().load(query_args)
-            try:
-                qfilter =dbFilter(parsed_query)
-                query1 = db.session.query(EntityModel).filter(*qfilter)
-
-                
-                # Get the statement object (which contains the whereclause)
-                statement = query1.statement
-
-                # Check if a whereclause exists
-                if statement.whereclause is not None:
-                    # Compile *only* the whereclause part
-                    rawQuery = str(statement.whereclause.compile(
-                        dialect=sqlite.dialect(),
-                        compile_kwargs={"literal_binds": True}
-                    ))
-                else:
-                    rawQuery = "" # No WHERE clause
-
-                
-            except Exception as err:
-                rawQuery = f"Failed to generate, error {err}"
-            return {"loopback": convert_bools_to_int_recursive(parsed_query), "rawQuery": rawQuery}
+            media_query = SearchFilters(MediaVersion, **kwargs)
+            return {
+                "loopback": media_query.parsed_queries,
+                "rawQuery": media_query.rawQuery(db),
+            }
 
     @route.route("/all")
     class EntityList(MethodView):
@@ -90,9 +65,8 @@ def entity_read_all_resource(MediaVersion, route):
         """
 
         @custom_handle_error
-        @route.arguments(ItemsQuerySchema, location="query")
         @route.response(200)
-        def get(cls, kwargs):
+        def get(cls):
             """
             Retrieves a paginated list of media entities.
 
@@ -102,20 +76,17 @@ def entity_read_all_resource(MediaVersion, route):
             Returns:
                 A JSON response containing the list of media entities and metadata.
             """
-            query_args = flatten_dict(request.args.to_dict(flat=False))
-            parsed_query = ItemsQuerySchema().load(query_args)
+            media_query = SearchFilters(MediaVersion)
             try:
-                qfilter = dbFilter(parsed_query)
-                query1 = db.session.query(EntityModel).filter(*qfilter)
-                result = query1.all()
-                items = [ItemSchema().dump(item) for item in result]
+                items = media_query.readFromDB(db.session.query(EntityModel))
+                max_version, _ = media_query.get_latest_version(db)
 
                 response = OrderedDict()
+
                 response["items"] = items
                 response["metaInfo"] = {
-                    "currentVersion": "TBD",
-                    "lastSyncedVersion": "TBD",
-                    "latestVersion": "TBD",
+                    "currentVersion": max_version,
+                    "latestVersion": max_version,
                     "totalItems": len(items),
                 }
                 return jsonify(response), 200
@@ -123,7 +94,7 @@ def entity_read_all_resource(MediaVersion, route):
             except Exception:
                 db.session.rollback()
                 raise UnexpectedFailure()
-            
+
             """ current_version = kwargs.get("current_version")
             last_known_version = kwargs.get("last_known_version")
             page = kwargs.get("page", 1)

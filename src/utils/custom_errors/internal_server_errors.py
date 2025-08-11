@@ -37,8 +37,17 @@ class UnexpectedFailure(InternalServerError):
     """
 
     def __init__(self):
-        super().__init__("DEVERR: Entity registration failed")
+        super().__init__("DEVERR: This should not have happened. Fix it")
 
+class DataNotLoadedError(InternalServerError):
+    """
+    In normal scenario, this error can't occur. this error is introduces
+    only to guard the developer mistake in entity registration logic,
+    and might occur if some error check is missing in the implementation
+    """
+
+    def __init__(self, message):
+        super().__init__(f"DEVERR: {message}")
 
 class IntegrityError(InternalServerError):
     """
