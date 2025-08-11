@@ -36,6 +36,7 @@ class SearchSchema:
                 "isCollection", EntityModel.isCollection, data_flat, no_variant=True
             ),
             BoolParam("isDeleted", EntityModel.isDeleted, data_flat, no_variant=True),
+            BoolParam("isHidden", EntityModel.isHidden, data_flat, no_variant=True),
         ]
         # Load
         self.query_parameters = []

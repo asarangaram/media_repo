@@ -100,6 +100,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
     isDeleted = db.Column(db.Boolean, default=False, nullable=False)
     isDeletedPermanently = db.Column(db.Boolean, default=False, nullable=False)
     isCollection = db.Column(db.Boolean, nullable=False)
+    isHidden = db.Column(db.Boolean,default=False, nullable=False)
 
     # Mandatory for Collections, Optional for Files
     label = db.Column(db.UnicodeText, nullable=True)
