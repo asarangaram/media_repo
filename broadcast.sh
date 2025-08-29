@@ -24,7 +24,7 @@ if [ -z "$HOST_PORT" ]; then
 fi
 
 
-SERVICE_NAME="server100@cloudonlapapps"
+SERVICE_NAME="server200@cloudonlapapps" # FIXME: make it env variable
 SERVICE_TYPE="_http._tcp"
 PORT=$HOST_PORT
 TXT_RECORD="desc=CL Image Repo Service"
