@@ -1,8 +1,11 @@
 import os
 from flask import Flask
 from flask_migrate import Migrate
+from flask_socketio import SocketIO
 from sqlalchemy_continuum import version_class
 from flask_smorest import Blueprint
+
+from src.ai_socket import ClientManager, check_idle_clients, register_socket_io_handlers
 
 
 from .db import db
@@ -43,5 +46,17 @@ def create_app(config_object):
     
     app.register_blueprint(entity_bp)
     app.register_blueprint(background_task_bp)
+    socketio = SocketIO(
+        app,
+        cors_allowed_origins="*",
+        ping_interval=25,  # server pings every 25s
+        ping_timeout=60 * 10,  # disconnect if no pong in 60s
+    )
+    clients = ClientManager()
+    register_socket_io_handlers(socketio=socketio, clients=clients)
+
+    socketio.start_background_task(
+        target=check_idle_clients, clients=clients, socketio=socketio
+    )
 
     return app

@@ -16,6 +16,7 @@ from clmediakit import (
     HLSStreamGenerator,
     HLSVariant,
 )
+import eventlet
 from sqlalchemy import true
 
 from src.hnsw_indices import hnsw_image_lookup, hnsw_video_lookup
@@ -541,7 +542,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                 raise VideoStreamError(
                     additionalMessage="background task not responding for media {id}",
                 )
-            time.sleep(1)  # Poll every second
+            eventlet.sleep(1)  # Poll every second
         return
 
     def get_stream_folder(self) -> str:
