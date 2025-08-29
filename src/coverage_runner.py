@@ -1,9 +1,9 @@
 import os
 import signal
 import sys
-import time
 
 import coverage
+import eventlet
 
 
 COVERAGE_DIR = os.path.join(os.getcwd(), "coverage_data")
@@ -53,7 +53,7 @@ if __name__ == "__main__":
             cov_main.save()
 
             print("[Coverage Runner] Main process coverage data saved to '.coverage'.")
-            time.sleep(0.5)
+            eventlet.sleep(0.5)
         except Exception as e:
             print(f"[Coverage Runner] ERROR during coverage save: {e}", file=sys.stderr)
         os._exit(0)
