@@ -6,7 +6,8 @@ from sqlalchemy_continuum import version_class
 from flask_smorest import Blueprint
 
 from src.ai_socket import ClientManager, check_idle_clients, register_socket_io_handlers
-from src.endpoint.analyse.resources import register_analysis_resources
+from src.endpoint.sessions.resources import register_sessions_resources
+
 
 
 from .db import db
@@ -32,11 +33,12 @@ def create_app(config_object):
 
     EntityVersion = version_class(EntityModel)
     
+    clients = ClientManager()
 
     entity_bp = Blueprint("entity_bp", __name__, url_prefix="/entity")
     register_resources(EntityVersion, entity_bp)
     sessions_bp = Blueprint("sessions", __name__, url_prefix="/sessions")
-    register_analysis_resources(EntityVersion, sessions_bp)
+    register_sessions_resources(EntityVersion, sessions_bp, clients)
 
     with app.app_context():
         db.create_all()
@@ -56,7 +58,7 @@ def create_app(config_object):
         ping_interval=25,  # server pings every 25s
         ping_timeout=60 * 10,  # disconnect if no pong in 60s
     )
-    clients = ClientManager()
+    
     register_socket_io_handlers(socketio=socketio, clients=clients)
 
     socketio.start_background_task(

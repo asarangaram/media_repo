@@ -1,39 +1,19 @@
 import eventlet
 
-eventlet.monkey_patch()  # <-- must come first
-
-import time  # noqa: E402
 from flask import Flask, request  # noqa: E402
 from flask_socketio import SocketIO  # noqa: E402
-import logging  # noqa: E402
+import logging
+
+from src.endpoint.sessions.session_manager import ClientManager  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
-
-
-class ClientManager:
-    NO_ACTIVITY_TIMEOUT = 60 * 60  # seconds
-
-    def __init__(self):
-        # {sid: last_activity_timestamp}
-        self._clients = {}
-
-    def update_activity(self, sid):
-        self._clients[sid] = time.time()
-
-    def remove_client(self, sid):
-        self._clients.pop(sid, None)
-
-    def get_idle_clients(self, timeout_seconds=NO_ACTIVITY_TIMEOUT):
-        now = time.time()
-        return [sid for sid, ts in self._clients.items() if now - ts > timeout_seconds]
 
 
 def register_socket_io_handlers(socketio: SocketIO, clients: ClientManager):
     @socketio.on("connect")
     def handle_connect():
         sid = request.sid
-        clients.update_activity(sid)
-
+        clients.create_session(sid)
         logging.info(f"Client connected: {sid}")
 
     @socketio.on("message")
