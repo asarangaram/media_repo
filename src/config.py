@@ -84,4 +84,6 @@ class ConfigClass(object):
     DEFAULT_COLLECTION_LABEL = "Unclassified"
     GENERATE_STREAM_TASK = "generate_stream_lq"
 
+    SESSION_STORAGE_LOCATION = f"{FILE_STORAGE_LOCATION}/sessions"
+
     
