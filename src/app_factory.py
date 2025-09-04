@@ -4,6 +4,8 @@ from flask_migrate import Migrate
 from sqlalchemy_continuum import version_class
 from flask_smorest import Blueprint
 
+from src.endpoint.upload.resources import register_sessions_resources
+
 
 from .db import db
 from src.endpoint.entity.models import EntityModel
@@ -32,6 +34,9 @@ def create_app(config_object):
     entity_bp = Blueprint("entity_bp", __name__, url_prefix="/entity")
     register_resources(EntityVersion, entity_bp)
 
+    session_bp = Blueprint("session_bp", __name__, url_prefix="/sessions")
+    register_sessions_resources(session_bp)
+
     with app.app_context():
         db.create_all()
 
@@ -40,8 +45,8 @@ def create_app(config_object):
     # Landing Page
     app.register_blueprint(landing_bp)
     app.register_blueprint(URL_map_resouce_bp)
-    
     app.register_blueprint(entity_bp)
+    app.register_blueprint(session_bp)
     app.register_blueprint(background_task_bp)
 
     return app

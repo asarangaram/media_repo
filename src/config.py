@@ -41,6 +41,7 @@ class ConfigClass(object):
     APP_NAME = get_required_env_variable("APP_NAME")
     SECRET_KEY = get_required_env_variable("FLASK_SECRET_KEY1")
     FILE_STORAGE_LOCATION = get_required_env_variable("FILE_STORAGE_LOCATION")
+    UPLOAD_STORAGE_LOCATION = get_required_env_variable("UPLOAD_STORAGE_LOCATION")
     # Create folder if not exists
     os.makedirs(FILE_STORAGE_LOCATION, exist_ok=True)
     HOST_ADDR=get_required_env_variable("HOST_ADDR")
