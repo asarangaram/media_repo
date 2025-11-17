@@ -60,14 +60,14 @@ check_system_software()
     fi
 }
 
-create_venv
+# create_venv
 
-os_name=$(uname)
-if [ "$os_name" == "Darwin" ]; then
-    check_system_software
-fi
+#os_name=$(uname)
+#if [ "$os_name" == "Darwin" ]; then
+#    check_system_software
+#fi
 # dns-sd on macOS / avahi-publish + avahi-browse on Linux
-bash ./broadcast.sh &
+# bash ./broadcast.sh &
 
 # avahi is running as a service
 # vi /etc/systemd/system/avahi.service
