@@ -37,7 +37,10 @@ class UnexpectedFailure(InternalServerError):
     """
 
     def __init__(self):
-        super().__init__("DEVERR: This should not have happened. Fix it")
+        super().__init__(
+            "DEVERR: An unexpected internal error occurred. "
+            "This indicates a potential bug."
+        )
 
 
 class DataNotLoadedError(InternalServerError):
@@ -69,7 +72,7 @@ class IntegrityError(InternalServerError):
         "check_type_not_null_if_not_collection": "Failed to determine type for"
         " media",
         "check_extension_not_null_if_not_collection": "Failed to determine "
-        "extensio for media",
+        "extension for media",
     }
 
     def __init__(self, error: sqlite3.IntegrityError):

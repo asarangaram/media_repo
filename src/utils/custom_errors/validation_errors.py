@@ -64,14 +64,14 @@ class CannotAttachFileWithCollectionError(ValidationError):
 class ParentIDNotACollectionError(ValidationError):
     def __init__(self, parent_id: int):
         super().__init__(
-            {"parent_id": f" parent_id {parent_id} is not a collection"}
+            {"parent_id": f"parent_id {parent_id} is not a collection"}
         )
 
 
 class ParentIDNotExistsError(ValidationError):
     def __init__(self, parent_id: int):
         super().__init__(
-            {"parent_id": f" parent_id {parent_id} does not exists"}
+            {"parent_id": f"parent_id {parent_id} does not exist"}
         )
 
 
@@ -85,7 +85,7 @@ class ParentIDNotProvidedError(ValidationError):
         )
 
 
-class Failed2GetEntityTypeError(ValidationError):
+class EntityTypeDetectionError(ValidationError):
     def __init__(self):
         super().__init__(
             {
@@ -99,4 +99,10 @@ class MissingParametersInMatchQuery(ValidationError):
     def __init__(self):
         super().__init__(
             {"empty": "One of 'id', 'md5', or 'label' must be provided"}
+        )
+
+class TooManyParametersInMatchQuery(ValidationError):
+    def __init__(self):
+        super().__init__(
+            {"empty": "Too many parameters provided for match query. Use only one of 'id', 'md5', or 'label'"}
         )

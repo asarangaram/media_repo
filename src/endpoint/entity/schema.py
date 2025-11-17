@@ -1,17 +1,19 @@
-from flask_smorest.fields import Upload
-from marshmallow import post_dump, validates_schema, Schema
 from clmediakit import (
     IntigerizedBool,
     MediaTypeField,
     MillisecondsSinceEpoch,
 )
+from flask_smorest.fields import Upload
 from marshmallow import (
+    Schema,
     fields,
+    post_dump,
+    validates_schema,
 )
 
 from src.utils.custom_errors.validation_errors import (
     MissingParametersInMatchQuery,
-    TooManyParametersinMatchQuery,
+    TooManyParametersInMatchQuery,
 )
 
 
@@ -131,12 +133,10 @@ class MatchQuerySchema(Schema):
     @validates_schema
     def validate_one_param(self, data, **kwargs):
         present_params = [
-            field
-            for field in ["md5", "label"]
-            if data.get(field) is not None
+            field for field in ["md5", "label"] if data.get(field) is not None
         ]
 
         if not present_params:
             raise MissingParametersInMatchQuery()
         elif len(present_params) > 1:
-            raise TooManyParametersinMatchQuery()
+            raise TooManyParametersInMatchQuery()

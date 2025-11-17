@@ -13,7 +13,7 @@ class MissingMediaError(NotFound):
 
 class MissingMediaWhenUploadError(NotFound):
     def __init__(self):
-        super().__init__("Post media with a file.")
+        super().__init__("A file is required when creating or updating this media entity.")
 
 
 class VideoStreamError(NotFound):

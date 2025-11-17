@@ -7,7 +7,7 @@ from src.endpoint.entity.schema import ItemSchema, MediaFileSchema
 from src.utils.custom_errors.validation_errors import (
     CannotAttachFileWithCollectionError,
     MediaMustHaveMediaFile,
-    Failed2GetEntityTypeError,
+    EntityTypeDetectionError,
 )
 
 
@@ -22,7 +22,7 @@ def entity_create_resource(MediaVersion, route):
             files = MediaFileSchema().load(request.files)
 
             if "is_collection" not in form_data and "media" not in files:
-                raise Failed2GetEntityTypeError()
+                raise EntityTypeDetectionError()
 
             if form_data.get("is_collection", None):
                 if files.get("media"):
