@@ -106,4 +106,5 @@ where = ["src"]
 line-length = 79
 
 [tool.flake8]
-ignore = ["E203", "E501"]
+ignore = ["E203", "E501", "W503", "W504"]
+max-line-length = 79

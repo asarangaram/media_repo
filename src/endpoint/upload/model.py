@@ -1,8 +1,7 @@
 import hashlib
 import shutil
-from typing import Any
-from clmediakit import CLMetaData
 from pathlib import Path
+from typing import Any
 
 from src.config import ConfigClass
 from src.endpoint.entity.temp_file import TempFile
