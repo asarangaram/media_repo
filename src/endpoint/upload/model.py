@@ -19,12 +19,14 @@ class UploadManager:
             file_path.unlink()
 
     def upload_files(self):
-        session_path = Path(ConfigClass.UPLOAD_STORAGE_LOCATION) / self.session_id
+        session_path = (
+            Path(ConfigClass.UPLOAD_STORAGE_LOCATION) / self.session_id
+        )
         session_path.mkdir(parents=True, exist_ok=True)
 
         temp_file = TempFile(self.uploaded_file)
         metadata = temp_file.metadata()
-        #metadata = {key: value for key, value in metadata.items() if value}
+        # metadata = {key: value for key, value in metadata.items() if value}
 
         md5 = metadata.get("md5")
         if not md5:

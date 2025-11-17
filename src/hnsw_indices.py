@@ -1,4 +1,4 @@
-## hnsw index is handled here
+# hnsw index is handled here
 
 from clmediakit import HNSWIndexDB
 from .config import ConfigClass

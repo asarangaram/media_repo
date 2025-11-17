@@ -5,7 +5,9 @@ from flask_smorest import Blueprint
 from .schemas import BGTaskSchema
 from .models import BackgroundTaskModel
 
-background_task_bp = Blueprint("background_task_bp", __name__, url_prefix="/background")
+background_task_bp = Blueprint(
+    "background_task_bp", __name__, url_prefix="/background"
+)
 
 
 @background_task_bp.route("/<int:media_id>")

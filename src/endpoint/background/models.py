@@ -17,11 +17,15 @@ class BackgroundTaskModel(db.Model):
     __tablename__ = "BackgroundTask"
 
     id = db.Column(db.Integer, primary_key=True)
-    media_id = db.Column(db.Integer, db.ForeignKey("entities.id"), nullable=False)
+    media_id = db.Column(
+        db.Integer, db.ForeignKey("entities.id"), nullable=False
+    )
     task_name = db.Column(db.String, nullable=False)
     task_id = db.Column(db.Integer, nullable=False)
     task_status = db.Column(db.String)
-    __table_args__ = (UniqueConstraint("media_id", "task_name", name="uq_media_task"),)
+    __table_args__ = (
+        UniqueConstraint("media_id", "task_name", name="uq_media_task"),
+    )
 
     def __init__(self, media_id, task_name, private_key=None, **kwargs):
         if private_key != BackgroundTaskModel.__private_key:
@@ -41,7 +45,9 @@ class BackgroundTaskModel(db.Model):
     def update_status(self):
         task_id = self.task_id
         try:
-            task_result = CeleryTasks.exec_generate_stream_lq.AsyncResult(task_id)
+            task_result = CeleryTasks.exec_generate_stream_lq.AsyncResult(
+                task_id
+            )
             print(f"state is {task_result.state}")
             if task_result.state == "PENDING":
                 self.task_status = "pending"
@@ -53,13 +59,15 @@ class BackgroundTaskModel(db.Model):
                 self.task_status = "failed"
             else:
                 self.task_status = "inprogress"
-        except:
+        except Exception:
             self.task_status = "notfound"
         self.save_to_db()
 
     @classmethod
     def get_status(cls, media_id, task_name):
-        obj = cls.query.filter_by(media_id=media_id, task_name=task_name).first()
+        obj = cls.query.filter_by(
+            media_id=media_id, task_name=task_name
+        ).first()
         if obj:
             obj.update_status()
             return obj
@@ -84,7 +92,9 @@ class BackgroundTaskModel(db.Model):
 
     @classmethod
     def start(cls, media_id, task_name):
-        obj = cls.query.filter_by(media_id=media_id, task_name=task_name).first()
+        obj = cls.query.filter_by(
+            media_id=media_id, task_name=task_name
+        ).first()
         if not obj:
             obj = BackgroundTaskModel(
                 media_id=media_id,
@@ -96,7 +106,8 @@ class BackgroundTaskModel(db.Model):
     @classmethod
     def start_all(cls, media_id):
         return [
-            cls.start(media_id, task_name=taskname) for taskname in CeleryTasks.tasks
+            cls.start(media_id, task_name=taskname)
+            for taskname in CeleryTasks.tasks
         ]
 
     @classmethod

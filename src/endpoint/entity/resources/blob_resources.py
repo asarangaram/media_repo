@@ -31,17 +31,27 @@ def blob_download_media(MediaVersion, route):
             """
             entity: Optional[EntityModel] = EntityModel.get(id=entity_id)
             if not entity:
-                return jsonify({"error": "Media not found", "status_code": 404}), 404
-            if entity.isCollection:
                 return (
-                    jsonify({"error": "No file for collection", "status_code": 400}),
+                    jsonify({"error": "Media not found", "status_code": 404}),
+                    404,
+                )
+            if entity.is_collection:
+                return (
+                    jsonify(
+                        {"error": "No file for collection", "status_code": 400}
+                    ),
                     400,
                 )
             if not os.path.exists(entity.absolute_filename):
-                return jsonify({"error": "Media file missing", "status_code": 404}), 404
+                return (
+                    jsonify(
+                        {"error": "Media file missing", "status_code": 404}
+                    ),
+                    404,
+                )
             return send_file(
                 entity.absolute_filename,
-                mimetype=entity.MIMEType,
+                mimetype=entity.mime_type,
                 download_name=secure_filename(entity.filename),
             )
 
@@ -66,10 +76,15 @@ def blob_download_preview(MediaVersion, route):
             """
             entity = EntityModel.get(id=entity_id)
             if not entity:
-                return jsonify({"error": "Media not found", "status_code": 404}), 404
-            if entity.isCollection:
                 return (
-                    jsonify({"error": "No file for collection", "status_code": 400}),
+                    jsonify({"error": "Media not found", "status_code": 404}),
+                    404,
+                )
+            if entity.is_collection:
+                return (
+                    jsonify(
+                        {"error": "No file for collection", "status_code": 400}
+                    ),
                     400,
                 )
             if os.path.exists(entity.absolute_preview_filename):
@@ -78,13 +93,20 @@ def blob_download_preview(MediaVersion, route):
                     mimetype="image/jpeg",
                     download_name=secure_filename(entity.preview_filename),
                 )
-            return jsonify({"error": "Preview file missing", "status_code": 404}), 404
+            return (
+                jsonify(
+                    {"error": "Preview file missing", "status_code": 404}
+                ),
+                404,
+            )
+
 
 def blob_download_video_stream(MediaVersion, route):
     @route.route("/<int:entity_id>/stream/m3u8")
     class EntityGetM3U8(MethodView):
         """
-        Serves the adaptive streaming manifest file (m3u8) for a media entity.
+        Serves the adaptive streaming manifest file (m3u8) for a media
+        entity.
         """
 
         @custom_handle_error
@@ -100,10 +122,15 @@ def blob_download_video_stream(MediaVersion, route):
             """
             entity = EntityModel.get(id=entity_id)
             if not entity:
-                return jsonify({"error": "Media not found", "status_code": 404}), 404
-            if entity.isCollection:
                 return (
-                    jsonify({"error": "No file for collection", "status_code": 400}),
+                    jsonify({"error": "Media not found", "status_code": 404}),
+                    404,
+                )
+            if entity.is_collection:
+                return (
+                    jsonify(
+                        {"error": "No file for collection", "status_code": 400}
+                    ),
                     400,
                 )
             stream_folder = entity.get_stream_folder()
@@ -114,7 +141,8 @@ def blob_download_video_stream(MediaVersion, route):
     @route.route("/<int:entity_id>/stream/<string:filename>")
     class EntityGetSegment(MethodView):
         """
-        Serves individual streaming segments or manifest files for a media entity.
+        Serves individual streaming segments or manifest files for a media
+        entity.
         """
 
         def get(cls, entity_id: int, filename: str):
@@ -130,24 +158,29 @@ def blob_download_video_stream(MediaVersion, route):
             """
             entity = EntityModel.get(id=entity_id)
             if not entity:
-                return jsonify({"error": "Media not found", "status_code": 404}), 404
-            if entity.isCollection:
                 return (
-                    jsonify({"error": "No file for collection", "status_code": 400}),
+                    jsonify({"error": "Media not found", "status_code": 404}),
+                    404,
+                )
+            if entity.is_collection:
+                return (
+                    jsonify(
+                        {"error": "No file for collection", "status_code": 400}
+                    ),
                     400,
                 )
             stream_folder = entity.get_stream_folder()
             if filename.endswith((".ts", ".m3u8")):
-                return send_from_directory(stream_folder, filename, as_attachment=False)
+                return send_from_directory(
+                    stream_folder, filename, as_attachment=False
+                )
             return (
                 jsonify(
                     {
-                        "error": f"File '{filename}' is not available in the stream folder",
+                        "error": f"File '{filename}' is not available in the "
+                        "stream folder",
                         "status_code": 404,
                     }
                 ),
                 404,
             )
-
-
-

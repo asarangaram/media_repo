@@ -1,19 +1,33 @@
-from src.endpoint.entity.resources.search_schema.param import Param
-from src.utils.custom_errors.internal_server_errors import DataNotLoadedError, UnexpectedFailure
-
-
-from marshmallow import ValidationError
-from sqlalchemy import extract
-
-
 import calendar
 import re
 from datetime import datetime
 
+from marshmallow import ValidationError
+from sqlalchemy import extract
+
+from src.endpoint.entity.resources.search_schema.param import Param
+from src.utils.custom_errors.internal_server_errors import (
+    DataNotLoadedError,
+    UnexpectedFailure,
+)
+
 
 class DateTimeParam(Param):
-    def __init__(self, field_name: str, dbColumn, data, no_variant: bool = False, is_null_supported: bool = True, ):
-        super().__init__(field_name, dbColumn, data, no_variant=no_variant,is_null_supported=is_null_supported)
+    def __init__(
+        self,
+        field_name: str,
+        dbColumn,
+        data,
+        no_variant: bool = False,
+        is_null_supported: bool = True,
+    ):
+        super().__init__(
+            field_name,
+            dbColumn,
+            data,
+            no_variant=no_variant,
+            is_null_supported=is_null_supported,
+        )
         self.patterns = [
             re.compile(r"^(YY(MM(DD)?)?)?(From|Till)$"),
             re.compile(r"^(YY)?(MM)?(DD)?(HH)?$"),
@@ -31,10 +45,12 @@ class DateTimeParam(Param):
 
         if len(self.raw_fields.keys()) == 2:
             from_key = next(
-                (k for k in self.raw_fields.keys() if k.endswith("From")), None
+                (k for k in self.raw_fields.keys() if k.endswith("From")),
+                None,
             )
             till_key = next(
-                (k for k in self.raw_fields.keys() if k.endswith("Till")), None
+                (k for k in self.raw_fields.keys() if k.endswith("Till")),
+                None,
             )
 
             if not from_key or not till_key:
@@ -57,8 +73,8 @@ class DateTimeParam(Param):
         raise ValidationError(
             {
                 f"{self.raw_fields.keys()}": "parameters are conflicting. "
-                "use either a matching query or a range query with From and Till "
-                "when using range query, masks"
+                "use either a matching query or a range query with From and "
+                "Till when using range query, masks"
             }
         )
 
@@ -66,7 +82,8 @@ class DateTimeParam(Param):
         raise ValidationError(
             {
                 f"{self.raw_fields.keys()}": "Too many parameters used. "
-                "use either a matching query or a range query with From and Till"
+                "use either a matching query or a range query with From and "
+                "Till"
             }
         )
 
@@ -102,7 +119,7 @@ class DateTimeParam(Param):
         Till: bool = False,
     ):
         dbColumn = self.dbColumn
-       
+
         if From or Till:
             if yy or mm or dd:
                 year = value.year
@@ -115,7 +132,13 @@ class DateTimeParam(Param):
                 microsecond = 999999 if Till else 0
 
                 dt = datetime(
-                    year, month, day, hour, minute, second, microsecond=microsecond
+                    year,
+                    month,
+                    day,
+                    hour,
+                    minute,
+                    second,
+                    microsecond=microsecond,
                 )
                 pass
             else:
@@ -153,7 +176,7 @@ class DateTimeParam(Param):
     @property
     def queries(self):
         if not hasattr(self, "fields"):
-            raise DataNotLoadedError(f"data is not loaded for {self.field_name}")
+            raise DataNotLoadedError("data is not loaded for {self.field_name}")
 
         date_query_filters = []
         if len(self.fields) > 0:
@@ -168,7 +191,11 @@ class DateTimeParam(Param):
                     if m1:
                         whole_suffix, MM, DD, from_till = m1.groups()
                         args = dict(
-                            yy=1 if whole_suffix and whole_suffix.startswith("YY") else None,
+                            yy=(
+                                1
+                                if whole_suffix and whole_suffix.startswith("YY")
+                                else None
+                            ),
                             mm=1 if MM else None,
                             dd=1 if DD else None,
                             From=(from_till == "From"),
@@ -176,7 +203,7 @@ class DateTimeParam(Param):
                         )
                         date_query_filters.append(self.datetime_query(value, **args))
                         continue
-                        
+
                     m2 = self.patterns[1].fullmatch(suffix)
                     if m2:
                         YY, MM, DD, HH = m2.groups()
@@ -188,8 +215,7 @@ class DateTimeParam(Param):
                         )
                         date_query_filters.append(self.datetime_query(value, **args))
                         continue
-                       
+
                 raise UnexpectedFailure()
 
         return date_query_filters
-        pass

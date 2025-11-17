@@ -1,8 +1,7 @@
-from src.utils.custom_errors.custom_handle_error import custom_handle_error
-
-
 from flask import make_response, render_template
 from flask.views import MethodView
+
+from src.utils.custom_errors.custom_handle_error import custom_handle_error
 
 
 def entity_upload_form(MediaVersion, route):

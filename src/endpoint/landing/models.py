@@ -4,7 +4,8 @@ from src.config import ConfigClass
 _info = """
 This API service offers microservices through a RESTful interface. \
 Please refer to the appropriate endpoint that aligns with your specific needs. \
-Consult the API documentation or relevant resources to identify the correct endpoints for the functionalities you require.
+Consult the API documentation or relevant resources to identify the correct \
+endpoints for the functionalities you require.
 """.strip()
 
 
@@ -13,4 +14,3 @@ class LandingPageModel:
         self.name = ConfigClass.APP_NAME
         self.info = _info
         self.id = 100  # TODO: FIND A UNIQUE ID FOR EACH SERVER AND REPLACE
-

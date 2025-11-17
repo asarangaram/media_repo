@@ -33,4 +33,7 @@ def get_field_details(schema_cls):
 class CollectionFields(MethodView):
     @landing_bp.response(200)
     def get(self):
-        return {"endpoint": "collection", "fields": get_field_details(CollectionSchema)} """
+        return {
+            "endpoint": "collection",
+            "fields": get_field_details(CollectionSchema),
+        } """

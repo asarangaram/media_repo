@@ -4,14 +4,16 @@ from src.endpoint.entity.resources.blob_resources import (
     blob_download_video_stream,
 )
 
-from src.endpoint.entity.resources.create_resources import entity_create_resource
+from src.endpoint.entity.resources.create_resources import \
+    entity_create_resource
 from src.endpoint.entity.resources.upload_form import entity_upload_form
 from src.endpoint.entity.resources.read_resources import (
     entity_match_resource,
     entity_read_all_resource,
     entity_read_resource,
 )
-from src.endpoint.entity.resources.update_resources import entity_update_resource
+from src.endpoint.entity.resources.update_resources import \
+    entity_update_resource
 
 from src.endpoint.entity.resources.delete_resources import (
     entity_softdelete_resource,
@@ -21,7 +23,9 @@ from src.endpoint.entity.resources.delete_resources import (
 )
 
 
-def register_resources(MediaVersion, route, canModify=True, canDelete=True):
+def register_resources(
+    MediaVersion, route, canModify=True, canDelete=True
+):
     """
     Registers routes and handlers for media-related operations.
 

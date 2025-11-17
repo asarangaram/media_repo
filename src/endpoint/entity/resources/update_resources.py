@@ -19,7 +19,7 @@ def entity_update_resource(MediaVersion, route):
             form_data = ItemSchema().load(request.form)
             files = MediaFileSchema().load(request.files)
 
-            if "isCollection" in form_data and "media" in files:
+            if "is_collection" in form_data and "media" in files:
                 raise CannotAttachFileWithCollectionError()
 
             # Analyse media file

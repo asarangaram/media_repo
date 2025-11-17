@@ -6,4 +6,10 @@ app = create_app(ConfigClass)
 CeleryTasks.init_celery(app)
 
 if __name__ == "__main__":
-    app.run(host=ConfigClass.HOST_ADDR, port=ConfigClass.HOST_PORT, debug=True, threaded=True, use_reloader = ConfigClass.USE_RELOADER)
+    app.run(
+        host=ConfigClass.HOST_ADDR,
+        port=ConfigClass.HOST_PORT,
+        debug=True,
+        threaded=True,
+        use_reloader=ConfigClass.USE_RELOADER,
+    )

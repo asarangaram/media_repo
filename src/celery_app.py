@@ -6,7 +6,9 @@ from clmediakit import HLSStreamGenerator, HLSVariant
 
 
 celery = Celery(
-    "tasks", broker="redis://localhost:6379/0", backend="redis://localhost:6379/0"
+    "tasks",
+    broker="redis://localhost:6379/0",
+    backend="redis://localhost:6379/0"
 )  # Create a Celery instance
 
 

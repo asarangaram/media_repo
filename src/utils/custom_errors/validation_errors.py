@@ -15,8 +15,8 @@ class MD5DuplicateItemError(ValidationError):
         super().__init__(
             {
                 "md5": (
-                    f"Duplicate item found with id {entity.id}" f", parent: {entity.parentId}"
-                    
+                    f"Duplicate item found with id {entity.id}, "
+                    f"parent: {entity.parent_id}"
                 ),
             }
         )
@@ -26,23 +26,27 @@ class HardDeleteFailedError(ValidationError):
     def __init__(self):
         super().__init__(
             {
-                "isDeleted": "failed to hard delete the entity, use soft delete first",
+                "is_deleted": "failed to hard delete the entity, "
+                "use soft delete first",
             }
         )
+
 
 class MediaAlreadyDeleted(ValidationError):
     def __init__(self):
         super().__init__(
             {
-                "isDeleted": "media is already deleted. You can either restore or permanently delete",
+                "is_deleted": "media is already deleted. You can either "
+                "restore or permanently delete",
             }
         )
+
 
 class MediaMustHaveMediaFile(ValidationError):
     def __init__(self):
         super().__init__(
             {
-                "mediaFile": "media can't be created without a valid media file",
+                "mediaFile": "media can't be created without a valid " "media file",
             }
         )
 
@@ -56,44 +60,36 @@ class CannotAttachFileWithCollectionError(ValidationError):
         )
 
 
-class ParentIdNotACollectionError(ValidationError):
-    def __init__(self, parentId:int):
-        super().__init__(
-            {
-                "parentId": f" parentId {parentId} is not a collection"
-            }
-        )
+class ParentIDNotACollectionError(ValidationError):
+    def __init__(self, parent_id: int):
+        super().__init__({"parent_id": f" parent_id {parent_id} is not a collection"})
 
-class ParentIdNotExistsError(ValidationError):
-    def __init__(self, parentId:int):
-        super().__init__(
-            {
-                "parentId": f" parentId {parentId} does not exists"
-            }
-        )
 
-class ParentIdNotProvidedError(ValidationError):
+class ParentIDNotExistsError(ValidationError):
+    def __init__(self, parent_id: int):
+        super().__init__({"parent_id": f" parent_id {parent_id} does not exists"})
+
+
+class ParentIDNotProvidedError(ValidationError):
     def __init__(self):
         super().__init__(
             {
-                "parentId": "parentId not specified, unable to create default collection"
+                "parent_id": "parent_id not specified, "
+                "unable to create default collection"
             }
         )
+
 
 class Failed2GetEntityTypeError(ValidationError):
     def __init__(self):
         super().__init__(
             {
-                "isCollection": "either isCollection should be specified OR a file must be present to know the entity type"
+                "is_collection": "either is_collection should be "
+                "specified OR a file must be present to know the entity type"
             }
         )
-
 
 
 class MissingParametersInMatchQuery(ValidationError):
     def __init__(self):
-        super().__init__(
-            {
-                "empty": "One of 'id', 'md5', or 'label' must be provided"
-            }
-        )
+        super().__init__({"empty": "One of 'id', 'md5', or 'label' must be provided"})

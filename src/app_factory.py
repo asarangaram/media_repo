@@ -21,7 +21,9 @@ def create_app(config_object):
     if lock.instance_already_running(config_object):
         print("A instance is already accessing file storage")
         exit(-1)
-    app = Flask(config_object.APP_NAME, template_folder=os.path.abspath("./src/html"))
+    app = Flask(
+        config_object.APP_NAME, template_folder=os.path.abspath("./src/html")
+    )
     app.config.from_object(config_object)
 
     db.init_app(app)
@@ -29,7 +31,6 @@ def create_app(config_object):
     db.configure_mappers()
 
     EntityVersion = version_class(EntityModel)
-    
 
     entity_bp = Blueprint("entity_bp", __name__, url_prefix="/entity")
     register_resources(EntityVersion, entity_bp)

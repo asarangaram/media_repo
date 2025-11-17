@@ -25,11 +25,12 @@ def entity_match_resource(MediaVersion, route):
         else if md5 is provided
             search by md5 and return
         else if label is provided
-            isCollection=True is automatically added and the label is searched for the combination
-            of (isCollection=True, label) and return.
+            is_collection=True is automatically added and the label is
+            searched for the combination of (is_collection=True, label)
+            and return.
 
-        as per the DB Design, its impossible to have more than one items for these searches, hence
-        we either return or return not found error.
+        as per the DB Design, its impossible to have more than one items for
+        these searches, hence we either return or return not found error.
         """
 
         @custom_handle_error
@@ -61,7 +62,8 @@ def entity_read_all_resource(MediaVersion, route):
     @route.route("/all")
     class EntityList(MethodView):
         """
-        Handles operations on the list of media entities, including creation, retrieval, and deletion.
+        Handles operations on the list of media entities, including
+        creation, retrieval, and deletion.
         """
 
         @custom_handle_error
@@ -74,11 +76,14 @@ def entity_read_all_resource(MediaVersion, route):
                 kwargs: Query parameters for filtering and pagination.
 
             Returns:
-                A JSON response containing the list of media entities and metadata.
+                A JSON response containing the list of media entities and
+                metadata.
             """
             media_query = SearchFilters(MediaVersion)
             try:
-                items = media_query.readFromDB(db.session.query(EntityModel))
+                items = media_query.readFromDB(
+                    db.session.query(EntityModel)
+                )
                 max_version, _ = media_query.get_latest_version(db)
 
                 response = OrderedDict()
@@ -104,7 +109,8 @@ def entity_read_all_resource(MediaVersion, route):
                 return (
                     jsonify(
                         {
-                            "error": "current_version and per_page are required to get further pages"
+                            "error": "current_version and per_page are "
+                            "required to get further pages"
                         }
                     ),
                     400,
@@ -122,7 +128,8 @@ def entity_read_all_resource(MediaVersion, route):
                 max_version = version_query.max_version or 0
 
                 effective_current_version = (
-                    current_version if current_version is not None else max_version
+                    current_version if current_version is not None
+                    else max_version
                 )
                 effective_last_version = (
                     last_known_version
@@ -133,7 +140,8 @@ def entity_read_all_resource(MediaVersion, route):
                 if effective_current_version < effective_last_version:
                     return jsonify(
                         {
-                            "error": "Current version must be greater than or equal to last known version"
+                            "error": "Current version must be greater than or "
+                            "equal to last known version"
                         }
                     ), 400
 
@@ -141,7 +149,9 @@ def entity_read_all_resource(MediaVersion, route):
                     effective_current_version > max_version
                     or effective_last_version < min_version
                 ):
-                    return jsonify({"error": "Version numbers out of range"}), 400
+                    return jsonify(
+                        {"error": "Version numbers out of range"}
+                    ), 400
 
                 latest_subquery = (
                     db.session.query(
@@ -152,7 +162,8 @@ def entity_read_all_resource(MediaVersion, route):
                     )
                     .filter(
                         VersionModel.transaction_id > effective_last_version,
-                        VersionModel.transaction_id <= effective_current_version,
+                        VersionModel.transaction_id <=
+                        effective_current_version,
                     )
                     .group_by(MediaVersion.id)
                     .subquery()

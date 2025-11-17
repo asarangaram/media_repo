@@ -24,7 +24,7 @@ def register_sessions_resources(route):
             result = manager.upload_files()
 
             return result
-        
+
         @custom_handle_error
         @route.response(200)
         def get(self, session_id):

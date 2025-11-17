@@ -1,23 +1,40 @@
-from src.endpoint.entity.resources.search_schema.param import Param
-from src.utils.custom_errors.internal_server_errors import DataNotLoadedError, UnexpectedFailure
-
+import re
 
 from marshmallow import ValidationError
 
-
-import re
+from src.endpoint.entity.resources.search_schema.param import Param
+from src.utils.custom_errors.internal_server_errors import (
+    DataNotLoadedError,
+    UnexpectedFailure,
+)
 
 
 class NumParam(Param):
     def __init__(
-        self, field_name: str, dbColumn, data, no_variant: bool = False, is_null_supported: bool = True,  is_float=False
+        self,
+        field_name: str,
+        dbColumn,
+        data,
+        no_variant: bool = False,
+        is_null_supported: bool = True,
+        is_float=False,
     ):
-        super().__init__(field_name, dbColumn, data, no_variant=no_variant, is_null_supported=is_null_supported)
+        super().__init__(
+            field_name,
+            dbColumn,
+            data,
+            no_variant=no_variant,
+            is_null_supported=is_null_supported,
+        )
         self.is_float = is_float
         self.patterns = [re.compile(r"^(Min|Max)$")]
 
     def load(self) -> bool:
-        return super().load(lambda key, value: self.to_float(key, value) if  self.is_float  else self.to_int(key, value))
+        return super().load(
+            lambda key, value: (
+                self.to_float(key, value) if self.is_float else self.to_int(key, value)
+            )
+        )
 
     def validate(self):
         if not super().validate():
@@ -36,14 +53,16 @@ class NumParam(Param):
         if self.no_variant:
             raise ValidationError(
                 {
-                    f"{self.raw_fields.keys()}": f"Too many parameters used. {self.field_name}can be used only once"
+                    f"{self.raw_fields.keys()}": "Too many parameters used. "
+                    f"{self.field_name}can be used only once"
                 }
             )
         raise ValidationError(
             {
                 f"{self.raw_fields.keys()}": "Too many parameters used"
-                f"use either {self.field_name}, {self.field_name}Min, {self.field_name}Max "
-                f"or both {self.field_name}Min and {self.field_name}Max. "
+                f"use either {self.field_name}, {self.field_name}Min, "
+                f"{self.field_name}Max or both {self.field_name}Min and "
+                f"{self.field_name}Max. "
             }
         )
 
@@ -71,5 +90,5 @@ class NumParam(Param):
                         num_query_filters.append(self.query(value, **args))
                         continue
                 raise UnexpectedFailure()
-            
+
         return num_query_filters

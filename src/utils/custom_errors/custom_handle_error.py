@@ -27,7 +27,7 @@ def custom_handle_error(func):
                 response["error"] = {"error": str(err)}
                 response["code"] = 404
             elif isinstance(err, InternalServerError):
-                response["error"] =  {"error": str(err)}
+                response["error"] = {"error": str(err)}
                 response["code"] = 500
             else:
                 response["error"] = {"error": str(err)}

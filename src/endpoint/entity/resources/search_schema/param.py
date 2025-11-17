@@ -9,12 +9,14 @@ class Param:
         field_name: str,
         dbColumn,
         data,
-        no_variant: bool ,
-        is_null_supported: bool ,
+        no_variant: bool,
+        is_null_supported: bool,
     ):
         self.field_name = field_name
         self.raw_fields = {
-            key: value for key, value in data.items() if key.startswith(field_name)
+            key: value
+            for key, value in data.items()
+            if key.startswith(field_name)
         }
         self.dbColumn = dbColumn
         self.no_variant = no_variant
@@ -24,8 +26,15 @@ class Param:
         self.fields = {}
         if self.validate() and len(self.raw_fields) > 0:
             for key, value in self.raw_fields.items():
-                v1 = value[0] if isinstance(value, list) and len(value) == 1 else value
-                if self.is_null_supported and v1 in ("__null__", "__notnull__"):
+                v1 = (
+                    value[0]
+                    if isinstance(value, list) and len(value) == 1
+                    else value
+                )
+                if self.is_null_supported and v1 in (
+                    "__null__",
+                    "__notnull__",
+                ):
                     self.fields[key] = v1
                 else:
                     self.fields[key] = fn_valid_value(key, v1)
@@ -38,11 +47,12 @@ class Param:
             if not suffix:
                 continue
             if not self.no_variant:
-
-                mList = [pattern.fullmatch(suffix) for pattern in self.patterns]
+                mList = [
+                    pattern.fullmatch(suffix) for pattern in self.patterns
+                ]
                 if any(item is not None for item in mList):
                     continue
-                
+
             return self.unknownField(key)
         return True
 
@@ -73,8 +83,8 @@ class Param:
             if isinstance(value, list):
                 return [str(v) for v in value]
             return str(value)
-        except (ValueError, TypeError) as error: # pragma: no cover
-            raise ValidationError({key: str(error)}) # pragma: no cover
+        except (ValueError, TypeError) as error:  # pragma: no cover
+            raise ValidationError({key: str(error)})  # pragma: no cover
 
     @staticmethod
     def to_datetime(key, value):

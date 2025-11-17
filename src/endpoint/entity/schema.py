@@ -27,85 +27,88 @@ class ItemSchema(Schema):
 
     # Fields with their respective types and validation rules
     id = fields.Int(dump_only=True)  # Read-only field
-    isCollection = IntigerizedBool(
+    is_collection = IntigerizedBool(
         required=False
     )  # Boolean field indicating if the item is a collection
     label = fields.Str(
-        allow_none=True, required=False, error_messages={"missing label": "TODO"}
+        allow_none=True,
+        required=False,
+        error_messages={"missing label": "TODO"},
     )  # Optional label for the item
     description = fields.Str()  # Description of the item
 
-    parentId = fields.Int(
-        allow_none=True, error_messages={"parentId": "TODO"}
+    parent_id = fields.Int(
+        allow_none=True, error_messages={"parent_id": "TODO"}
     )  # Parent item ID
-    addedDate = MillisecondsSinceEpoch(
+    added_date = MillisecondsSinceEpoch(
         required=True,
         dump_only=True,
-        error_messages={"invalid": "addedDate: Invalid date format."},
+        error_messages={"invalid": "added_date: Invalid date format."},
     )  # Timestamp when the item was added
-    updatedDate = MillisecondsSinceEpoch(
+    updated_date = MillisecondsSinceEpoch(
         required=True,
         dump_only=True,
-        error_messages={"invalid": "updatedDate: Invalid date format."},
+        error_messages={"invalid": "updated_date: Invalid date format."},
     )  # Timestamp when the item was last updated
-    isDeleted = IntigerizedBool(
+    is_deleted = IntigerizedBool(
         # default=False
     )  # Boolean indicating if the item is deleted
 
     # Additional metadata fields
-    CreateDate = MillisecondsSinceEpoch(
+    create_date = MillisecondsSinceEpoch(
         dump_only=True,
-        attribute="CreateDate",
-        data_key="createDate",
+        attribute="create_date",
+        data_key="create_date",
     )
-    FileSize = fields.Int(
+    file_size = fields.Int(
         dump_only=True,
-        attribute="FileSize",
-        data_key="fileSize",
+        attribute="file_size",
+        data_key="file_size",
     )
-    ImageHeight = fields.Int(
+    image_height = fields.Int(
         dump_only=True,
-        attribute="ImageHeight",
+        attribute="image_height",
         data_key="height",
     )
-    ImageWidth = fields.Int(
+    image_width = fields.Int(
         dump_only=True,
-        attribute="ImageWidth",
+        attribute="image_width",
         data_key="width",
     )
-    Duration = fields.Float(
+    duration = fields.Float(
         dump_only=True,
-        attribute="Duration",
+        attribute="duration",
         data_key="duration",
     )
-    MIMEType = fields.Str(
+    mime_type = fields.Str(
         dump_only=True,
-        attribute="MIMEType",
-        data_key="mimeType",
+        attribute="mime_type",
+        data_key="mime_type",
     )
     type = MediaTypeField(dump_only=True)
     extension = fields.Str(dump_only=True)
 
-    # dHash = fields.Str(dump_only=True)  # Commented out field for hash
+    # d_hash = fields.Str(dump_only=True)  # Commented out field for hash
     md5 = fields.Str(dump_only=True)
 
     @validates_schema
     def validate_media_info(self, data, **kwargs):
         """
-        Validate that media-related fields exist only when isCollection is False.
-        If the item is a collection, these fields should not be present.
+        Validate that media-related fields exist only when is_collection is
+        False. If the item is a collection, these fields should not be
+        present.
         """
 
-        """ is_collection = bool(data.get("isCollection", False))
+        """ is_collection = bool(data.get("is_collection", False))
 
         if is_collection:
             if not "label" in data:
                 raise ValidationError(f"label is required for collection")
         else:
-            if not "CreateDate" in data:
-                raise ValidationError(f"CreateDate is required for media")
-            if not "FileSize" in data:
-                raise ValidationError(f"FileSize is required for media")
+            if not "create_date" in data:
+                raise ValidationError(f"create_date is required for media")
+            if not "file_size" in data:
+                raise ValidationError(f"file_size is required for media")
             if not "md5" in data:
                 raise ValidationError(f"md5 is required for media") """
         pass
@@ -128,7 +131,9 @@ class MatchQuerySchema(Schema):
     @validates_schema
     def validate_one_param(self, data, **kwargs):
         present_params = [
-            field for field in ["md5", "label"] if data.get(field) is not None
+            field
+            for field in ["md5", "label"]
+            if data.get(field) is not None
         ]
 
         if not present_params:

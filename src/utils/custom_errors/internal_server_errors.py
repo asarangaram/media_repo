@@ -10,7 +10,8 @@ class IncorrectUsageError(InternalServerError):
 
     def __init__(self):
         super().__init__(
-            "DEVERR: Use create() or update() method to create or update a record."
+            "DEVERR: Use create() or update() method to create or update a "
+            "record."
         )
 
 
@@ -25,10 +26,8 @@ class PreviewGenerationFailedError(InternalServerError):
         super().__init__("DEVERR: Preview generation failed")
 
 
-## This should not occur in create, as we either return True
-## or generate exception
-
-
+# This should not occur in create, as we either return True
+# or generate exception
 class UnexpectedFailure(InternalServerError):
     """
     In normal scenario, this error can't occur. this error is introduces
@@ -38,6 +37,7 @@ class UnexpectedFailure(InternalServerError):
 
     def __init__(self):
         super().__init__("DEVERR: This should not have happened. Fix it")
+
 
 class DataNotLoadedError(InternalServerError):
     """
@@ -49,6 +49,7 @@ class DataNotLoadedError(InternalServerError):
     def __init__(self, message):
         super().__init__(f"DEVERR: {message}")
 
+
 class IntegrityError(InternalServerError):
     """
     In normal scenario, this error can't occur. this error is introduces
@@ -57,12 +58,17 @@ class IntegrityError(InternalServerError):
     """
 
     error_translator = {
-        "check_parent_not_null_if_not_collection": "Media must have parentId",
-        "check_file_size_not_null_if_not_collection": "Failed to detect file_size from media",
-        "check_md5_not_null_if_not_collection": "Failed to calculate md5 from media",
-        "check_mime_type_not_null_if_not_collection": "Failed to determine mime type from media",
-        "check_type_not_null_if_not_collection": "Failed to determine type for media",
-        "check_extension_not_null_if_not_collection": "Failed to determine extensio for media",
+        "check_parent_not_null_if_not_collection": "Media must have parent_id",
+        "check_file_size_not_null_if_not_collection": "Failed to detect "
+        "file_size from media",
+        "check_md5_not_null_if_not_collection": "Failed to calculate md5 from "
+        "media",
+        "check_mime_type_not_null_if_not_collection": "Failed to determine "
+        "mime type from media",
+        "check_type_not_null_if_not_collection": "Failed to determine type for "
+        "media",
+        "check_extension_not_null_if_not_collection": "Failed to determine "
+        "extensio for media",
     }
 
     def __init__(self, error: sqlite3.IntegrityError):

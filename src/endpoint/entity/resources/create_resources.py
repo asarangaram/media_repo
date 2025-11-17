@@ -21,10 +21,10 @@ def entity_create_resource(MediaVersion, route):
             form_data = ItemSchema().load(request.form)
             files = MediaFileSchema().load(request.files)
 
-            if  "isCollection"  not in form_data and "media" not in files:
+            if "is_collection" not in form_data and "media" not in files:
                 raise Failed2GetEntityTypeError()
 
-            if form_data.get("isCollection", None):
+            if form_data.get("is_collection", None):
                 if files.get("media"):
                     raise CannotAttachFileWithCollectionError()
             else:

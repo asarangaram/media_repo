@@ -1,16 +1,30 @@
-from src.endpoint.entity.resources.search_schema.param import Param
-from src.utils.custom_errors.internal_server_errors import DataNotLoadedError, UnexpectedFailure
-
+import re
 
 from marshmallow import ValidationError
 
-
-import re
+from src.endpoint.entity.resources.search_schema.param import Param
+from src.utils.custom_errors.internal_server_errors import (
+    DataNotLoadedError,
+    UnexpectedFailure,
+)
 
 
 class StrParam(Param):
-    def __init__(self, field_name: str, dbColumn, data, no_variant: bool = False, is_null_supported: bool = True, ):
-        super().__init__(field_name, dbColumn, data, no_variant=no_variant,is_null_supported=is_null_supported)
+    def __init__(
+        self,
+        field_name: str,
+        dbColumn,
+        data,
+        no_variant: bool = False,
+        is_null_supported: bool = True,
+    ):
+        super().__init__(
+            field_name,
+            dbColumn,
+            data,
+            no_variant=no_variant,
+            is_null_supported=is_null_supported,
+        )
         self.patterns = [re.compile(r"^(StartsWith|Contains)$")]
 
     def load(self):
@@ -27,14 +41,16 @@ class StrParam(Param):
         if self.no_variant:
             raise ValidationError(
                 {
-                    f"{self.raw_fields.keys()}": f"Too many parameters used. {self.field_name}can be used only once"
+                    f"{self.raw_fields.keys()}": "Too many parameters used. "
+                    f"{self.field_name}can be used only once"
                 }
             )
         raise ValidationError(
             {
                 f"{self.raw_fields.keys()}": "Too many parameters used"
-                f"use either {self.field_name}, {self.field_name}STARTWITH, {self.field_name}CONTAINS "
-                f"or both {self.field_name}Min and {self.field_name}Max. "
+                f"use either {self.field_name}, {self.field_name}STARTWITH, "
+                f"{self.field_name}CONTAINS or both {self.field_name}Min and "
+                f"{self.field_name}Max. "
             }
         )
 

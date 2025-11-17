@@ -1,4 +1,10 @@
-from marshmallow import Schema, fields, post_dump, validates_schema, ValidationError
+from marshmallow import (
+    Schema,
+    fields,
+    post_dump,
+    validates_schema,
+    ValidationError,
+)
 
 
 class BGTaskSchema(Schema):

@@ -20,7 +20,9 @@ class TestMediaTypeDetection(unittest.TestCase):
                 file_content = self.read_file(file_path)
                 bytes_io = BytesIO(file_content)
                 result = determine_media_type(bytes_io)
-                self.assertEqual(result, expected_media_type, f"Failed for {file_path}")
+                self.assertEqual(
+                    result, expected_media_type, f"Failed for {file_path}"
+                )
 
     def tearDown(self):
         # Clean up if needed

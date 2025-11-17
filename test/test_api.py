@@ -5,9 +5,9 @@ import pytest
 import unittest
 import json
 from glob import glob
+from src.wsgi import app
 
 sys.path.append("..")
-from src.wsgi import app
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 mylogger = logging.getLogger()
@@ -25,7 +25,7 @@ class MyTestCase(unittest.TestCase):
             mylogger.info(received_json)
             if not received_json["name"] == "guest":
                 assert False
-        except:
+        except Exception:
             assert False
         assert True
 
@@ -45,7 +45,9 @@ class MyTestCase(unittest.TestCase):
         if not os.path.isdir(os.path.abspath(source_dir)):
             assert False
         images = [
-            y for x in os.walk(source_dir) for y in glob(os.path.join(x[0], "*.*"))
+            y
+            for x in os.walk(source_dir)
+            for y in glob(os.path.join(x[0], "*.*"))
         ]
 
         for image in images:

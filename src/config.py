@@ -25,7 +25,6 @@ def check_path(path):
 
 def get_db_uri():
     use_mysql = os.getenv("USE_MYSQL", "false").lower() in ("1", "true", "yes")
-    
     repo = get_required_env_variable("IMAGE_REPO_DB")
     if use_mysql:
         user = get_required_env_variable("IMAGE_REPO_DB_ADMIN")
@@ -41,12 +40,14 @@ class ConfigClass(object):
     APP_NAME = get_required_env_variable("APP_NAME")
     SECRET_KEY = get_required_env_variable("FLASK_SECRET_KEY1")
     FILE_STORAGE_LOCATION = get_required_env_variable("FILE_STORAGE_LOCATION")
-    UPLOAD_STORAGE_LOCATION = get_required_env_variable("UPLOAD_STORAGE_LOCATION")
+    UPLOAD_STORAGE_LOCATION = get_required_env_variable(
+        "UPLOAD_STORAGE_LOCATION"
+    )
     # Create folder if not exists
     os.makedirs(FILE_STORAGE_LOCATION, exist_ok=True)
-    HOST_ADDR=get_required_env_variable("HOST_ADDR")
-    HOST_PORT=get_required_env_variable("HOST_PORT")
-    USE_RELOADER=os.environ.get("USE_RELOADER", "false").lower() == "true"
+    HOST_ADDR = get_required_env_variable("HOST_ADDR")
+    HOST_PORT = get_required_env_variable("HOST_PORT")
+    USE_RELOADER = os.environ.get("USE_RELOADER", "false").lower() == "true"
 
     API_TITLE = APP_NAME
     API_VERSION = "v1"
@@ -70,7 +71,6 @@ class ConfigClass(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # File Save
-    
     STREAM_STORAGE_LOCATION = f"{FILE_STORAGE_LOCATION}/streams"
 
     CELERY_BROKER_URL = "redis://localhost:6379/0"
@@ -84,5 +84,3 @@ class ConfigClass(object):
 
     DEFAULT_COLLECTION_LABEL = "Unclassified"
     GENERATE_STREAM_TASK = "generate_stream_lq"
-
-    
