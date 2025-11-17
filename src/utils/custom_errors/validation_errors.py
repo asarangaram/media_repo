@@ -46,7 +46,8 @@ class MediaMustHaveMediaFile(ValidationError):
     def __init__(self):
         super().__init__(
             {
-                "mediaFile": "media can't be created without a valid " "media file",
+                "mediaFile": "media can't be created without a valid "
+                "media file",
             }
         )
 
@@ -62,12 +63,16 @@ class CannotAttachFileWithCollectionError(ValidationError):
 
 class ParentIDNotACollectionError(ValidationError):
     def __init__(self, parent_id: int):
-        super().__init__({"parent_id": f" parent_id {parent_id} is not a collection"})
+        super().__init__(
+            {"parent_id": f" parent_id {parent_id} is not a collection"}
+        )
 
 
 class ParentIDNotExistsError(ValidationError):
     def __init__(self, parent_id: int):
-        super().__init__({"parent_id": f" parent_id {parent_id} does not exists"})
+        super().__init__(
+            {"parent_id": f" parent_id {parent_id} does not exists"}
+        )
 
 
 class ParentIDNotProvidedError(ValidationError):
@@ -92,4 +97,6 @@ class Failed2GetEntityTypeError(ValidationError):
 
 class MissingParametersInMatchQuery(ValidationError):
     def __init__(self):
-        super().__init__({"empty": "One of 'id', 'md5', or 'label' must be provided"})
+        super().__init__(
+            {"empty": "One of 'id', 'md5', or 'label' must be provided"}
+        )

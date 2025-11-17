@@ -20,4 +20,6 @@ def entity_upload_form(MediaVersion, route):
                 An HTML response containing the upload form.
             """
             headers = {"Content-Type": "text/html"}
-            return make_response(render_template("upload_media.html"), 200, headers)
+            return make_response(
+                render_template("upload_media.html"), 200, headers
+            )

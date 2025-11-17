@@ -176,7 +176,9 @@ class DateTimeParam(Param):
     @property
     def queries(self):
         if not hasattr(self, "fields"):
-            raise DataNotLoadedError("data is not loaded for {self.field_name}")
+            raise DataNotLoadedError(
+                "data is not loaded for {self.field_name}"
+            )
 
         date_query_filters = []
         if len(self.fields) > 0:
@@ -193,7 +195,8 @@ class DateTimeParam(Param):
                         args = dict(
                             yy=(
                                 1
-                                if whole_suffix and whole_suffix.startswith("YY")
+                                if whole_suffix
+                                and whole_suffix.startswith("YY")
                                 else None
                             ),
                             mm=1 if MM else None,
@@ -201,7 +204,9 @@ class DateTimeParam(Param):
                             From=(from_till == "From"),
                             Till=(from_till == "Till"),
                         )
-                        date_query_filters.append(self.datetime_query(value, **args))
+                        date_query_filters.append(
+                            self.datetime_query(value, **args)
+                        )
                         continue
 
                     m2 = self.patterns[1].fullmatch(suffix)
@@ -213,7 +218,9 @@ class DateTimeParam(Param):
                             dd=DD is not None,
                             hh=HH is not None,
                         )
-                        date_query_filters.append(self.datetime_query(value, **args))
+                        date_query_filters.append(
+                            self.datetime_query(value, **args)
+                        )
                         continue
 
                 raise UnexpectedFailure()

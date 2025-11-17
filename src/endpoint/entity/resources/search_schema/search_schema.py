@@ -1,18 +1,18 @@
 from datetime import datetime
 from typing import Any, Mapping
 
+from clmediakit import toTimeStamp
 from marshmallow import ValidationError
 
-from clmediakit import toTimeStamp
 from src.endpoint.entity.models import EntityModel
-
-from src.endpoint.entity.resources.search_schema.param_datetime import \
-    DateTimeParam
-from src.endpoint.entity.resources.search_schema.param_num import NumParam
-from src.endpoint.entity.resources.search_schema.param_str import StrParam
 from src.endpoint.entity.resources.search_schema.param_bool import (
     BoolParam,
 )
+from src.endpoint.entity.resources.search_schema.param_datetime import (
+    DateTimeParam,
+)
+from src.endpoint.entity.resources.search_schema.param_num import NumParam
+from src.endpoint.entity.resources.search_schema.param_str import StrParam
 
 
 class SearchSchema:
@@ -39,9 +39,7 @@ class SearchSchema:
                 "extension", EntityModel.extension, data_flat, no_variant=True
             ),
             DateTimeParam("added_date", EntityModel.added_date, data_flat),
-            DateTimeParam(
-                "updated_date", EntityModel.updated_date, data_flat
-            ),
+            DateTimeParam("updated_date", EntityModel.updated_date, data_flat),
             DateTimeParam("create_date", EntityModel.create_date, data_flat),
             BoolParam(
                 "is_collection",
@@ -50,7 +48,10 @@ class SearchSchema:
                 no_variant=True,
             ),
             BoolParam(
-                "is_deleted", EntityModel.is_deleted, data_flat, no_variant=True
+                "is_deleted",
+                EntityModel.is_deleted,
+                data_flat,
+                no_variant=True,
             ),
             BoolParam(
                 "is_hidden", EntityModel.is_hidden, data_flat, no_variant=True

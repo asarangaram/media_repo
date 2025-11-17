@@ -57,7 +57,9 @@ class StrParam(Param):
     @property
     def queries(self):
         if not hasattr(self, "fields"):
-            raise DataNotLoadedError(f"data is not loaded for {self.field_name}")
+            raise DataNotLoadedError(
+                f"data is not loaded for {self.field_name}"
+            )
 
         str_query_filters = []
         if len(self.fields) > 0:
@@ -70,10 +72,14 @@ class StrParam(Param):
                     continue
                 if not self.no_variant:
                     if suffix == "StartsWith":
-                        str_query_filters.append(self.query(value, startsWith=True))
+                        str_query_filters.append(
+                            self.query(value, startsWith=True)
+                        )
                         continue
                     elif suffix == "Contains":
-                        str_query_filters.append(self.query(value, contains=True))
+                        str_query_filters.append(
+                            self.query(value, contains=True)
+                        )
                         continue
                 raise UnexpectedFailure()
 

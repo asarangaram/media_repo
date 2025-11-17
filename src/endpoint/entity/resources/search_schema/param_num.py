@@ -32,7 +32,9 @@ class NumParam(Param):
     def load(self) -> bool:
         return super().load(
             lambda key, value: (
-                self.to_float(key, value) if self.is_float else self.to_int(key, value)
+                self.to_float(key, value)
+                if self.is_float
+                else self.to_int(key, value)
             )
         )
 
@@ -42,8 +44,12 @@ class NumParam(Param):
         if len(self.raw_fields.keys()) > (1 if self.no_variant else 2):
             return self.TooManyParametersUsed()
         if len(self.raw_fields.keys()) == 2:
-            min_key = next((k for k in self.raw_fields if k.endswith("Min")), None)
-            max_key = next((k for k in self.raw_fields if k.endswith("Max")), None)
+            min_key = next(
+                (k for k in self.raw_fields if k.endswith("Min")), None
+            )
+            max_key = next(
+                (k for k in self.raw_fields if k.endswith("Max")), None
+            )
 
             if not min_key or not max_key:
                 return self.TooManyParametersUsed(self.raw_fields.keys())
@@ -69,7 +75,9 @@ class NumParam(Param):
     @property
     def queries(self):
         if not hasattr(self, "fields"):
-            raise DataNotLoadedError(f"data is not loaded for {self.field_name}")
+            raise DataNotLoadedError(
+                f"data is not loaded for {self.field_name}"
+            )
 
         num_query_filters = []
         if len(self.fields) > 0:

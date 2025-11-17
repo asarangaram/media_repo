@@ -1,50 +1,48 @@
-from datetime import datetime
-from typing import Optional, List, Any
-
+import copy
 import mimetypes
 import os
 import shutil
 import sqlite3
-import copy
-
 import time
+from datetime import datetime
+from typing import Any, List, Optional
 
 from clmediakit import (
-    create_image_thumbnail,
-    create_video_thumbnail4x4,
-    MediaType,
     HLSStreamGenerator,
     HLSVariant,
+    MediaType,
+    create_image_thumbnail,
+    create_video_thumbnail4x4,
 )
 from sqlalchemy import true
 
-from src.hnsw_indices import hnsw_image_lookup, hnsw_video_lookup
 from src.endpoint.background.models import BackgroundTaskModel
+from src.hnsw_indices import hnsw_image_lookup, hnsw_video_lookup
+from src.utils.custom_errors.internal_server_errors import (
+    IncorrectUsageError,
+    IntegrityError,
+    PreviewGenerationFailedError,
+    UnexpectedFailure,
+)
+from src.utils.custom_errors.not_found_errors import (
+    MissingMediaError,
+    MissingMediaFileError,
+    MissingMediaWhenUploadError,
+    VideoStreamError,
+)
 from src.utils.custom_errors.validation_errors import (
-    MD5MissingError,
-    MD5DuplicateItemError,
     HardDeleteFailedError,
+    MD5DuplicateItemError,
+    MD5MissingError,
     MediaAlreadyDeleted,
     MissingParametersInMatchQuery,
     ParentIDNotACollectionError,
     ParentIDNotExistsError,
     ParentIDNotProvidedError,
 )
-from src.utils.custom_errors.internal_server_errors import (
-    IncorrectUsageError,
-    PreviewGenerationFailedError,
-    IntegrityError,
-    UnexpectedFailure,
-)
-from src.utils.custom_errors.not_found_errors import (
-    MissingMediaFileError,
-    MissingMediaError,
-    MissingMediaWhenUploadError,
-    VideoStreamError,
-)
 
-from ...db import db
 from ...config import ConfigClass
+from ...db import db
 
 
 class EntityModelReaderMixin:
@@ -304,7 +302,8 @@ class EntityModel(db.Model, EntityModelReaderMixin):
             if kwargs.get("md5"):
                 if duplicate := cls.get(md5=kwargs.get("md5")):
                     if duplicate.id != _id:
-                        # if file is present already in the db with different id
+                        # if file is present already in the db
+                        # with different id
                         # we can't update the current item, as its a conflict.
                         raise MD5DuplicateItemError(duplicate)
             if duplicate:
@@ -360,9 +359,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         Generate the relative filename for the entity based on its content
         type and MD5 hash.
         """
-        return os.path.join(
-            self.mime_type, f"{str(self.md5)}{self.extension}"
-        )
+        return os.path.join(self.mime_type, f"{str(self.md5)}{self.extension}")
 
     @property
     def preview_filename(self) -> str:
@@ -376,9 +373,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         """
         Get the absolute path to the entity file in the storage location.
         """
-        return os.path.join(
-            ConfigClass.FILE_STORAGE_LOCATION, self.filename
-        )
+        return os.path.join(ConfigClass.FILE_STORAGE_LOCATION, self.filename)
 
     @property
     def absolute_preview_filename(self) -> str:
@@ -449,9 +444,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                         db.session.merge(curr)
 
                     if not curr.is_collection:
-                        prev_media = (
-                            prev.absolute_filename if prev else None
-                        )
+                        prev_media = prev.absolute_filename if prev else None
                         curr_media = curr.absolute_filename
                         if curr_media != prev_media:
                             if not filepath:
@@ -568,9 +561,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
         return {"status": "entity data is completely wiped out"}
 
     @classmethod
-    def wait_for_m3u8(
-        cls, id: int, master_pl: str, timeout: int = 60
-    ) -> None:
+    def wait_for_m3u8(cls, id: int, master_pl: str, timeout: int = 60) -> None:
         """
         Wait for the adaptive.m3u8 file to be created within the specified
         timeout. Raise VideoStreamError if the timeout is exceeded.
@@ -596,9 +587,7 @@ class EntityModel(db.Model, EntityModelReaderMixin):
                 additionalMessage=f"Media with id {self.id} is "
                 f"a {self.type} (MIME: {self.mime_type}), not a video",
             )
-        stream_path = os.path.join(
-            self.mime_type, f"media_{str(self.id)}"
-        )
+        stream_path = os.path.join(self.mime_type, f"media_{str(self.id)}")
         output_dir = os.path.join(
             ConfigClass.STREAM_STORAGE_LOCATION, stream_path
         )

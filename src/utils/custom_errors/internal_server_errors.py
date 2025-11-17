@@ -1,4 +1,5 @@
 import sqlite3
+
 from werkzeug.exceptions import InternalServerError
 
 
@@ -65,8 +66,8 @@ class IntegrityError(InternalServerError):
         "media",
         "check_mime_type_not_null_if_not_collection": "Failed to determine "
         "mime type from media",
-        "check_type_not_null_if_not_collection": "Failed to determine type for "
-        "media",
+        "check_type_not_null_if_not_collection": "Failed to determine type for"
+        " media",
         "check_extension_not_null_if_not_collection": "Failed to determine "
         "extensio for media",
     }
