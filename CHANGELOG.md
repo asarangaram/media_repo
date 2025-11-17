@@ -1,1 +1,4 @@
-## 0.1.0 - Initial Version before refactoring
+## 0.1.1 - Refactoring
+
+- Removed orphan implementations
+- Added this changelog entry
