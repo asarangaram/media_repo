@@ -2,7 +2,7 @@ import os
 from flask import Flask
 from flask_migrate import Migrate
 from sqlalchemy_continuum import version_class
-from flask_smorest import Blueprint
+from flask_smorest import Blueprint, Api
 
 from src.endpoint.upload.resources import register_sessions_resources
 
@@ -25,6 +25,7 @@ def create_app(config_object):
         config_object.APP_NAME, template_folder=os.path.abspath("./src/html")
     )
     app.config.from_object(config_object)
+    api = Api(app)
 
     db.init_app(app)
     migrate = Migrate(app, db, directory="src/migrations")  # noqa: F841
@@ -44,10 +45,10 @@ def create_app(config_object):
     URLMapResource.init_app(app)
 
     # Landing Page
-    app.register_blueprint(landing_bp)
-    app.register_blueprint(URL_map_resouce_bp)
-    app.register_blueprint(entity_bp)
-    app.register_blueprint(session_bp)
-    app.register_blueprint(background_task_bp)
+    api.register_blueprint(landing_bp)
+    api.register_blueprint(URL_map_resouce_bp)
+    api.register_blueprint(entity_bp)
+    api.register_blueprint(session_bp)
+    api.register_blueprint(background_task_bp)
 
     return app
